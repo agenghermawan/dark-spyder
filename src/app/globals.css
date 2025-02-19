@@ -19,3 +19,115 @@ body {
   background: var(--background);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Login */
+
+/* Animasi Cahaya Bergerak */
+.shimmer-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -150%;
+  width: 300%;
+  height: 100%;
+  background: linear-gradient(120deg, transparent 25%, rgba(255, 255, 255, 0.4) 50%, transparent 75%);
+  animation: shimmer 3s infinite;
+  pointer-events: none;
+  z-index: 1;
+  border-radius: 0.75rem;
+}
+
+@keyframes shimmer {
+  0% {
+    left: -150%;
+  }
+  100% {
+    left: 150%;
+  }
+}
+
+/* Pastikan form tetap di atas */
+.shimmer-card {
+  position: relative;
+  z-index: 2;
+  background-color: #1f2937; /* bg-gray-800 */
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+}
+
+.glitch {
+  position: relative;
+  color: #0f0;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.glitch::before, .glitch::after {
+  content: attr(data-text);
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  overflow: hidden;
+  color: #0f0;
+  clip: rect(0, 0, 0, 0);
+}
+
+.glitch::before {
+  left: 2px;
+  text-shadow: -2px 0 red;
+  animation: glitch 1s infinite linear alternate-reverse;
+}
+
+.glitch::after {
+  left: -2px;
+  text-shadow: 2px 0 blue;
+  animation: glitch 1s infinite linear alternate;
+}
+
+@keyframes glitch {
+  0% {
+    clip: rect(0, 9999px, 0, 0);
+  }
+  20% {
+    clip: rect(0, 9999px, 0, 0);
+  }
+  40% {
+    clip: rect(0, 9999px, 0, 0);
+  }
+  60% {
+    clip: rect(0, 9999px, 0, 0);
+  }
+  80% {
+    clip: rect(0, 9999px, 0, 0);
+  }
+  100% {
+    clip: rect(0, 9999px, 0, 0);
+  }
+}
+
+@keyframes hacker-glow-blue {
+  0% {
+    box-shadow: 0 0 5px rgba(0, 191, 255, 0.7), 0 0 10px rgba(0, 191, 255, 0.5),
+    0 0 20px rgba(0, 191, 255, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 10px rgba(0, 191, 255, 0.8), 0 0 20px rgba(0, 191, 255, 0.6),
+    0 0 30px rgba(0, 191, 255, 0.4);
+  }
+  100% {
+    box-shadow: 0 0 5px rgba(0, 191, 255, 0.7), 0 0 10px rgba(0, 191, 255, 0.5),
+    0 0 20px rgba(0, 191, 255, 0.3);
+  }
+}
+
+.shadow-hacker-glow-blue {
+  box-shadow: 0 0 5px rgba(0, 191, 255, 0.7), 0 0 10px rgba(0, 191, 255, 0.5),
+  0 0 20px rgba(0, 191, 255, 0.3);
+  animation: hacker-glow-blue 3s infinite;
+}
+
+
+
+
+
