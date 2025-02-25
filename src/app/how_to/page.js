@@ -3,6 +3,7 @@
 import Navbar from "@/components/navbar";
 import React, {useState} from "react";
 import {FaChevronDown, FaChevronUp} from "react-icons/fa";
+import Footer from "@/components/footer";
 
 const TermsOfUse = () => {
     const [activeIndex, setActiveIndex] = useState(null);
@@ -42,7 +43,7 @@ const TermsOfUse = () => {
     return (
         <>
             <Navbar/>
-            <div className="min-h-screen bg-[#0A0A0A] text-white p-8">
+            <div className="bg-[#0A0A0A] text-white p-8">
                 <div className="max-w-7xl mx-auto">
                     {/* Header Section */}
                     <div className="flex flex-col items-center justify-center mb-12 text-center">
@@ -81,6 +82,7 @@ const TermsOfUse = () => {
 
                 </div>
             </div>
+            <Footer />
         </>
     );
 };

@@ -12,7 +12,7 @@ const SearchBoxWithShadow = () => {
       </p>
 
       {/* Search Box with Light Shadow */}
-      <div className="relative w-full max-w-xl bg-gray-900 rounded-xl shadow-[0_0_20px_5px_rgba(138,43,226,0.5)]">
+      <div className="w-full max-w-xl bg-gray-900 rounded-xl shadow-[0_0_20px_5px_rgba(138,43,226,0.5)]">
         <div className="flex items-center border-b border-gray-700 px-4 py-3">
           <FaSearch className="text-gray-400 mr-3" />
           <input

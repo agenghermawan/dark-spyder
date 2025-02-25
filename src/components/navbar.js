@@ -1,96 +1,118 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation'; // Import usePathname
-import { FaCrosshairs, FaHome, FaServer, FaSpider } from "react-icons/fa";
+import { usePathname } from 'next/navigation';
+import { FaCrosshairs, FaHome, FaServer, FaSpider, FaBars, FaTimes, FaQuestionCircle, FaFileAlt } from "react-icons/fa";
 import React, { useState } from "react";
 
 const Navbar = () => {
-    const pathname = usePathname(); // Ambil pathname saat ini
-    const [isDropdownOpen, setIsDropdownOpen] = useState(false); // State untuk mengelola dropdown
+    const pathname = usePathname();
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
     const handleLogout = () => {
-        // Logika logout di sini (misalnya, hapus token atau session)
         console.log("Logged out!");
-        // Redirect ke halaman login setelah logout
         window.location.href = "/login";
     };
 
     return (
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-700 relative">
-            {/* Bagian Kiri */}
-            <div className="flex items-center space-x-3">
-                <FaSpider className="text-purple-500 text-2xl"/>
-                <span className="font-bold text-xl">amandaluwis103</span>
-                <span className="bg-gray-800 text-xs px-2 py-1 rounded">FREE</span>
-            </div>
+        <nav className="bg-[#141414] border-b border-gray-700 px-6 py-4">
+            <div className="flex items-center justify-between">
+                {/* Logo dan Title */}
+                <div className="flex items-center space-x-3">
+                    <FaSpider className="text-purple-500 text-2xl"/>
+                    <span className="font-bold text-xl text-white">amandaluwis103</span>
+                    <span className="bg-gray-800 text-xs px-2 py-1 rounded text-white">FREE</span>
+                </div>
 
-            {/* Bagian Tengah (Menu Navigasi) */}
-            <div className="flex items-center space-x-6 px-4 py-3 border border-gray-700 rounded-xl bg-[#141414] w-fit mx-auto">
-                <Link
-                    href={'/dashboard'}
-                    className={`flex items-center space-x-2 px-4 py-2 rounded-lg border ${
-                        pathname === '/dashboard'
-                            ? 'bg-gray-900 border-gray-700 text-white' // Active state
-                            : 'hover:bg-gray-800 border-transparent' // Default state
-                    }`}
+                {/* Menu Icon untuk Mobile */}
+                <button
+                    className="md:hidden text-white text-2xl"
+                    onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                 >
-                    <FaHome className="text-purple-500"/>
-                    <span className="font-medium">Dashboard</span>
-                </Link>
-                <Link
-                    href={'/stealer'}
-                    className={`flex items-center space-x-2 px-4 py-2 rounded-lg border ${
-                        pathname === '/stealer'
-                            ? 'bg-gray-900 border-gray-700 text-white' // Active state
-                            : 'hover:bg-gray-800 border-transparent' // Default state
-                    }`}
-                >
-                    <FaServer/>
-                    <span>Stealer</span>
-                </Link>
-                <Link
-                    href={'/leaks'}
-                    className={`flex items-center space-x-2 px-4 py-2 rounded-lg border ${
-                        pathname === '/leaks'
-                            ? 'bg-gray-900 border-gray-700 text-white' // Active state
-                            : 'hover:bg-gray-800 border-transparent' // Default state
-                    }`}
-                >
-                    <FaCrosshairs/>
-                    <span>Leaks</span>
-                </Link>
-            </div>
+                    {isMobileMenuOpen ? <FaTimes /> : <FaBars />}
+                </button>
 
-            {/* Bagian Kanan */}
-            <div className="flex items-center space-x-4">
-                <Link href={'/how_to'} className="hover:text-purple-400">How To</Link>
-                <button className="hover:text-purple-400">Logs</button>
-                <Link href={'/setting'} className="hover:text-purple-400">Setting</Link>
+                {/* Menu Navigasi (Desktop) */}
+                <div className="hidden md:flex items-center space-x-6 px-4 py-3 border border-gray-700 rounded-xl bg-[#1a1a1a] w-fit">
+                    {[
+                        { href: '/dashboard', label: 'Dashboard', icon: <FaHome className="text-purple-500" /> },
+                        { href: '/stealer', label: 'Stealer', icon: <FaServer /> },
+                        { href: '/leaks', label: 'Leaks', icon: <FaCrosshairs /> }
+                    ].map(({ href, label, icon }) => (
+                        <Link key={href} href={href}
+                              className={`flex items-center space-x-2 px-4 py-2 rounded-lg border transition-colors ${
+                                  pathname === href
+                                      ? 'bg-gray-900 border-gray-700 text-white'
+                                      : 'hover:bg-gray-800 border-transparent text-gray-300'
+                              }`}
+                        >
+                            {icon}
+                            <span>{label}</span>
+                        </Link>
+                    ))}
+                </div>
 
-                {/* Dropdown untuk Logout */}
-                <div className="relative">
-                    <button
-                        onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                        className="w-8 h-8 bg-pink-600 rounded-full flex items-center justify-center hover:bg-pink-700 transition-colors"
-                    >
-                        A
-                    </button>
+                {/* Bagian Kanan */}
+                <div className="hidden md:flex items-center space-x-4 text-gray-300">
+                    <Link href={'/how_to'} className="hover:text-purple-400">How To</Link>
+                    <button className="hover:text-purple-400">Logs</button>
+                    <Link href={'/setting'} className="hover:text-purple-400">Setting</Link>
 
-                    {/* Dropdown Menu */}
-                    {isDropdownOpen && (
-                        <div className="absolute right-0 mt-2 w-48 bg-gray-800 border border-gray-700 rounded-lg shadow-lg z-50">
-                            <button
-                                onClick={handleLogout}
-                                className="w-full px-4 py-2 text-left text-white hover:bg-gray-700 rounded-lg transition-colors"
-                            >
-                                Logout
-                            </button>
-                        </div>
-                    )}
+                    {/* Dropdown untuk Logout */}
+                    <div className="relative">
+                        <button
+                            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                            className="w-8 h-8 bg-pink-600 rounded-full flex items-center justify-center hover:bg-pink-700 transition-colors"
+                        >
+                            A
+                        </button>
+
+                        {isDropdownOpen && (
+                            <div className="absolute right-0 mt-2 w-48 bg-gray-800 border border-gray-700 rounded-lg shadow-lg z-50">
+                                <button
+                                    onClick={handleLogout}
+                                    className="w-full px-4 py-2 text-left text-white hover:bg-gray-700 rounded-lg transition-colors"
+                                >
+                                    Logout
+                                </button>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
-        </div>
+
+            {/* Mobile Menu */}
+            {isMobileMenuOpen && (
+                <div className="md:hidden flex flex-col items-start space-y-4 mt-4  bg-[#1a1a1a] p-4 rounded-lg border border-gray-700">
+                    {[
+                        { href: '/dashboard', label: 'Dashboard', icon: <FaHome className="text-purple-500" /> },
+                        { href: '/stealer', label: 'Stealer', icon: <FaServer /> },
+                        { href: '/leaks', label: 'Leaks', icon: <FaCrosshairs /> },
+                        { href: '/how_to', label: 'How To', icon: <FaQuestionCircle /> },
+                        { href: '/setting', label: 'Settings', icon: <FaFileAlt /> }
+                    ].map(({ href, label, icon }) => (
+                        <Link key={href} href={href}
+                              className={`flex items-center justify-start space-x-2 px-4 py-2 rounded-lg border w-full transition-colors ${
+                                  pathname === href
+                                      ? 'bg-gray-900 border-gray-700 text-white'
+                                      : 'hover:bg-gray-800 border-transparent text-gray-300'
+                              }`}
+                        >
+                            {icon}
+                            <span>{label}</span>
+                        </Link>
+                    ))}
+
+                    <button
+                        onClick={handleLogout}
+                        className="w-full px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors"
+                    >
+                        Logout
+                    </button>
+                </div>
+            )}
+        </nav>
     );
 };
 

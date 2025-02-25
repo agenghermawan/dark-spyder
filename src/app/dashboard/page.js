@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { FaSpider, FaHome, FaServer, FaCrosshairs } from 'react-icons/fa';
 import SearchBoxWithShadow from "@/components/search_box";
 import Navbar from "@/components/navbar";
+import Footer from "@/components/footer";
 
 const Dashboard = () => {
   const [showSplash, setShowSplash] = useState(true);
@@ -48,13 +49,13 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white relative">
+    <div className="bg-black text-white relative">
       {/* Top Navigation */}
       <Navbar />
 
       {/* Main Content */}
       <SearchBoxWithShadow />
-        <div className="p-6 w-10/12 mx-auto bg-gray-900 rounded-2xl border border-gray-700 my-6">
+        <div className="p-3 md:p-6 w-full  md:mx-auto md:w-11/12 bg-gray-900 rounded-2xl border border-gray-700 my-6">
             {data.map((item, index) => (
                 <div
                     key={index}
@@ -87,6 +88,8 @@ const Dashboard = () => {
                 </div>
             ))}
         </div>
+
+        <Footer />
     </div>
   );
 };

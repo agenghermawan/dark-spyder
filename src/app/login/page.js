@@ -11,6 +11,7 @@ export default function LoginPage() {
     const router = useRouter();
 
     const handleSubmit = async (e) => {
+        e.preventDefault();
         router.push("/dashboard");
     };
 
@@ -29,7 +30,7 @@ export default function LoginPage() {
                 </h1>
 
                 {/* Form Login */}
-                <form onSubmit={handleSubmit}>
+                <form>
                     {/* Email */}
                     <div className="mb-6">
                         <label htmlFor="email" className="block mb-2 text-sm text-gray-400">
@@ -88,7 +89,7 @@ export default function LoginPage() {
 
                     {/* Submit Button */}
                     <button
-                        type="submit"
+                        onClick={handleSubmit}
                         className="w-full py-3 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-bold rounded-lg transition-all transform hover:scale-105 active:scale-95"
                     >
                         Login

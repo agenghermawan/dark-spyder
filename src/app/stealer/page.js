@@ -3,6 +3,7 @@
 import Navbar from "@/components/navbar";
 import React, {useEffect, useState} from "react";
 import {FaSpider, FaSearch} from "react-icons/fa";
+import Footer from "@/components/footer";
 
 const Stealer = () => {
   const [showSplash, setShowSplash] = useState(true);
@@ -49,7 +50,7 @@ const Stealer = () => {
   return (
       <>
         <Navbar/>
-        <div className="min-h-screen bg-[#0A0A0A] text-white p-8">
+        <div className="bg-[#0A0A0A] text-white p-8">
           <div className="max-w-7xl mx-auto">
             <div className="flex flex-col items-center justify-center mb-12 text-center">
               <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-500 to-green-400 bg-clip-text text-transparent mb-4">
@@ -127,6 +128,7 @@ const Stealer = () => {
             </div>
           </div>
         </div>
+        <Footer />
       </>
   );
 };
