@@ -1,9 +1,9 @@
 'use client';
 import React, { useEffect, useState } from 'react';
 import { FaSpider, FaHome, FaServer, FaCrosshairs } from 'react-icons/fa';
-import SearchBoxWithShadow from "@/components/search_box";
-import Navbar from "@/components/navbar";
-import Footer from "@/components/footer";
+import SearchBoxWithShadow from "@/components/dashboard/search_box";
+import Navbar from "@/components/dashboard/navbar";
+import Footer from "@/components/dashboard/footer";
 
 const Dashboard = () => {
   const [showSplash, setShowSplash] = useState(true);
