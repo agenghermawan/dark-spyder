@@ -163,4 +163,20 @@ body {
     background: linear-gradient(135deg,hsla(0,0%,100%,.08) 30%,hsla(0,0%,100%,.04)),radial-gradient(60% 60% at 50% 0,hsla(0,0%,100%,.08) 0,hsla(0,0%,100%,0) 100%);
 }
 
+/* Button */
+.btn-hover:hover {
+    background-color: #e6194d;
+    color: white;
+    transition: all 0.3s ease;
+    transform: scale(1.05);
+}
 
+/* Heading */
+.text-heading {
+    letter-spacing: -.5px;
+    margin-top: 0;
+    margin-bottom: 0;
+    font-size: 32px;
+    font-weight: 300;
+    line-height: 64px;
+}
