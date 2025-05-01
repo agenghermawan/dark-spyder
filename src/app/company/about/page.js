@@ -136,7 +136,7 @@ export default function AboutPage() {
             >
               <div className="max-w-4xl mx-auto space-y-8">
                 <Image
-                  src="/image/logo.jpg"
+                  src="/image/logo.png"
                   alt="Logo"
                   width={200}
                   height={200}

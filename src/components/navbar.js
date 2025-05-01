@@ -10,12 +10,7 @@ export default function Navbar() {
       {/* Mobile Menu */}
       <div className="md:hidden flex justify-between items-center p-4">
         <div>
-          <Image
-            src="https://cdn.prod.website-files.com/64820a5a7bb824d4fde49544/6495604fb7188b7b3e3edd45_Logotype.svg"
-            alt="logo"
-            width={150}
-            height={40}
-          />
+          <Image src="/image/logo.png" alt="logo" width={150} height={40} />
         </div>
         <button
           className="text-white"
@@ -140,16 +135,11 @@ export default function Navbar() {
       {/* Desktop Navbar */}
       <div className="hidden md:grid md:grid-cols-3 gap-4 w-full md:w-8/12 mx-auto items-center justify-between">
         <Link href={"/"}>
-          <Image
-            src="https://cdn.prod.website-files.com/64820a5a7bb824d4fde49544/6495604fb7188b7b3e3edd45_Logotype.svg"
-            alt="logo"
-            width={200}
-            height={50}
-          />
+          <Image src="/image/logo.png" alt="logo" width={120} height={50} />
         </Link>
 
         <div className="flex flex-row justify-center items-center pt-4 space-x-6 text-white">
-          {/* Products Dropdown */}
+          {/* Products Dropdown - Fixed Version */}
           <div className="group relative cursor-pointer pb-4">
             <div className="font-medium flex items-center">
               Products
@@ -169,11 +159,56 @@ export default function Navbar() {
                 />
               </svg>
             </div>
+
+            {/* Main Dropdown Container */}
             <div className="absolute left-0 top-full mt-0 hidden group-hover:block w-72 bg-[#070a11] border rounded-md border-gray-700 z-50 pt-1">
               <ul className="py-2 flex flex-col space-y-2 px-4">
-                <li className="px-4 py-2 hover:bg-gray-800 rounded hover:text-[#f53d6b] hover:scale-105 transition-all duration-300 ease-in-out">
-                  Dark Web
-                </li>
+                {/* Dark Web Item with Submenu */}
+                <div className="relative group/darkweb">
+                  {/* Dark Web Item */}
+                  <li className="px-4 py-2 hover:bg-gray-800 rounded hover:text-[#f53d6b] hover:scale-105 transition-all duration-300 ease-in-out flex items-center justify-between">
+                    Dark Web
+                    <svg
+                      className="mt-1"
+                      width="24"
+                      height="24"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                    >
+                      <path
+                        d="M9 18L15 12L9 6"
+                        stroke="currentColor"
+                        strokeWidth="1.75"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </li>
+
+                  {/* Submenu dengan spacing aman */}
+                  <div
+                    className="absolute left-full top-0 ml-1 hidden group-hover/darkweb:block w-72 bg-[#070a11] border rounded-md border-gray-700 z-50 pt-1"
+                    style={{
+                      pointerEvents: "auto",
+                      transform: "translateX(12px)", // ← Solusi utama untuk spacing
+                    }}
+                  >
+                    {/* Bridge untuk maintain hover state */}
+                    <div className="absolute right-full top-0 w-4 h-full" />
+
+                    <ul className="py-2 flex flex-col space-y-2 px-4">
+                      <li className="px-4 py-2 hover:bg-gray-800 rounded hover:text-[#f53d6b] hover:scale-105 transition-all duration-300 ease-in-out">
+                        Database Stealer
+                      </li>
+                      <li className="px-4 py-2 hover:bg-gray-800 rounded hover:text-[#f53d6b] hover:scale-105 transition-all duration-300 ease-in-out">
+                        Database Leaks
+                      </li>{" "}
+                  
+                    </ul>
+                  </div>
+                </div>
+
+                {/* VA Item */}
                 <li className="px-4 py-2 hover:bg-gray-800 rounded hover:text-[#f53d6b] hover:scale-105 transition-all duration-300 ease-in-out">
                   VA
                 </li>
