@@ -3,6 +3,7 @@ import Navbar from "@/components/navbar";
 import Globe from "@/components/globe";
 import Image from "next/image";
 import {useState} from "react";
+import { gsap } from "gsap";
 
 export default function Home() {
     const [activeTab, setActiveTab] = useState('law');

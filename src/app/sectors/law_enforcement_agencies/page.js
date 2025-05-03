@@ -109,7 +109,7 @@ export default function Page() {
 
       {/* Globe background */}
       <div className="relative h-screen w-full">
-        <NetworkMesh />
+        <DataConnections />
 
         {/* Floating text on top of Globe */}
         <section className="absolute inset-0 flex items-center justify-center px-4 sm:px-6 lg:px-8 text-white z-10">
@@ -445,3 +445,100 @@ export default function Page() {
     </div>
   );
 }
+
+function DataConnections() {
+  const canvasRef = useRef(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+
+    const dpr = window.devicePixelRatio || 1;
+    let width = canvas.width = window.innerWidth * dpr;
+    let height = canvas.height = window.innerHeight * dpr;
+    ctx.scale(dpr, dpr);
+
+    class Node {
+      constructor() {
+        this.x = Math.random() * width;
+        this.y = Math.random() * height;
+        this.size = 3 + Math.random() * 5;
+        this.type = Math.random() > 0.5 ? 'source' : 'target';
+        this.color = this.type === 'source' ? '#FF2A6D' : '#05D9E8';
+      }
+
+      draw() {
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fillStyle = this.color;
+        ctx.fill();
+      }
+    }
+
+    const nodes = Array.from({ length: 30 }, () => new Node());
+    const connections = [];
+
+    // Create connections between nodes
+    for (let i = 0; i < nodes.length; i++) {
+      if (nodes[i].type === 'source') {
+        for (let j = 0; j < 2; j++) {
+          const target = nodes.find(n => n.type === 'target' && !connections.some(c => c.to === n));
+          if (target) {
+            connections.push({ from: nodes[i], to: target });
+          }
+        }
+      }
+    }
+
+    function animate() {
+      ctx.clearRect(0, 0, width, height);
+
+      // Draw connections
+      connections.forEach(conn => {
+        const dx = conn.to.x - conn.from.x;
+        const dy = conn.to.y - conn.from.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        // Animate connection
+        const progress = (Date.now() % 2000) / 2000; // 2 second cycle
+        const animX = conn.from.x + dx * progress;
+        const animY = conn.from.y + dy * progress;
+
+        // Connection line
+        ctx.beginPath();
+        ctx.moveTo(conn.from.x, conn.from.y);
+        ctx.lineTo(conn.to.x, conn.to.y);
+        ctx.strokeStyle = 'rgba(5, 217, 232, 0.1)';
+        ctx.lineWidth = 0.5;
+        ctx.stroke();
+
+        // Animated dot
+        ctx.beginPath();
+        ctx.arc(animX, animY, 2, 0, Math.PI * 2);
+        ctx.fillStyle = '#00FFEA';
+        ctx.fill();
+      });
+
+      // Draw nodes
+      nodes.forEach(node => node.draw());
+
+      requestAnimationFrame(animate);
+    }
+
+    animate();
+
+    const handleResize = () => {
+      width = canvas.width = window.innerWidth * dpr;
+      height = canvas.height = window.innerHeight * dpr;
+      ctx.scale(dpr, dpr);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  return <canvas ref={canvasRef} className="absolute top-0 left-0 w-full h-full -z-10" />;
+}
+
+

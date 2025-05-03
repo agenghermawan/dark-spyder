@@ -63,7 +63,7 @@ export default function Navbar() {
                 <li className="px-4 py-2 hover:bg-gray-800 rounded">
                   Dark Web
                 </li>
-                <li className="px-4 py-2 hover:bg-gray-800 rounded">VA</li>
+                <li className="px-4 py-2 hover:bg-gray-800 rounded">Vulnerabilities</li>
               </ul>
             </div>
 
@@ -197,20 +197,19 @@ export default function Navbar() {
                     <div className="absolute right-full top-0 w-4 h-full" />
 
                     <ul className="py-2 flex flex-col space-y-2 px-4">
-                      <li className="px-4 py-2 hover:bg-gray-800 rounded hover:text-[#f53d6b] hover:scale-105 transition-all duration-300 ease-in-out">
+                      <Link href={'/dark_web/stealer'} className="px-4 py-2 hover:bg-gray-800 rounded hover:text-[#f53d6b] hover:scale-105 transition-all duration-300 ease-in-out">
                         Database Stealer
-                      </li>
-                      <li className="px-4 py-2 hover:bg-gray-800 rounded hover:text-[#f53d6b] hover:scale-105 transition-all duration-300 ease-in-out">
+                      </Link>
+                      <Link href={'/dark_web/leaks'} className="px-4 py-2 hover:bg-gray-800 rounded hover:text-[#f53d6b] hover:scale-105 transition-all duration-300 ease-in-out">
                         Database Leaks
-                      </li>{" "}
-                  
+                      </Link>{" "}
                     </ul>
                   </div>
                 </div>
 
                 {/* VA Item */}
                 <li className="px-4 py-2 hover:bg-gray-800 rounded hover:text-[#f53d6b] hover:scale-105 transition-all duration-300 ease-in-out">
-                  VA
+                  Vulnerabilities
                 </li>
               </ul>
             </div>

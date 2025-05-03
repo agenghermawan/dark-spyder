@@ -5,7 +5,7 @@ import Navbar from "@/components/navbar";
 import Globe from "@/components/globe";
 import Image from "next/image";
 
-function NetworkMesh() {
+function DigitalFootprint() {
   const canvasRef = useRef(null);
 
   useEffect(() => {
@@ -13,92 +13,86 @@ function NetworkMesh() {
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
 
-    let width = (canvas.width = window.innerWidth);
-    let height = (canvas.height = window.innerHeight);
+    // High DPI handling
+    const dpr = window.devicePixelRatio || 1;
+    let width = canvas.width = window.innerWidth * dpr;
+    let height = canvas.height = window.innerHeight * dpr;
+    ctx.scale(dpr, dpr);
 
-    const nodes = [];
-    const nodeCount = 80;
-    const maxDistance = 150;
+    // Configuration
+    const config = {
+      particleCount: 120,
+      types: ['email', 'ip', 'hash', 'credential'],
+      colors: {
+        email: '#FF2A6D',
+        ip: '#05D9E8',
+        hash: '#D300C5',
+        credential: '#00FFEA'
+      }
+    };
 
-    class Node {
+    class DataParticle {
       constructor() {
-        this.x = Math.random() * width;
-        this.y = Math.random() * height;
-        this.vx = (Math.random() - 0.5) * 0.7;
-        this.vy = (Math.random() - 0.5) * 0.7;
-        this.radius = 2;
+        this.type = config.types[Math.floor(Math.random() * config.types.length)];
+        this.reset();
+        this.size = 2 + Math.random() * 3;
+        this.speed = 0.5 + Math.random() * 2;
       }
 
-      move() {
-        this.x += this.vx;
-        this.y += this.vy;
+      reset() {
+        this.x = Math.random() * width;
+        this.y = height + Math.random() * 100;
+        this.alpha = 0.1 + Math.random() * 0.5;
+      }
 
-        if (this.x < 0 || this.x > width) this.vx *= -1;
-        if (this.y < 0 || this.y > height) this.vy *= -1;
+      update() {
+        this.y -= this.speed;
+        if (this.y < -10) this.reset();
       }
 
       draw() {
         ctx.beginPath();
-        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-        ctx.fillStyle = "#ff7a9c"; // Neon Cyan
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fillStyle = `${config.colors[this.type]}${Math.floor(this.alpha * 255).toString(16).padStart(2, '0')}`;
         ctx.fill();
       }
     }
 
-    for (let i = 0; i < nodeCount; i++) {
-      nodes.push(new Node());
-    }
-
-    function drawLines() {
-      for (let a = 0; a < nodes.length; a++) {
-        for (let b = a + 1; b < nodes.length; b++) {
-          const dx = nodes[a].x - nodes[b].x;
-          const dy = nodes[a].y - nodes[b].y;
-          const distance = Math.sqrt(dx * dx + dy * dy);
-          if (distance < maxDistance) {
-            ctx.beginPath();
-            ctx.strokeStyle = `rgba(0, 255, 234, ${
-              1 - distance / maxDistance
-            })`; // Fade based on distance
-            ctx.moveTo(nodes[a].x, nodes[a].y);
-            ctx.lineTo(nodes[b].x, nodes[b].y);
-            ctx.stroke();
-          }
-        }
-      }
-    }
+    const particles = Array.from({ length: config.particleCount }, () => new DataParticle());
 
     function animate() {
       ctx.clearRect(0, 0, width, height);
-      nodes.forEach((node) => {
-        node.move();
-        node.draw();
+
+      // Background gradient
+      const gradient = ctx.createLinearGradient(0, 0, 0, height);
+      gradient.addColorStop(0, 'rgba(13, 13, 16, 0.8)');
+      gradient.addColorStop(1, 'rgba(13, 13, 16, 0.2)');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, width, height);
+
+      particles.forEach(p => {
+        p.update();
+        p.draw();
       });
-      drawLines();
+
       requestAnimationFrame(animate);
     }
 
     animate();
 
     const handleResize = () => {
-      width = canvas.width = window.innerWidth;
-      height = canvas.height = window.innerHeight;
+      width = canvas.width = window.innerWidth * dpr;
+      height = canvas.height = window.innerHeight * dpr;
+      ctx.scale(dpr, dpr);
     };
 
-    window.addEventListener("resize", handleResize);
-
-    return () => {
-      window.removeEventListener("resize", handleResize);
-    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  return (
-    <canvas
-      ref={canvasRef}
-      className="absolute top-0 left-0 w-full h-full -z-10"
-    />
-  );
+  return <canvas ref={canvasRef} className="absolute top-0 left-0 w-full h-full -z-10" />;
 }
+
 
 export default function Page() {
   const [activeTab, setActiveTab] = useState("law");
@@ -109,7 +103,7 @@ export default function Page() {
 
       {/* Globe background */}
       <div className="relative h-screen w-full">
-        <NetworkMesh />
+        <DigitalFootprint />
 
         {/* Floating text on top of Globe */}
         <section className="absolute inset-0 flex items-center justify-center px-4 sm:px-6 lg:px-8 text-white z-10">
