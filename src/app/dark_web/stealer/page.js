@@ -12,11 +12,16 @@ export default function Page() {
     const [stealerData, setStealerData] = useState([]);
     const [domain, setDomain] = useState("");
     const [isLoading, setIsLoading] = useState(false);
+    const [pagination, setPagination] = useState({
+        page: 1,
+        size: 10,
+        total: 0
+    });
     const resultsRef = useRef(null);
     const rowsRef = useRef([]);
     const tableRef = useRef(null);
 
-    const handleSearch = () => {
+    const handleSearch = async () => {
         setIsLoading(true);
 
         // Clear previous data with fade out animation
@@ -32,73 +37,72 @@ export default function Page() {
                 }
             });
         } else {
-            loadNewData();
+            await loadNewData();
         }
     };
 
-    const loadNewData = () => {
-        // Simulate API call
-        setTimeout(() => {
-            setStealerData([
-                {
-                    password: "Xav08312",
-                    origin: "login.microsoftonline.com",
-                    email: "gilang.topani@bssn.go.id",
-                    source: "Stealer Logs",
-                    lastBreach: "N/A",
-                },
-                {
-                    password: "sukabangetaessbox",
-                    origin: "mail.bssn.go.id",
-                    email: "novita.angraini@bssn.go.id",
-                    source: "Stealer Logs",
-                    lastBreach: "N/A",
-                },
-                {
-                    password: "sispk",
-                    origin: "akses-sispk.bsn.go.id",
-                    email: "35-04_dedy.septono@bssn.go.id",
-                    source: "Stealer Logs",
-                    lastBreach: "N/A",
-                },
-            ]);
+    const loadNewData = async () => {
+        try {
+            setIsLoading(true);
+
+            const response = await fetch(`/api/proxy?q=${domain}&type=stealer&page=${pagination.page}&size=${pagination.size}`);
+
+            if (!response.ok) {
+                throw new Error(`Network response was not ok: ${response.status} ${response.statusText}`);
+            }
+
+            const data = await response.json();
+
+            // Transform API data to match your UI structure
+            const transformedData = data.current_page_data.map(item => ({
+                password: item._source?.password || 'N/A',
+                origin: item._source?.domain || 'N/A',
+                email: item._source?.username || 'N/A',
+                source: item._source?.threatintel || 'Unknown',
+                lastBreach: "N/A",
+                checksum: item._source?.Checksum || 'N/A'
+            }));
+
+            setStealerData(transformedData);
+
+            setPagination(prev => ({
+                ...prev,
+                total: data.total || 0
+            }));
+
+        } catch (error) {
+            console.error('Error fetching data:', error.message);
+        } finally {
             setIsLoading(false);
 
-            // Scroll to results
             setTimeout(() => {
                 if (resultsRef.current) {
                     gsap.to(window, {
                         duration: 1,
-                        scrollTo: {y: resultsRef.current, offsetY: 50},
+                        scrollTo: { y: resultsRef.current, offsetY: 50 },
                         ease: "power3.out"
                     });
                 }
             }, 100);
-        }, 800); // Simulated network delay
+        }
+    };
+
+    const handlePagination = (direction) => {
+        if (direction === 'prev' && pagination.page > 1) {
+            setPagination(prev => ({...prev, page: prev.page - 1}));
+        } else if (direction === 'next' && pagination.page * pagination.size < pagination.total) {
+            setPagination(prev => ({...prev, page: prev.page + 1}));
+        }
     };
 
     useEffect(() => {
+        if (pagination.page !== 1) {
+            loadNewData();
+        }
+    }, [pagination.page]);
+
+    useEffect(() => {
         if (stealerData.length > 0 && !isLoading) {
-            // Table entrance animation
-            gsap.from(tableRef.current, {
-                opacity: 0,
-                scale: 0.98,
-                duration: 0.8,
-                ease: "power3.out"
-            });
-
-            // Row animations
-            gsap.from(rowsRef.current, {
-                opacity: 0,
-                x: -30,
-                duration: 0.6,
-                stagger: {
-                    amount: 0.4,
-                    from: "random"
-                },
-                ease: "back.out(1.2)"
-            });
-
             // Hover effects for rows
             rowsRef.current.forEach(row => {
                 row.addEventListener('mouseenter', () => {
@@ -109,14 +113,7 @@ export default function Page() {
                         ease: "power2.out"
                     });
                 });
-                row.addEventListener('mouseleave', () => {
-                    gsap.to(row, {
-                        scale: 1,
-                        boxShadow: "none",
-                        duration: 0.3,
-                        ease: "power2.out"
-                    });
-                });
+
             });
         }
     }, [stealerData, isLoading]);
@@ -166,7 +163,6 @@ export default function Page() {
                 </section>
             </div>
 
-            {/* Results Section */}
             {stealerData.length > 0 && (
                 <section className="py-16 px-4 sm:px-6 lg:px-8 bg-[#0f0f10]" ref={resultsRef}>
                     <div className="max-w-7xl mx-auto">
@@ -241,12 +237,22 @@ export default function Page() {
                                 </tbody>
                             </table>
                             <div className="mt-6 flex justify-between items-center">
-                                <p className="text-gray-500 text-sm">Showing {stealerData.length} of 98 entries</p>
+                                <p className="text-gray-500 text-sm">
+                                    Showing {stealerData.length} of {pagination.total} entries (Page {pagination.page})
+                                </p>
                                 <div className="flex space-x-2">
-                                    <button className="px-4 py-2 text-sm bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors">
+                                    <button
+                                        onClick={() => handlePagination('prev')}
+                                        disabled={pagination.page === 1}
+                                        className={`px-4 py-2 text-sm ${pagination.page === 1 ? 'bg-gray-800 cursor-not-allowed' : 'bg-gray-800 hover:bg-gray-700'} rounded-lg transition-colors`}
+                                    >
                                         Previous
                                     </button>
-                                    <button className="px-4 py-2 text-sm bg-[#f03262] hover:bg-[#c91d4e] rounded-lg transition-colors">
+                                    <button
+                                        onClick={() => handlePagination('next')}
+                                        disabled={pagination.page * pagination.size >= pagination.total}
+                                        className={`px-4 py-2 text-sm ${pagination.page * pagination.size >= pagination.total ? 'bg-[#f03262]/50 cursor-not-allowed' : 'bg-[#f03262] hover:bg-[#c91d4e]'} rounded-lg transition-colors`}
+                                    >
                                         Next
                                     </button>
                                 </div>

@@ -3,6 +3,9 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { FaSpider } from "react-icons/fa";
+import { toast } from "react-toastify";  // Import toastify
+import "react-toastify/dist/ReactToastify.css";  // Import the necessary CSS
+
 
 export default function LoginPage() {
     const [email, setEmail] = useState("");
@@ -12,7 +15,37 @@ export default function LoginPage() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        router.push("/dashboard");
+
+        // Call API to authenticate
+        const response = await fetch("/api/login", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                username: email,
+                password: password,
+            }),
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            toast.success("Login Successful!", {
+                position: "top-right",  // Position of the toast
+                autoClose: 3000,  // Duration for which the toast will be visible
+                hideProgressBar: true,  // Option to hide progress bar
+                closeOnClick: true,  // Close on click
+                pauseOnHover: true,  // Pause on hover
+                draggable: true,  // Allow dragging the toast
+            });
+
+
+            router.push("/");
+        } else {
+            // If login fails, display the error message
+            setError(data.message || "Something went wrong!");
+        }
     };
 
     return (
@@ -30,7 +63,7 @@ export default function LoginPage() {
                 </h1>
 
                 {/* Form Login */}
-                <form>
+                <form onSubmit={handleSubmit}>
                     {/* Email */}
                     <div className="mb-6">
                         <label htmlFor="email" className="block mb-2 text-sm text-gray-400">
@@ -89,7 +122,7 @@ export default function LoginPage() {
 
                     {/* Submit Button */}
                     <button
-                        onClick={handleSubmit}
+                        type="submit"
                         className="w-full py-3 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-bold rounded-lg transition-all transform hover:scale-105 active:scale-95"
                     >
                         Login

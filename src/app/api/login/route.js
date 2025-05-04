@@ -1,19 +1,44 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
+import jwt from "jsonwebtoken"; // Import jsonwebtoken untuk membuat JWT
 
-export async function POST(request) {
-  const { email, password } = await request.json();
+export async function POST(req) {
+  const { username, password } = await req.json();
 
-  // Validasi username dan password
-  if (email === "ad" && password === "ad") {
-    // Buat session (simpan di cookie)
-    const expires = new Date(Date.now() + 5 * 60 * 1000); // 5 menit dari sekarang
-    const cookieStore = cookies(); // Ambil instance cookies
-    await cookieStore.set("session", "valid", { expires, httpOnly: true, secure: true });
+  // Example: Make your API request to validate credentials
+  const res = await fetch("http://103.245.181.5:5001/login", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      username,
+      password,
+    }),
+  });
 
-    // Redirect ke dashboard
-    return NextResponse.json({ success: true }, { status: 200 });
+  if (res.ok) {
+    const data = await res.json();
+    const user = data.token; // Anggap API mengembalikan informasi user
+
+    // Membuat JWT token
+    const token = jwt.sign(
+        { user }, // Payload yang akan disertakan di token (bisa disesuaikan)
+        process.env.JWT_SECRET, // Secret key untuk encode token
+        { expiresIn: '1d' } // Token expire dalam 1 hari
+    );
+
+    // Mengirimkan token ke client sebagai cookie HttpOnly
+    const response = NextResponse.json({ message: "Login successful" });
+
+    response.cookies.set("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production", // set to true in production
+      maxAge: 60 * 60 * 24, // Cookie expires in 1 day
+      path: "/",
+    });
+
+    return response;
   } else {
-    return NextResponse.json({ success: false, message: "Invalid credentials" }, { status: 401 });
+    return NextResponse.json({ message: "Invalid credentials" }, { status: 401 });
   }
 }
