@@ -5,31 +5,23 @@
 :root {
     --background: #080b12;
     --foreground: #171717;
+    --font-poppins: 'Poppins', sans-serif;
 }
 
 @media (prefers-color-scheme: dark) {
     :root {
         --background: #0a0a0a;
         --foreground: #ededed;
+        --font-poppins: 'Poppins', sans-serif;
     }
 }
 
-
-code {
-    font-family: var(--font-poppins-mono), monospace;
-}
-
-
 body {
     color: var(--foreground);
+    font-family: var(--font-poppins), sans-serif;
     background: var(--background);
-
-
 }
 
-/* Login */
-
-/* Animasi Cahaya Bergerak */
 .shimmer-card::before {
     content: '';
     position: absolute;
@@ -157,10 +149,10 @@ body {
     border-radius: 12px;
     border: none;
     outline: none;
-    background: hsla(0,0%,100%,.08);
+    background: hsla(0, 0%, 100%, .08);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
-    background: linear-gradient(135deg,hsla(0,0%,100%,.08) 30%,hsla(0,0%,100%,.04)),radial-gradient(60% 60% at 50% 0,hsla(0,0%,100%,.08) 0,hsla(0,0%,100%,0) 100%);
+    background: linear-gradient(135deg, hsla(0, 0%, 100%, .08) 30%, hsla(0, 0%, 100%, .04)), radial-gradient(60% 60% at 50% 0, hsla(0, 0%, 100%, .08) 0, hsla(0, 0%, 100%, 0) 100%);
 }
 
 /* Button */
