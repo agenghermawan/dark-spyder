@@ -1,4 +1,4 @@
-import { Poppins } from "next/font/google";
+import {Poppins} from "next/font/google";
 import "./globals.css";
 
 const poppins = Poppins({
@@ -13,10 +13,10 @@ export const metadata = {
         "Dark Spyder is a modern intelligence platform for scanning, monitoring, and discovering digital threats across the surface, deep, and dark web.",
 };
 
-export default function RootLayout({ children }) {
+export default function RootLayout({children}) {
     return (
         <html lang="en" className={poppins.variable}>
-        <head />
+
         <body className="antialiased" style={{
             fontFamily: 'var(--font-poppins)',
             color: '#070a11',

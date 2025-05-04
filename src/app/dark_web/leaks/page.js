@@ -12,11 +12,16 @@ export default function LeaksPage() {
     const [breachData, setBreachData] = useState([]);
     const [searchQuery, setSearchQuery] = useState("");
     const [isLoading, setIsLoading] = useState(false);
+    const [pagination, setPagination] = useState({
+        page: 1,
+        size: 10,
+        total: 0
+    });
     const resultsRef = useRef(null);
     const rowsRef = useRef([]);
     const tableRef = useRef(null);
 
-    const handleSearch = () => {
+    const handleSearch = async () => {
         setIsLoading(true);
 
         // Clear previous data with fade out animation
@@ -32,42 +37,50 @@ export default function LeaksPage() {
                 }
             });
         } else {
-            loadNewData();
+            await loadNewData();
         }
     };
 
-    const loadNewData = () => {
-        // Simulate API call
-        setTimeout(() => {
-            setBreachData([
-                {
-                    email: "admin@example.com",
-                    password: "Admin@1234",
-                    source: "Collection #1",
-                    breachDate: "2023-01-15",
-                    records: "2.7M",
-                    severity: "High"
-                },
-                {
-                    email: "user@domain.org",
-                    password: "P@ssw0rd2023",
-                    source: "AntiPublic",
-                    breachDate: "2022-11-08",
-                    records: "1.2B",
-                    severity: "Critical"
-                },
-                {
-                    email: "support@company.net",
-                    password: "SecurePass!",
-                    source: "HaveIBeenPwned",
-                    breachDate: "2024-03-22",
-                    records: "653K",
-                    severity: "Medium"
-                }
-            ]);
+    const loadNewData = async () => {
+        try {
+            setIsLoading(true);
+
+            const response = await fetch(`/api/leaks?q=${searchQuery}&type=breach&page=${pagination.page}&size=${pagination.size}`);
+
+            if (!response.ok) {
+                throw new Error(`Network response was not ok: ${response.status} ${response.statusText}`);
+            }
+
+            const data = await response.json();
+
+            // Transform API data for LinkedIn scraped data
+            const transformedData = data.current_page_data.flatMap(item => {
+                return item._source.Data.map(profile => ({
+                    email: profile.Email || 'N/A',
+                    name: `${profile.FirstName || ''} ${profile.LastName || ''}`.trim() || 'N/A',
+                    location: profile.Region || profile.Location || 'N/A',
+                    position: profile.Title || profile.JobTitle || 'N/A',
+                    company: profile.CompanyName || profile.JobCompanyName || 'N/A',
+                    summary: profile.Summary || 'No summary available',
+                    source: item._source.Source || 'Unknown',
+                    breachDate: "2021 (Scraped)",
+                    records: "400M+ records",
+                    severity: "Medium" // Since this is scraped public data
+                }));
+            });
+
+
+            setBreachData(transformedData);
+            setPagination(prev => ({
+                ...prev,
+                total: data.total || 0
+            }));
+
+        } catch (error) {
+            console.error('Error fetching data:', error.message);
+        } finally {
             setIsLoading(false);
 
-            // Scroll to results
             setTimeout(() => {
                 if (resultsRef.current) {
                     gsap.to(window, {
@@ -77,30 +90,25 @@ export default function LeaksPage() {
                     });
                 }
             }, 100);
-        }, 800);
+        }
+    };
+
+    const handlePagination = (direction) => {
+        if (direction === 'prev' && pagination.page > 1) {
+            setPagination(prev => ({...prev, page: prev.page - 1}));
+        } else if (direction === 'next' && pagination.page * pagination.size < pagination.total) {
+            setPagination(prev => ({...prev, page: prev.page + 1}));
+        }
     };
 
     useEffect(() => {
-        if (breachData.length > 0 && !isLoading) {
-            // Table entrance animation
-            gsap.from(tableRef.current, {
-                opacity: 0,
-                scale: 0.98,
-                duration: 0.8,
-                ease: "power3.out"
-            });
+        if (pagination.page !== 1) {
+            loadNewData();
+        }
+    }, [pagination.page]);
 
-            // Row animations
-            gsap.from(rowsRef.current, {
-                opacity: 0,
-                x: -30,
-                duration: 0.6,
-                stagger: {
-                    amount: 0.4,
-                    from: "random"
-                },
-                ease: "back.out(1.2)"
-            });
+    useEffect(() => {
+        if (breachData.length > 0 && !isLoading) {
 
             // Hover effects for rows
             rowsRef.current.forEach(row => {
@@ -112,14 +120,7 @@ export default function LeaksPage() {
                         ease: "power2.out"
                     });
                 });
-                row.addEventListener('mouseleave', () => {
-                    gsap.to(row, {
-                        scale: 1,
-                        boxShadow: "none",
-                        duration: 0.3,
-                        ease: "power2.out"
-                    });
-                });
+
             });
         }
     }, [breachData, isLoading]);
@@ -172,22 +173,22 @@ export default function LeaksPage() {
                 </section>
             </div>
 
-            {/* Results Section */}
             {breachData.length > 0 && (
                 <section className="py-16 px-4 sm:px-6 lg:px-8 bg-[#0f0f15]" ref={resultsRef}>
                     <div className="max-w-7xl mx-auto">
-                        <p className="text-sm uppercase text-cyan-500 mb-2 tracking-widest text-center">🔍 Breach
-                            Intelligence</p>
-                        <h2 className="text-4xl font-light text-white mb-8 text-center">Compromised Records</h2>
+                        <p className="text-sm uppercase text-cyan-500 mb-2 tracking-widest text-center">🔍 Professional
+                            Data Exposure</p>
+                        <h2 className="text-4xl font-light text-white mb-8 text-center">Scraped Professional
+                            Profiles</h2>
 
                         <div className="overflow-x-auto" ref={tableRef}>
                             <table
                                 className="min-w-full bg-gradient-to-br from-[#111215]/90 via-[#1a1b20]/90 to-[#111215]/90 backdrop-blur-lg text-white rounded-xl shadow-2xl font-mono border border-[#2e2e2e] overflow-hidden">
                                 <thead>
                                 <tr className="text-left border-b border-gray-700 text-gray-400 bg-gradient-to-r from-[#1e1e24] to-[#2a2a32]">
-                                    <th className="py-4 px-6">Exposed Credentials</th>
-                                    <th className="py-4 px-6">Breach Source</th>
-                                    <th className="py-4 px-6">Compromised Data</th>
+                                    <th className="py-4 px-6">Profile Information</th>
+                                    <th className="py-4 px-6">Professional Details</th>
+                                    <th className="py-4 px-6">Data Source</th>
                                     <th className="py-4 px-6 text-center">Risk Analysis</th>
                                 </tr>
                                 </thead>
@@ -202,15 +203,34 @@ export default function LeaksPage() {
                                             <div className="space-y-2">
                                                 <div className="flex items-center">
                                                     <span
-                                                        className="text-xs bg-gradient-to-r from-blue-600 to-blue-800 px-2 py-1 rounded mr-2">📧 Email</span>
+                                                        className="text-xs bg-gradient-to-r from-blue-600 to-blue-800 px-2 py-1 rounded mr-2">👤 Name</span>
                                                     <span
-                                                        className="font-medium group-hover:text-blue-300 transition-colors">{entry.email}</span>
+                                                        className="font-medium group-hover:text-blue-300 transition-colors">{entry.name}</span>
                                                 </div>
                                                 <div className="flex items-center">
                                                     <span
-                                                        className="text-xs bg-gradient-to-r from-purple-600 to-purple-800 px-2 py-1 rounded mr-2">🔑 Password</span>
+                                                        className="text-xs bg-gradient-to-r from-purple-600 to-purple-800 px-2 py-1 rounded mr-2">📧 Email</span>
                                                     <span
-                                                        className="group-hover:text-purple-300 transition-colors">{entry.password}</span>
+                                                        className="group-hover:text-purple-300 transition-colors">{entry.email}</span>
+                                                </div>
+                                                <div className="flex items-center">
+                                                    <span
+                                                        className="text-xs bg-gradient-to-r from-green-600 to-green-800 px-2 py-1 rounded mr-2">📍 Location</span>
+                                                    <span
+                                                        className="group-hover:text-green-300 transition-colors">{entry.location}</span>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="py-4 px-6">
+                                            <div className="space-y-2">
+                                                <div className="flex items-center">
+                                                    <span className="font-medium">{entry.position}</span>
+                                                </div>
+                                                <div className="text-sm text-gray-300">
+                                                    at {entry.company}
+                                                </div>
+                                                <div className="text-xs text-gray-400 line-clamp-2">
+                                                    {entry.summary}
                                                 </div>
                                             </div>
                                         </td>
@@ -221,15 +241,13 @@ export default function LeaksPage() {
                                                     {entry.source}
                                                 </span>
                                                 <div className="text-xs text-gray-400 mt-1">
-                                                    Breach date: {entry.breachDate}
+                                                    Collected: {entry.breachDate}
                                                 </div>
+                                                <span
+                                                    className="inline-flex items-center px-3 py-1 rounded-full bg-gradient-to-r from-amber-600 to-amber-800 text-amber-100 text-sm mt-1">
+                                                    {entry.records}
+                                                </span>
                                             </div>
-                                        </td>
-                                        <td className="py-4 px-6">
-                                            <span
-                                                className="inline-flex items-center px-3 py-1 rounded-full bg-gradient-to-r from-amber-600 to-amber-800 text-amber-100 text-sm">
-                                                {entry.records} records
-                                            </span>
                                         </td>
                                         <td className="py-4 px-6 text-center">
                                             <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
@@ -242,15 +260,14 @@ export default function LeaksPage() {
                                                     {entry.severity} Risk
                                                 </span>
                                                 <button
-                                                    className="bg-gradient-to-r from-cyan-600 to-cyan-700 hover:from-cyan-500 hover:to-cyan-600 text-white px-4 py-2 rounded-lg text-sm transition-all transform hover:scale-105 shadow-lg hover:shadow-cyan-500/20 flex items-center justify-center gap-1"
-                                                >
+                                                    className="bg-gradient-to-r from-cyan-600 to-cyan-700 hover:from-cyan-500 hover:to-cyan-600 text-white px-4 py-2 rounded-lg text-sm transition-all transform hover:scale-105 shadow-lg hover:shadow-cyan-500/20 flex items-center justify-center gap-1">
                                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4"
                                                          fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                         <path strokeLinecap="round" strokeLinejoin="round"
                                                               strokeWidth={2}
                                                               d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                                     </svg>
-                                                    Details
+                                                    Profile Details
                                                 </button>
                                             </div>
                                         </td>
@@ -259,14 +276,22 @@ export default function LeaksPage() {
                                 </tbody>
                             </table>
                             <div className="mt-6 flex justify-between items-center">
-                                <p className="text-gray-500 text-sm">Showing {breachData.length} of 3,287 breaches</p>
+                                <p className="text-gray-500 text-sm">
+                                    Showing {breachData.length} of {pagination.total} entries (Page {pagination.page})
+                                </p>
                                 <div className="flex space-x-2">
                                     <button
-                                        className="px-4 py-2 text-sm bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors">
+                                        onClick={() => handlePagination('prev')}
+                                        disabled={pagination.page === 1}
+                                        className={`px-4 py-2 text-sm ${pagination.page === 1 ? 'bg-gray-800 cursor-not-allowed' : 'bg-gray-800 hover:bg-gray-700'} rounded-lg transition-colors`}
+                                    >
                                         Previous
                                     </button>
                                     <button
-                                        className="px-4 py-2 text-sm bg-[#0aafff] hover:bg-[#0088cc] rounded-lg transition-colors">
+                                        onClick={() => handlePagination('next')}
+                                        disabled={pagination.page * pagination.size >= pagination.total}
+                                        className={`px-4 py-2 text-sm ${pagination.page * pagination.size >= pagination.total ? 'bg-[#0aafff]/50 cursor-not-allowed' : 'bg-[#0aafff] hover:bg-[#0088cc]'} rounded-lg transition-colors`}
+                                    >
                                         Next
                                     </button>
                                 </div>
@@ -278,6 +303,7 @@ export default function LeaksPage() {
         </div>
     );
 }
+
 
 function LeaksParticles() {
     const canvasRef = useRef(null);
