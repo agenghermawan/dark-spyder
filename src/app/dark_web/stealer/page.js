@@ -1,15 +1,26 @@
 'use client'
-import Navbar from "@/components/navbar";
-import Globe from "@/components/globe";
-import {useState, useEffect, useRef} from "react";
+import {Suspense, useState, useEffect, useRef} from "react";
 import {gsap} from 'gsap';
 import {ScrollToPlugin} from "gsap/ScrollToPlugin";
 import {MotionPathPlugin} from "gsap/MotionPathPlugin";
-import {useSearchParams} from "next/navigation";
+import Navbar from "@/components/navbar";
+import Globe from "@/components/globe";
+import LoadingSpinner from "@/components/ui/loading-spinner";
+import {useSearchParams} from "next/navigation"; // Create this component
+
 
 gsap.registerPlugin(ScrollToPlugin, MotionPathPlugin);
 
+// Wrap the main component with Suspense
 export default function Page() {
+    return (
+        <Suspense fallback={<LoadingSpinner/>}>
+            <StealerPageContent/>
+        </Suspense>
+    );
+}
+
+function StealerPageContent() {
     const [stealerData, setStealerData] = useState([]);
     const [domain, setDomain] = useState("");
     const [isLoading, setIsLoading] = useState(false);
@@ -139,14 +150,14 @@ export default function Page() {
     const searchParams = useSearchParams();
 
     useEffect(() => {
-        // Check for query parameter on component mount
         const query = searchParams.get('q');
         if (query) {
             setDomain(query);
-            // Trigger search automatically if query exists
-            handleSearch();
+            setPagination(prev => ({...prev, page: 1}));
+            // Delay search to allow state updates
+            setTimeout(() => handleSearch(), 100);
         }
-    }, []);
+    }, [searchParams]);
 
 
     return (
