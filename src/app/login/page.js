@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
-import { useRouter } from "next/navigation";
-import { FaSpider } from "react-icons/fa";
-import { toast } from "react-toastify";  // Import toastify
-import "react-toastify/dist/ReactToastify.css";  // Import the necessary CSS
+import React, {useState} from "react";
+import {useRouter} from "next/navigation";
+import {FaSpider} from "react-icons/fa";
+import {toast} from "react-toastify";  // Import toastify
+import "react-toastify/dist/ReactToastify.css";
+import Image from "next/image";  // Import the necessary CSS
 
 
 export default function LoginPage() {
@@ -49,16 +50,25 @@ export default function LoginPage() {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white">
+        <div
+            className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white">
             {/* Glowing Background Effect */}
-            <div className="absolute inset-0 bg-gradient-to-br from-purple-900/20 via-blue-900/20 to-green-900/20"></div>
+            <div
+                className="absolute inset-0 bg-gradient-to-br from-purple-900/20 via-blue-900/20 to-green-900/20"></div>
 
             {/* Login Card */}
-            <div className="w-full max-w-md relative p-8 rounded-xl bg-gray-900/90 backdrop-blur-lg border border-gray-800 shadow-2xl overflow-hidden">
+            <div
+                className="w-full max-w-md relative p-8 rounded-xl bg-gray-900/90 backdrop-blur-lg border border-gray-800 shadow-2xl overflow-hidden">
                 <h1 className="text-4xl font-bold mb-8 text-center bg-gradient-to-r from-purple-500 to-green-400 bg-clip-text text-transparent">
                     <div className="flex flex-col items-center">
-                        <FaSpider className="text-purple-500 text-6xl mb-4" />
-                        DarkSpyder
+                        <Image
+                            src="/image/logo.png"
+                            alt="logo"
+                            width={300}
+                            height={40}
+                            className="invert"
+                            priority
+                        />
                     </div>
                 </h1>
 

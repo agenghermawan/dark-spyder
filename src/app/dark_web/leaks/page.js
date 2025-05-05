@@ -20,11 +20,13 @@ export default function LeaksPage() {
     const resultsRef = useRef(null);
     const rowsRef = useRef([]);
     const tableRef = useRef(null);
+    const [authState, setAuthState] = useState('loading'); // Add auth state
 
     const handleSearch = async () => {
+
+
         setIsLoading(true);
 
-        // Clear previous data with fade out animation
         if (breachData.length > 0) {
             gsap.to(rowsRef.current, {
                 opacity: 0,
@@ -125,6 +127,22 @@ export default function LeaksPage() {
         }
     }, [breachData, isLoading]);
 
+    useEffect(() => {
+        const checkLoginStatus = async () => {
+            try {
+                const res = await fetch("/api/me", {
+                    credentials: "include",
+                });
+                setAuthState(res.ok ? 'authenticated' : 'unauthenticated');
+            } catch {
+                setAuthState('unauthenticated');
+            }
+        };
+
+        checkLoginStatus();
+    }, []);
+
+
     return (
         <div className="relative">
             <Navbar/>
@@ -152,10 +170,16 @@ export default function LeaksPage() {
                             />
                             <button
                                 onClick={handleSearch}
-                                disabled={isLoading}
-                                className={`${isLoading ? 'bg-gray-600 cursor-not-allowed' : 'bg-[#0aafff] hover:bg-[#0088cc]'} text-white px-6 py-2 rounded-lg transition-all duration-300 font-semibold whitespace-nowrap flex items-center justify-center min-w-[120px]`}
+                                disabled={isLoading || authState !== 'authenticated' || !searchQuery.trim()}
+
+                                className={`${isLoading ? 'bg-gray-600 cursor-not-allowed' :
+                                    authState !== 'authenticated' ? 'bg-gradient-to-r from-red-500 to-pink-500' :
+                                        'bg-[#0aafff] hover:bg-[#0088cc]'} 
+                        text-white px-6 py-2 rounded-lg transition-all duration-300 font-semibold whitespace-nowrap flex items-center justify-center min-w-[120px]`}
                             >
-                                {isLoading ? (
+                                {authState !== 'authenticated' ? (
+                                    'Login to Search'
+                                ) : isLoading ? (
                                     <>
                                         <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
                                              xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">

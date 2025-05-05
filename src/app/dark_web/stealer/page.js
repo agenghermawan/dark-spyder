@@ -5,6 +5,7 @@ import {useState, useEffect, useRef} from "react";
 import {gsap} from 'gsap';
 import {ScrollToPlugin} from "gsap/ScrollToPlugin";
 import {MotionPathPlugin} from "gsap/MotionPathPlugin";
+import {useSearchParams} from "next/navigation";
 
 gsap.registerPlugin(ScrollToPlugin, MotionPathPlugin);
 
@@ -20,6 +21,7 @@ export default function Page() {
     const resultsRef = useRef(null);
     const rowsRef = useRef([]);
     const tableRef = useRef(null);
+    const [authState, setAuthState] = useState('loading'); // Add auth state
 
     const handleSearch = async () => {
         setIsLoading(true);
@@ -79,7 +81,7 @@ export default function Page() {
                 if (resultsRef.current) {
                     gsap.to(window, {
                         duration: 1,
-                        scrollTo: { y: resultsRef.current, offsetY: 50 },
+                        scrollTo: {y: resultsRef.current, offsetY: 50},
                         ease: "power3.out"
                     });
                 }
@@ -118,6 +120,35 @@ export default function Page() {
         }
     }, [stealerData, isLoading]);
 
+
+    useEffect(() => {
+        const checkLoginStatus = async () => {
+            try {
+                const res = await fetch("/api/me", {
+                    credentials: "include",
+                });
+                setAuthState(res.ok ? 'authenticated' : 'unauthenticated');
+            } catch {
+                setAuthState('unauthenticated');
+            }
+        };
+
+        checkLoginStatus();
+    }, []);
+
+    const searchParams = useSearchParams();
+
+    useEffect(() => {
+        // Check for query parameter on component mount
+        const query = searchParams.get('q');
+        if (query) {
+            setDomain(query);
+            // Trigger search automatically if query exists
+            handleSearch();
+        }
+    }, []);
+
+
     return (
         <div>
             <Navbar/>
@@ -135,7 +166,8 @@ export default function Page() {
                             Run recon on exposed credentials <br/> across the darknet using breach intelligence.
                         </p>
 
-                        <div className="flex flex-row gap-2 max-w-xl mx-auto shadow-lg rounded-lg overflow-hidden w-full">
+                        <div
+                            className="flex flex-row gap-2 max-w-xl mx-auto shadow-lg rounded-lg overflow-hidden w-full">
                             <input
                                 type="text"
                                 value={domain}
@@ -145,14 +177,20 @@ export default function Page() {
                             />
                             <button
                                 onClick={handleSearch}
-                                disabled={isLoading}
+                                disabled={isLoading || authState !== 'authenticated' || !domain.trim()}
+
                                 className={`${isLoading ? 'bg-gray-600 cursor-not-allowed' : 'bg-[#f03262] hover:bg-[#c91d4e]'} text-white px-6 py-2 rounded-lg transition-all duration-300 font-semibold whitespace-nowrap flex items-center justify-center min-w-[120px]`}
                             >
-                                {isLoading ? (
+                                {authState !== 'authenticated' ? (
+                                    'Login to Search'
+                                ) : isLoading ? (
                                     <>
-                                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                                             xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                                                    strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor"
+                                                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                         </svg>
                                         Scanning
                                     </>
@@ -166,11 +204,13 @@ export default function Page() {
             {stealerData.length > 0 && (
                 <section className="py-16 px-4 sm:px-6 lg:px-8 bg-[#0f0f10]" ref={resultsRef}>
                     <div className="max-w-7xl mx-auto">
-                        <p className="text-sm uppercase text-green-500 mb-2 tracking-widest text-center">🧠 Threat Intel Extract</p>
+                        <p className="text-sm uppercase text-green-500 mb-2 tracking-widest text-center">🧠 Threat Intel
+                            Extract</p>
                         <h2 className="text-4xl font-light text-white mb-8 text-center">Compromised Credentials</h2>
 
                         <div className="overflow-x-auto" ref={tableRef}>
-                            <table className="min-w-full bg-gradient-to-br from-[#111215]/90 via-[#1a1b20]/90 to-[#111215]/90 backdrop-blur-lg text-white rounded-xl shadow-2xl font-mono border border-[#2e2e2e] overflow-hidden">
+                            <table
+                                className="min-w-full bg-gradient-to-br from-[#111215]/90 via-[#1a1b20]/90 to-[#111215]/90 backdrop-blur-lg text-white rounded-xl shadow-2xl font-mono border border-[#2e2e2e] overflow-hidden">
                                 <thead>
                                 <tr className="text-left border-b border-gray-700 text-gray-400 bg-gradient-to-r from-[#1e1e24] to-[#2a2a32]">
                                     <th className="py-4 px-6">Exposed Data</th>
@@ -189,26 +229,34 @@ export default function Page() {
                                         <td className="py-4 px-6">
                                             <div className="space-y-2">
                                                 <div className="flex items-center">
-                                                    <span className="text-xs bg-gradient-to-r from-purple-600 to-purple-800 px-2 py-1 rounded mr-2">🧬 pass</span>
-                                                    <span className="font-medium group-hover:text-purple-300 transition-colors">{entry.password}</span>
+                                                    <span
+                                                        className="text-xs bg-gradient-to-r from-purple-600 to-purple-800 px-2 py-1 rounded mr-2">🧬 pass</span>
+                                                    <span
+                                                        className="font-medium group-hover:text-purple-300 transition-colors">{entry.password}</span>
                                                 </div>
                                                 <div className="flex items-center">
-                                                    <span className="text-xs bg-gradient-to-r from-blue-600 to-blue-800 px-2 py-1 rounded mr-2">🌐 origin</span>
-                                                    <span className="group-hover:text-blue-300 transition-colors">{entry.origin}</span>
+                                                    <span
+                                                        className="text-xs bg-gradient-to-r from-blue-600 to-blue-800 px-2 py-1 rounded mr-2">🌐 origin</span>
+                                                    <span
+                                                        className="group-hover:text-blue-300 transition-colors">{entry.origin}</span>
                                                 </div>
                                                 <div className="flex items-center">
-                                                    <span className="text-xs bg-gradient-to-r from-green-600 to-green-800 px-2 py-1 rounded mr-2">📧 identity</span>
-                                                    <span className="group-hover:text-green-300 transition-colors">{entry.email}</span>
+                                                    <span
+                                                        className="text-xs bg-gradient-to-r from-green-600 to-green-800 px-2 py-1 rounded mr-2">📧 identity</span>
+                                                    <span
+                                                        className="group-hover:text-green-300 transition-colors">{entry.email}</span>
                                                 </div>
                                             </div>
                                         </td>
                                         <td className="py-4 px-6">
-                                            <span className="inline-flex items-center px-3 py-1 rounded-full bg-gradient-to-r from-gray-700 to-gray-800 text-gray-300 text-sm">
+                                            <span
+                                                className="inline-flex items-center px-3 py-1 rounded-full bg-gradient-to-r from-gray-700 to-gray-800 text-gray-300 text-sm">
                                                 {entry.source}
                                             </span>
                                         </td>
                                         <td className="py-4 px-6">
-                                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm ${entry.lastBreach === "N/A" ? 'bg-gradient-to-r from-gray-700 to-gray-800 text-gray-400' : 'bg-gradient-to-r from-red-700 to-red-800 text-red-100'}`}>
+                                            <span
+                                                className={`inline-flex items-center px-3 py-1 rounded-full text-sm ${entry.lastBreach === "N/A" ? 'bg-gradient-to-r from-gray-700 to-gray-800 text-gray-400' : 'bg-gradient-to-r from-red-700 to-red-800 text-red-100'}`}>
                                                 {entry.lastBreach}
                                             </span>
                                         </td>
@@ -217,16 +265,22 @@ export default function Page() {
                                                 <button
                                                     className="bg-gradient-to-r from-cyan-600 to-cyan-700 hover:from-cyan-500 hover:to-cyan-600 text-white px-4 py-2 rounded-lg text-sm transition-all transform hover:scale-105 shadow-lg hover:shadow-cyan-500/20 flex items-center justify-center gap-1"
                                                 >
-                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4"
+                                                         fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round"
+                                                              strokeWidth={2}
+                                                              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
                                                     </svg>
                                                     Extract Logs
                                                 </button>
                                                 <button
                                                     className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white px-4 py-2 rounded-lg text-sm transition-all transform hover:scale-105 shadow-lg hover:shadow-purple-500/20 flex items-center justify-center gap-1"
                                                 >
-                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4"
+                                                         fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round"
+                                                              strokeWidth={2}
+                                                              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                                     </svg>
                                                     Confirm Breach
                                                 </button>
@@ -360,8 +414,8 @@ function CyberParticles() {
 
         // Initialize particles
         const particles = {
-            data: Array.from({ length: config.particleCount / 2 }, () => new DataParticle()),
-            nodes: Array.from({ length: config.particleCount / 4 }, () => new NetworkNode())
+            data: Array.from({length: config.particleCount / 2}, () => new DataParticle()),
+            nodes: Array.from({length: config.particleCount / 4}, () => new NetworkNode())
         }
 
         // Connection logic
@@ -390,6 +444,7 @@ function CyberParticles() {
 
         // Animation loop
         let animationFrame
+
         function animate() {
             ctx.fillStyle = 'rgba(10, 10, 20, 0.15)'
             ctx.fillRect(0, 0, width, height)
