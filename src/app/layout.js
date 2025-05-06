@@ -1,29 +1,28 @@
-import {Poppins} from "next/font/google";
+import { Poppins } from "next/font/google";
 import "./globals.css";
+import LoaderWrapper from "@/components/ui/loader-wrapper";
 
 const poppins = Poppins({
-    variable: "--font-poppins", // nama variable harus cocok di CSS
+    variable: "--font-poppins",
     subsets: ["latin"],
-    weight: ["400", "500", "600", "700"], // optional, tergantung kebutuhan
+    weight: ["400", "500", "600", "700"],
 });
 
 export const metadata = {
-    title: "Clandestine Project",
-    description: "Dark Spyder intelligence platform...",
+    title: 'Clandestine Project',
+    description: 'Deskripsi default website kamu.',
     icons: {
-        icon: [
-            {url: '/image/favicon.ico'},
-        ],
+        icon: '/favicon.ico',
     },
-}
+};
 
-
-export default function RootLayout({children}) {
+export default function RootLayout({ children }) {
     return (
         <html lang="en" className={poppins.variable}>
-
         <body className="antialiased">
-        {children}
+        <LoaderWrapper>
+            {children}
+        </LoaderWrapper>
         </body>
         </html>
     );

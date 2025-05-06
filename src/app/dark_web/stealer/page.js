@@ -33,6 +33,7 @@ function StealerPageContent() {
     const rowsRef = useRef([]);
     const tableRef = useRef(null);
     const [authState, setAuthState] = useState('loading'); // Add auth state
+    const [showEmptyAlert, setShowEmptyAlert] = useState(false);
 
     const handleSearch = async () => {
         setIsLoading(true);
@@ -65,6 +66,13 @@ function StealerPageContent() {
             }
 
             const data = await response.json();
+
+
+            if (!data.current_page_data || data.current_page_data.length === 0) {
+                setStealerData([]);
+                setShowEmptyAlert(true); // Trigger alert kosong
+                return;
+            }
 
             // Transform API data to match your UI structure
             const transformedData = data.current_page_data.map(item => ({
@@ -100,6 +108,7 @@ function StealerPageContent() {
         }
     };
 
+
     const handlePagination = (direction) => {
         if (direction === 'prev' && pagination.page > 1) {
             setPagination(prev => ({...prev, page: prev.page - 1}));
@@ -115,20 +124,38 @@ function StealerPageContent() {
     }, [pagination.page]);
 
     useEffect(() => {
-        if (stealerData.length > 0 && !isLoading) {
-            // Hover effects for rows
-            rowsRef.current.forEach(row => {
-                row.addEventListener('mouseenter', () => {
-                    gsap.to(row, {
-                        scale: 1.02,
-                        boxShadow: "0 10px 25px -5px rgba(240, 50, 98, 0.3)",
-                        duration: 0.3,
-                        ease: "power2.out"
-                    });
-                });
+        if (showEmptyAlert) {
+            const timer = setTimeout(() => setShowEmptyAlert(false), 3000);
+            return () => clearTimeout(timer);
+        }
+    }, [showEmptyAlert]);
 
+    useEffect(() => {
+        const handleMouseEnter = (row) => {
+            gsap.to(row, {
+                scale: 1.02,
+                boxShadow: "0 10px 25px -5px rgba(240, 50, 98, 0.3)",
+                duration: 0.3,
+                ease: "power2.out"
+            });
+        };
+
+        if (stealerData.length > 0 && !isLoading) {
+            rowsRef.current.forEach(row => {
+                if (row) {
+                    row.addEventListener('mouseenter', () => handleMouseEnter(row));
+                }
             });
         }
+
+        // Cleanup function
+        return () => {
+            rowsRef.current.forEach(row => {
+                if (row) {
+                    row.replaceWith(row.cloneNode(true)); // simple way to remove all listeners
+                }
+            });
+        };
     }, [stealerData, isLoading]);
 
 
@@ -326,6 +353,37 @@ function StealerPageContent() {
                     </div>
                 </section>
             )}
+
+
+            {
+                showEmptyAlert && (
+                    <div className="fixed inset-x-0 top-28 z-50">
+                        <div
+                            className="max-w-md mx-auto bg-[#2a0a1a] border-l-4 border-red-500 text-red-100 p-4 shadow-lg rounded-r-lg animate-fade-in">
+                            <div className="flex items-center">
+                                <svg className="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                                          d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                                </svg>
+                                <div>
+                                    <p className="font-medium">No results found</p>
+                                    <p className="text-sm text-red-300 mt-1">Try different keywords or check your
+                                        spelling</p>
+                                </div>
+                                <button
+                                    onClick={() => setShowEmptyAlert(false)}
+                                    className="ml-auto text-red-300 hover:text-white"
+                                >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                                              d="M6 18L18 6M6 6l12 12"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
         </div>
     );
 }

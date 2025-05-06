@@ -5,7 +5,8 @@ import {useRouter} from "next/navigation";
 import {FaSpider} from "react-icons/fa";
 import {toast} from "react-toastify";  // Import toastify
 import "react-toastify/dist/ReactToastify.css";
-import Image from "next/image";  // Import the necessary CSS
+import Image from "next/image";
+import Link from "next/link";  // Import the necessary CSS
 
 
 export default function LoginPage() {
@@ -60,7 +61,7 @@ export default function LoginPage() {
             <div
                 className="w-full max-w-md relative p-8 rounded-xl bg-gray-900/90 backdrop-blur-lg border border-gray-800 shadow-2xl overflow-hidden">
                 <h1 className="text-4xl font-bold mb-8 text-center bg-gradient-to-r from-purple-500 to-green-400 bg-clip-text text-transparent">
-                    <div className="flex flex-col items-center">
+                    <Link href={"/"} className="flex flex-col items-center">
                         <Image
                             src="/image/logo.png"
                             alt="logo"
@@ -69,7 +70,7 @@ export default function LoginPage() {
                             className="invert"
                             priority
                         />
-                    </div>
+                    </Link>
                 </h1>
 
                 {/* Form Login */}
@@ -141,12 +142,12 @@ export default function LoginPage() {
 
                 {/* Footer */}
                 <p className="mt-6 text-center text-sm text-gray-500">
-                    &copy; 2024{" "}
+                    &copy; 2025{" "}
                     <a
                         href="#"
                         className="text-purple-400 hover:text-purple-300 underline transition-colors"
                     >
-                        DarkSpyder
+                        Cladestine Project
                     </a>
                 </p>
             </div>

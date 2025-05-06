@@ -96,8 +96,8 @@ export default function Navbar() {
                     <Image
                         src="/image/logo.png"
                         alt="logo"
-                        width={150}
-                        height={40}
+                        width={200}
+                        height={50}
                         className="invert hover:cursor-pointer transition-transform"
                         priority
                     />
@@ -222,7 +222,7 @@ export default function Navbar() {
             )}
 
             {/* Desktop Navbar */}
-            <div className="hidden md:grid md:grid-cols-3 gap-4 w-full md:w-8/12 mx-auto items-center justify-between">
+            <div className="hidden md:grid md:grid-cols-3 gap-4 w-full md:w-10/12 mx-auto items-center justify-between">
                 <Link
                     href="/"
                     ref={logoRef}
@@ -232,8 +232,8 @@ export default function Navbar() {
                     <Image
                         src="/image/logo.png"
                         alt="logo"
-                        width={250}
-                        height={80}
+                        width={200}
+                        height={50}
                         className="invert hover:cursor-pointer"
                         priority
                     />
