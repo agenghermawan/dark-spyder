@@ -24,8 +24,6 @@ export default function LeaksPage() {
     const [showEmptyAlert, setShowEmptyAlert] = useState(false);
 
     const handleSearch = async () => {
-
-
         setIsLoading(true);
 
         if (breachData.length > 0) {
@@ -60,6 +58,8 @@ export default function LeaksPage() {
                 setBreachData([]);
                 setShowEmptyAlert(true); // Trigger alert kosong
                 return;
+            } else {
+                setShowEmptyAlert(false);
             }
 
             // Transform API data for LinkedIn scraped data
@@ -116,12 +116,6 @@ export default function LeaksPage() {
         }
     }, [pagination.page]);
 
-    useEffect(() => {
-        if (showEmptyAlert) {
-            const timer = setTimeout(() => setShowEmptyAlert(false), 3000);
-            return () => clearTimeout(timer);
-        }
-    }, [showEmptyAlert]);
 
     useEffect(() => {
         if (breachData.length > 0 && !isLoading) {
@@ -211,7 +205,7 @@ export default function LeaksPage() {
                 </section>
             </div>
 
-            {breachData.length > 0 && (
+            {(breachData.length > 0 || showEmptyAlert) && (
                 <section className="py-16 px-4 sm:px-6 lg:px-8 bg-[#0f0f15]" ref={resultsRef}>
                     <div className="max-w-7xl mx-auto">
                         <p className="text-sm uppercase text-cyan-500 mb-2 tracking-widest text-center">🔍 Professional
@@ -231,64 +225,65 @@ export default function LeaksPage() {
                                 </tr>
                                 </thead>
                                 <tbody>
-                                {breachData.map((entry, index) => (
-                                    <tr
-                                        key={index}
-                                        ref={el => rowsRef.current[index] = el}
-                                        className="border-b border-gray-800 hover:bg-gradient-to-r from-[#1a1a20] to-[#25252d] transition-all duration-300 group"
-                                    >
-                                        <td className="py-4 px-6">
-                                            <div className="space-y-2">
-                                                <div className="flex items-center">
+                                {breachData.length > 0 ? (
+                                        breachData.map((entry, index) => (
+                                            <tr
+                                                key={index}
+                                                ref={el => rowsRef.current[index] = el}
+                                                className="border-b border-gray-800 hover:bg-gradient-to-r from-[#1a1a20] to-[#25252d] transition-all duration-300 group"
+                                            >
+                                                <td className="py-4 px-6">
+                                                    <div className="space-y-2">
+                                                        <div className="flex items-center">
                                                     <span
                                                         className="text-xs bg-gradient-to-r from-blue-600 to-blue-800 px-2 py-1 rounded mr-2">👤 Name</span>
-                                                    <span
-                                                        className="font-medium group-hover:text-blue-300 transition-colors">{entry.name}</span>
-                                                </div>
-                                                <div className="flex items-center">
+                                                            <span
+                                                                className="font-medium group-hover:text-blue-300 transition-colors">{entry.name}</span>
+                                                        </div>
+                                                        <div className="flex items-center">
                                                     <span
                                                         className="text-xs bg-gradient-to-r from-purple-600 to-purple-800 px-2 py-1 rounded mr-2">📧 Email</span>
-                                                    <span
-                                                        className="group-hover:text-purple-300 transition-colors">{entry.email}</span>
-                                                </div>
-                                                <div className="flex items-center">
+                                                            <span
+                                                                className="group-hover:text-purple-300 transition-colors">{entry.email}</span>
+                                                        </div>
+                                                        <div className="flex items-center">
                                                     <span
                                                         className="text-xs bg-gradient-to-r from-green-600 to-green-800 px-2 py-1 rounded mr-2">📍 Location</span>
-                                                    <span
-                                                        className="group-hover:text-green-300 transition-colors">{entry.location}</span>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="py-4 px-6">
-                                            <div className="space-y-2">
-                                                <div className="flex items-center">
-                                                    <span className="font-medium">{entry.position}</span>
-                                                </div>
-                                                <div className="text-sm text-gray-300">
-                                                    at {entry.company}
-                                                </div>
-                                                <div className="text-xs text-gray-400 line-clamp-2">
-                                                    {entry.summary}
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="py-4 px-6">
-                                            <div className="space-y-2">
+                                                            <span
+                                                                className="group-hover:text-green-300 transition-colors">{entry.location}</span>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="py-4 px-6">
+                                                    <div className="space-y-2">
+                                                        <div className="flex items-center">
+                                                            <span className="font-medium">{entry.position}</span>
+                                                        </div>
+                                                        <div className="text-sm text-gray-300">
+                                                            at {entry.company}
+                                                        </div>
+                                                        <div className="text-xs text-gray-400 line-clamp-2">
+                                                            {entry.summary}
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="py-4 px-6">
+                                                    <div className="space-y-2">
                                                 <span
                                                     className="inline-flex items-center px-3 py-1 rounded-full bg-gradient-to-r from-gray-700 to-gray-800 text-gray-300 text-sm">
                                                     {entry.source}
                                                 </span>
-                                                <div className="text-xs text-gray-400 mt-1">
-                                                    Collected: {entry.breachDate}
-                                                </div>
-                                                <span
-                                                    className="inline-flex items-center px-3 py-1 rounded-full bg-gradient-to-r from-amber-600 to-amber-800 text-amber-100 text-sm mt-1">
+                                                        <div className="text-xs text-gray-400 mt-1">
+                                                            Collected: {entry.breachDate}
+                                                        </div>
+                                                        <span
+                                                            className="inline-flex items-center px-3 py-1 rounded-full bg-gradient-to-r from-amber-600 to-amber-800 text-amber-100 text-sm mt-1">
                                                     {entry.records}
                                                 </span>
-                                            </div>
-                                        </td>
-                                        <td className="py-4 px-6 text-center">
-                                            <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
+                                                    </div>
+                                                </td>
+                                                <td className="py-4 px-6 text-center">
+                                                    <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
                                                 <span
                                                     className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
                                                         entry.severity === 'Critical' ? 'bg-gradient-to-r from-red-600 to-red-800 text-red-100' :
@@ -297,20 +292,39 @@ export default function LeaksPage() {
                                                     }`}>
                                                     {entry.severity} Risk
                                                 </span>
-                                                <button
-                                                    className="bg-gradient-to-r from-cyan-600 to-cyan-700 hover:from-cyan-500 hover:to-cyan-600 text-white px-4 py-2 rounded-lg text-sm transition-all transform hover:scale-105 shadow-lg hover:shadow-cyan-500/20 flex items-center justify-center gap-1">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4"
-                                                         fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path strokeLinecap="round" strokeLinejoin="round"
-                                                              strokeWidth={2}
-                                                              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                                    </svg>
-                                                    Profile Details
-                                                </button>
+                                                        <button
+                                                            className="bg-gradient-to-r from-cyan-600 to-cyan-700 hover:from-cyan-500 hover:to-cyan-600 text-white px-4 py-2 rounded-lg text-sm transition-all transform hover:scale-105 shadow-lg hover:shadow-cyan-500/20 flex items-center justify-center gap-1">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4"
+                                                                 fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                <path strokeLinecap="round" strokeLinejoin="round"
+                                                                      strokeWidth={2}
+                                                                      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                                            </svg>
+                                                            Profile Details
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    ) :
+                                    <tr className="border-b border-gray-800">
+                                        <td colSpan="4" className="py-12 px-6 text-center">
+                                            <div className="flex flex-col items-center justify-center">
+                                                <svg className="w-16 h-16 mb-4 text-gray-600" fill="none"
+                                                     stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1"
+                                                          d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                                </svg>
+                                                <h3 className="text-xl font-medium text-gray-300 mb-2">No profiles
+                                                    matched your search</h3>
+                                                <p className="text-gray-500 max-w-md">
+                                                    Try different search terms or check if you have the correct
+                                                    permissions to view this data.
+                                                </p>
                                             </div>
                                         </td>
                                     </tr>
-                                ))}
+                                }
                                 </tbody>
                             </table>
                             <div className="mt-6 flex justify-between items-center">
@@ -339,39 +353,44 @@ export default function LeaksPage() {
                 </section>
             )}
 
-            {
-                showEmptyAlert && (
-                    <div className="fixed inset-x-0 top-28 z-50">
-                        <div
-                            className="max-w-md mx-auto bg-[#2a0a1a] border-l-4 border-red-500 text-red-100 p-4 shadow-lg rounded-r-lg animate-fade-in">
-                            <div className="flex items-center">
-                                <svg className="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
-                                          d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-                                </svg>
-                                <div>
-                                    <p className="font-medium">No results found</p>
-                                    <p className="text-sm text-red-300 mt-1">Try different keywords or check your
-                                        spelling</p>
-                                </div>
-                                <button
-                                    onClick={() => setShowEmptyAlert(false)}
-                                    className="ml-auto text-red-300 hover:text-white"
-                                >
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
-                                              d="M6 18L18 6M6 6l12 12"/>
-                                    </svg>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )
-            }
+            {/*{*/}
+            {/*    showEmptyAlert && (*/}
+            {/*        <div className="fixed inset-x-0 top-28 z-50">*/}
+            {/*            <div*/}
+            {/*                className="max-w-md mx-auto bg-[#2a0a1a] border-l-4 border-red-500 text-red-100 p-4 shadow-lg rounded-r-lg animate-fade-in"*/}
+            {/*                onAnimationEnd={() => {*/}
+            {/*                    const timer = setTimeout(() => setShowEmptyAlert(false), 3000);*/}
+            {/*                    return () => clearTimeout(timer);*/}
+            {/*                }}*/}
+            {/*            >*/}
+            {/*                <div className="flex items-center">*/}
+            {/*                    <svg className="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">*/}
+            {/*                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"*/}
+            {/*                              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>*/}
+            {/*                    </svg>*/}
+            {/*                    <div>*/}
+            {/*                        <p className="font-medium">No results found</p>*/}
+            {/*                        <p className="text-sm text-red-300 mt-1">Try different keywords or check your*/}
+            {/*                            spelling</p>*/}
+            {/*                    </div>*/}
+            {/*                    <button*/}
+            {/*                        onClick={() => setShowEmptyAlert(false)}*/}
+            {/*                        className="ml-auto text-red-300 hover:text-white"*/}
+            {/*                    >*/}
+            {/*                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">*/}
+            {/*                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"*/}
+            {/*                                  d="M6 18L18 6M6 6l12 12"/>*/}
+            {/*                        </svg>*/}
+            {/*                    </button>*/}
+            {/*                </div>*/}
+            {/*            </div>*/}
+            {/*        </div>*/}
+            {/*    )*/}
+            {/*}*/}
+
         </div>
     );
 }
-
 
 function LeaksParticles() {
     const canvasRef = useRef(null);

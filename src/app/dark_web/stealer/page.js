@@ -67,11 +67,12 @@ function StealerPageContent() {
 
             const data = await response.json();
 
-
             if (!data.current_page_data || data.current_page_data.length === 0) {
                 setStealerData([]);
                 setShowEmptyAlert(true); // Trigger alert kosong
                 return;
+            }else{
+                setShowEmptyAlert(false);
             }
 
             // Transform API data to match your UI structure
@@ -122,13 +123,6 @@ function StealerPageContent() {
             loadNewData();
         }
     }, [pagination.page]);
-
-    useEffect(() => {
-        if (showEmptyAlert) {
-            const timer = setTimeout(() => setShowEmptyAlert(false), 3000);
-            return () => clearTimeout(timer);
-        }
-    }, [showEmptyAlert]);
 
     useEffect(() => {
         const handleMouseEnter = (row) => {
@@ -357,31 +351,45 @@ function StealerPageContent() {
 
             {
                 showEmptyAlert && (
-                    <div className="fixed inset-x-0 top-28 z-50">
-                        <div
-                            className="max-w-md mx-auto bg-[#2a0a1a] border-l-4 border-red-500 text-red-100 p-4 shadow-lg rounded-r-lg animate-fade-in">
-                            <div className="flex items-center">
-                                <svg className="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
-                                          d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-                                </svg>
-                                <div>
-                                    <p className="font-medium">No results found</p>
-                                    <p className="text-sm text-red-300 mt-1">Try different keywords or check your
-                                        spelling</p>
-                                </div>
-                                <button
-                                    onClick={() => setShowEmptyAlert(false)}
-                                    className="ml-auto text-red-300 hover:text-white"
-                                >
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
-                                              d="M6 18L18 6M6 6l12 12"/>
-                                    </svg>
-                                </button>
+                    <section className="py-16 px-4 sm:px-6 lg:px-8 bg-[#0f0f10]" ref={resultsRef}>
+                        <div className="max-w-7xl mx-auto">
+                            <p className="text-sm uppercase text-green-500 mb-2 tracking-widest text-center">🧠 Threat Intel
+                                Extract</p>
+                            <h2 className="text-4xl font-light text-white mb-8 text-center">Compromised Credentials</h2>
+
+                            <div className="overflow-x-auto" ref={tableRef}>
+                                <table
+                                    className="min-w-full bg-gradient-to-br from-[#111215]/90 via-[#1a1b20]/90 to-[#111215]/90 backdrop-blur-lg text-white rounded-xl shadow-2xl font-mono border border-[#2e2e2e] overflow-hidden">
+                                    <thead>
+                                    <tr className="text-left border-b border-gray-700 text-gray-400 bg-gradient-to-r from-[#1e1e24] to-[#2a2a32]">
+                                        <th className="py-4 px-6">Exposed Data</th>
+                                        <th className="py-4 px-6">Intel Source</th>
+                                        <th className="py-4 px-6">Last Seen in Dump</th>
+                                        <th className="py-4 px-6 text-center">Actions</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    <tr className="border-b border-gray-800">
+                                        <td colSpan="4" className="py-8 px-6 text-center text-gray-400">
+                                            <div className="flex flex-col items-center justify-center">
+                                                <svg className="w-12 h-12 mb-4 text-gray-600" fill="none"
+                                                     stroke="currentColor"
+                                                     viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5"
+                                                          d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                                </svg>
+                                                <p className="text-lg font-medium">No compromised credentials found</p>
+                                                <p className="text-sm mt-1">Try searching with different keyword</p>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
-                    </div>
+                    </section>
+
+
                 )
             }
         </div>

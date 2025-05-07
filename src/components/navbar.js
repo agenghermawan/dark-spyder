@@ -88,6 +88,7 @@ export default function Navbar() {
 
     const isLoggedIn = authState === 'authenticated';
 
+
     return (
         <div className="z-50 bg-[#14141f] w-full p-4 shadow-lg rounded-[12px] sticky top-0">
             {/* Mobile Header */}
@@ -210,7 +211,7 @@ export default function Navbar() {
                             ) : (
                                 <Link
                                     href="/login"
-                                    className="text-white hover:bg-[#f53d6b] px-4 py-2 rounded-lg transition-all duration-300 border border-[#1c1f26] w-full text-center hover:scale-105 block"
+                                    className="text-white px-6 py-2 rounded-lg transition-all duration-300 font-semibold whitespace-nowrap flex items-center justify-center min-w-[120px] bg-gradient-to-r from-red-500 to-pink-500"
                                     onClick={() => setIsMobileMenuOpen(false)}
                                 >
                                     Login
@@ -293,6 +294,13 @@ export default function Navbar() {
                             Contact
                         </Link>
                     </NavDropdownDesktop>
+
+                    <div className="group relative cursor-pointer pb-4">
+                        <Link href={'/pricing'}
+                            className="font-medium flex items-center hover:text-[#f53d6b] transition-colors duration-300">
+                            Pricing
+                        </Link>
+                    </div>
                 </div>
 
                 <div className="flex items-center justify-end space-x-4">
@@ -306,7 +314,7 @@ export default function Navbar() {
                     ) : (
                         <Link href="/login">
                             <button
-                                className="text-white hover:bg-[#f53d6b] px-4 py-2 rounded-lg transition-all duration-300 border border-[#1c1f26] hover:scale-105">
+                                className="text-white px-6 py-2 rounded-lg transition-all duration-300 font-semibold whitespace-nowrap flex items-center justify-center min-w-[120px] bg-gradient-to-r from-red-500 to-pink-500">
                                 Login
                             </button>
                         </Link>
@@ -317,18 +325,29 @@ export default function Navbar() {
     );
 }
 
-// Reusable Mobile Dropdown Component
 function NavDropdownMobile({title, children}) {
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef(null);
+    const contentRef = useRef(null);
 
     useEffect(() => {
+        if (!dropdownRef.current) return;
+
         if (isOpen) {
-            gsap.from(dropdownRef.current, {
+            // Open animation
+            gsap.to(dropdownRef.current, {
+                height: "auto",
+                opacity: 1,
+                duration: 0.3,
+                ease: "power2.out"
+            });
+        } else {
+            // Close animation
+            gsap.to(dropdownRef.current, {
                 height: 0,
                 opacity: 0,
-                duration: 0.4,
-                ease: "power2.out"
+                duration: 0.2,
+                ease: "power2.in"
             });
         }
     }, [isOpen]);
@@ -338,6 +357,8 @@ function NavDropdownMobile({title, children}) {
             <button
                 className="font-bold flex items-center justify-between py-2 border-b border-gray-700 w-full hover:text-[#f53d6b] transition-colors duration-300"
                 onClick={() => setIsOpen(!isOpen)}
+                aria-expanded={isOpen}
+                aria-controls={`dropdown-${title.replace(/\s+/g, '-').toLowerCase()}`}
             >
                 {title}
                 <svg
@@ -351,12 +372,14 @@ function NavDropdownMobile({title, children}) {
                           strokeLinejoin="round"/>
                 </svg>
             </button>
-            <div ref={dropdownRef} className="overflow-hidden">
-                {isOpen && (
-                    <div className="pl-4 py-2 space-y-2">
-                        {children}
-                    </div>
-                )}
+            <div
+                ref={dropdownRef}
+                id={`dropdown-${title.replace(/\s+/g, '-').toLowerCase()}`}
+                className="overflow-hidden h-0 opacity-0"
+            >
+                <div ref={contentRef} className="pl-4 py-2 space-y-2">
+                    {children}
+                </div>
             </div>
         </div>
     );

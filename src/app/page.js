@@ -184,6 +184,7 @@ export default function Home() {
                                         height={24}
                                         className="filter brightness-0 invert"
                                     />
+                                    <br/>
                                     <h3 className="text-xl font-semibold">{product.title}</h3>
                                 </div>
                                 <p className="mb-4 text-gray-300">{product.description}</p>

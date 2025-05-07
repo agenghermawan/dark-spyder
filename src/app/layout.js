@@ -12,7 +12,7 @@ export const metadata = {
     title: 'Clandestine Project',
     description: 'Deskripsi default website kamu.',
     icons: {
-        icon: '/favicon.ico',
+        icon: 'image/favicon.ico',
     },
 };
 
