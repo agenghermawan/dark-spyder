@@ -58,7 +58,7 @@ function StealerPageContent() {
     const loadNewData = async () => {
         try {
             setIsLoading(true);
-
+            setStealerData([]);
             const response = await fetch(`/api/proxy?q=${domain}&type=stealer&page=${pagination.page}&size=${pagination.size}`);
 
             if (!response.ok) {
@@ -66,7 +66,6 @@ function StealerPageContent() {
             }
 
             const data = await response.json();
-
             if (!data.current_page_data || data.current_page_data.length === 0) {
                 setStealerData([]);
                 setShowEmptyAlert(true); // Trigger alert kosong
