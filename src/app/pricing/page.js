@@ -46,22 +46,6 @@ export default function PricingPage() {
 
     const plans = [
         {
-            id: "free",
-            domains: "Free Tier",
-            price: "$0",
-            period: "",
-            description: "For initial security assessment",
-            features: [
-                `2 scans per month${remainingScans !== null ? ` (${remainingScans} remaining)` : ''}`,
-                "1 domain limit",
-                "Basic vulnerability scanning",
-                "Email notifications",
-                "Limited reporting"
-            ],
-            isCurrent: currentPlan?.planId === "free",
-            scanLimit: 2
-        },
-        {
             id: "basic",
             domains: "1 Domain",
             price: "$600",
@@ -126,7 +110,7 @@ export default function PricingPage() {
                 "24/7 technical support"
             ],
             isCurrent: currentPlan?.planId === "business",
-            popular: true
+            popular: false
         },
         {
             id: "premium",
@@ -143,7 +127,7 @@ export default function PricingPage() {
                 "Dedicated support line"
             ],
             isCurrent: currentPlan?.planId === "premium",
-            popular: false
+            popular: true
         },
         {
             id: "premium",

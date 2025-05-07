@@ -90,7 +90,7 @@ export default function Navbar() {
 
 
     return (
-        <div className="z-50 bg-[#14141f] w-full p-4 shadow-lg rounded-[12px] sticky top-0">
+        <div className="z-50 bg-[#14141f] w-full p-4 shadow-lg  sticky top-0">
             {/* Mobile Header */}
             <div className="md:hidden flex justify-between items-center p-4">
                 <Link href="/" ref={logoRef} onMouseEnter={handleLogoHover}>
@@ -200,6 +200,15 @@ export default function Navbar() {
                             </Link>
                         </NavDropdownMobile>
 
+                        <Link href={'/pricing'} className="group pt-3">
+                            <button
+                                className="font-bold flex items-center justify-between pt-6 pb-4 border-b border-gray-700 w-full hover:text-[#f53d6b] transition-colors duration-300"
+
+                            >
+                                Pricing
+                            </button>
+                        </Link>
+
                         <div className="flex space-x-4 pt-4">
                             {isLoggedIn ? (
                                 <button
@@ -297,7 +306,7 @@ export default function Navbar() {
 
                     <div className="group relative cursor-pointer pb-4">
                         <Link href={'/pricing'}
-                            className="font-medium flex items-center hover:text-[#f53d6b] transition-colors duration-300">
+                              className="font-medium flex items-center hover:text-[#f53d6b] transition-colors duration-300">
                             Pricing
                         </Link>
                     </div>
