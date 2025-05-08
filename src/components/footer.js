@@ -23,16 +23,12 @@ export default function Footer() {
                             </button>
                         </div>
 
-                        <div className="grid grid-cols-2 md:grid-cols-5 gap-8 text-sm text-gray-400">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-sm text-gray-400">
                             {/* Footer links sections */}
                             {[
                                 {
                                     title: "Company",
                                     links: ["About", "Contact us"]
-                                },
-                                {
-                                    title: "Resources",
-                                    links: ["Blog", "Webinars", "Case Studies"]
                                 },
                                 {
                                     title: "Products",
