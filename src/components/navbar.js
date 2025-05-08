@@ -191,13 +191,13 @@ export default function Navbar() {
                             >
                                 About Us
                             </Link>
-                            <Link
-                                href="/company/contact"
-                                className="px-4 py-2 hover:bg-gray-800 rounded block hover:translate-x-2 transition-transform duration-300"
-                                onClick={() => setIsMobileMenuOpen(false)}
-                            >
-                                Contact
-                            </Link>
+                            {/*<Link*/}
+                            {/*    href="/company/contact"*/}
+                            {/*    className="px-4 py-2 hover:bg-gray-800 rounded block hover:translate-x-2 transition-transform duration-300"*/}
+                            {/*    onClick={() => setIsMobileMenuOpen(false)}*/}
+                            {/*>*/}
+                            {/*    Contact*/}
+                            {/*</Link>*/}
                         </NavDropdownMobile>
 
                         <Link href={'/pricing'} className="group pt-3">
@@ -298,10 +298,10 @@ export default function Navbar() {
                               className="px-4 py-2 hover:bg-gray-800 rounded hover:text-[#f53d6b] hover:scale-105 transition-all duration-300 ease-in-out block">
                             About Us
                         </Link>
-                        <Link href="/company/contact"
-                              className="px-4 py-2 hover:bg-gray-800 rounded hover:text-[#f53d6b] hover:scale-105 transition-all duration-300 ease-in-out block">
-                            Contact
-                        </Link>
+                        {/*<Link href="/company/contact"*/}
+                        {/*      className="px-4 py-2 hover:bg-gray-800 rounded hover:text-[#f53d6b] hover:scale-105 transition-all duration-300 ease-in-out block">*/}
+                        {/*    Contact*/}
+                        {/*</Link>*/}
                     </NavDropdownDesktop>
 
                     <div className="group relative cursor-pointer pb-4">

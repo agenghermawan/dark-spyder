@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Navbar from "@/components/navbar";
 import Globe from "@/components/globe";
 import Image from "next/image";
+import Footer from "@/components/footer";
 
 function NetworkMesh() {
   const canvasRef = useRef(null);
@@ -302,146 +303,7 @@ export default function Page() {
         </div>
       </section>
 
-      <section
-        className="relative bg-[#0D0D10] overflow-hidden"
-        style={{
-          backgroundColor: "#0D0D10", // warna dasar hitam gelap
-          backgroundImage:
-            "radial-gradient(circle at bottom right, rgba(243, 61, 116, 0.3) 0%, rgba(13, 13, 16, 1) 40%)",
-          backgroundRepeat: "no-repeat",
-          backgroundSize: "cover",
-        }}
-      >
-        {/* Background Gradient */}
-        <div className="absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-[#8a004f]/30" />
-
-        {/* Footer Card */}
-        <div className="relative max-w-7xl mx-auto px-6 py-16">
-          <div className="bg-[#1A1B1E] rounded-2xl px-10 py-16 text-white">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl font-semibold mb-4">
-                Uncover hidden threats with StealthMole
-              </h2>
-              <p className="text-gray-400 mb-6">
-                Talk to us to learn how you can build a solid cyber defense
-                strategy today
-              </p>
-              <button className="bg-[#f33d74] hover:bg-[#e63368] text-white px-6 py-3 rounded-md text-sm font-medium">
-                Request demo
-              </button>
-            </div>
-
-            <div className="grid grid-cols-2 md:grid-cols-6 gap-8 text-sm text-gray-400">
-              <div>
-                <h3 className="text-white font-medium mb-4">Company</h3>
-                <ul className="space-y-2">
-                  <li>
-                    <a href="#" className="hover:underline">
-                      About
-                    </a>
-                  </li>
-                  <li>
-                    <a href="#" className="hover:underline">
-                      Contact us
-                    </a>
-                  </li>
-                </ul>
-              </div>
-
-              <div>
-                <h3 className="text-white font-medium mb-4">Resources</h3>
-                <ul className="space-y-2">
-                  <li>
-                    <a href="#" className="hover:underline">
-                      Blog
-                    </a>
-                  </li>
-                  <li>
-                    <a href="#" className="hover:underline">
-                      Webinars
-                    </a>
-                  </li>
-                </ul>
-              </div>
-
-              <div>
-                <h3 className="text-white font-medium mb-4">Products</h3>
-                <ul className="space-y-2">
-                  <li>
-                    <a href="#" className="hover:underline">
-                      Darkweb Tracker
-                    </a>
-                  </li>
-                  <li>
-                    <a href="#" className="hover:underline">
-                      Credential Protection
-                    </a>
-                  </li>
-                  <li>
-                    <a href="#" className="hover:underline">
-                      Incident Monitoring
-                    </a>
-                  </li>
-                  <li>
-                    <a href="#" className="hover:underline">
-                      Telegram Tracker
-                    </a>
-                  </li>
-                </ul>
-              </div>
-
-              <div>
-                <h3 className="text-white font-medium mb-4">Sectors</h3>
-                <ul className="space-y-2">
-                  <li>
-                    <a href="#" className="hover:underline">
-                      Law Enforcement Agencies
-                    </a>
-                  </li>
-                  <li>
-                    <a href="#" className="hover:underline">
-                      Governments
-                    </a>
-                  </li>
-                  <li>
-                    <a href="#" className="hover:underline">
-                      Enterprises
-                    </a>
-                  </li>
-                </ul>
-              </div>
-
-              <div className="col-span-2">
-                <h3 className="text-white font-medium mb-4">Get in Touch</h3>
-                <p>2 Venture Drive, #09-01 Vision Exchange, Singapore 608526</p>
-                <p className="mt-2">sales@stealthmole.com</p>
-              </div>
-            </div>
-
-            {/* Bottom Footer */}
-            <div className="border-t border-gray-700 mt-12 pt-6 flex flex-col md:flex-row items-center justify-between text-xs text-gray-500">
-              <div className="flex items-center space-x-2">
-                <Image
-                  src="https://cdn.prod.website-files.com/64820a5a7bb824d4fde49544/6495604fb7188b7b3e3edd45_Logotype.svg"
-                  alt="StealthMole"
-                  width={80}
-                  height={80}
-                />
-
-                <span>2025. All rights reserved</span>
-              </div>
-              <div className="flex space-x-4 mt-4 md:mt-0">
-                <a href="#" className="hover:underline">
-                  Terms & Conditions
-                </a>
-                <a href="#" className="hover:underline">
-                  Privacy Policy
-                </a>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+      <Footer/>
     </div>
   );
 }

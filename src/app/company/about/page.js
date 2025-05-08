@@ -138,19 +138,10 @@ export default function AboutPage() {
                 <Image
                   src="/image/logo.png"
                   alt="Logo"
-                  width={200}
+                  width={400}
                   height={200}
-                  className="mx-auto mb-4 rounded-lg"
+                  className="mx-auto mb-4 rounded-lg invert"
                 />
-
-                <motion.h2
-                  initial={{ y: -20, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  transition={{ delay: 0.2, duration: 0.6 }}
-                  className="text-4xl md:text-5xl font-light"
-                >
-                  About us
-                </motion.h2>
 
                 <motion.div
                   initial={{ opacity: 0 }}
@@ -159,7 +150,7 @@ export default function AboutPage() {
                   className="space-y-6"
                 >
                   <h3 className="text-[16px] font-normal leading-8 text-center">
-                    StealthMole is a deep and dark web threat intelligence
+                    Clandestine is a deep and dark web threat intelligence
                     company that delivers a cloud-based, unified platform for
                     digital investigation, risk assessment, and threat
                     monitoring. Using AI, we provide governments, law
@@ -174,7 +165,7 @@ export default function AboutPage() {
                     crimes.
                   </h3>
                   <h3 className="text-[16px] font-normal leading-8 text-center">
-                    Dig deeper into hidden data sources with StealthMole.
+                    Dig deeper into hidden data sources with Clandestine.
                   </h3>
                 </motion.div>
               </div>
