@@ -23,7 +23,7 @@ export default function Footer() {
                             </button>
                         </div>
 
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-sm text-gray-400">
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-8 text-sm text-gray-400">
                             {/* Footer links sections */}
                             {[
                                 {
@@ -37,10 +37,6 @@ export default function Footer() {
                                 {
                                     title: "Sectors",
                                     links: ["Law Enforcement Agencies", "Governments", "Enterprises"]
-                                },
-                                {
-                                    title: "Legal",
-                                    links: ["Terms & Conditions", "Privacy Policy"]
                                 }
                             ].map((section, index) => (
                                 <div key={index}>
