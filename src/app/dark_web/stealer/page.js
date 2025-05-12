@@ -7,12 +7,14 @@ import Navbar from "@/components/navbar";
 import Globe from "@/components/globe";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 import {useSearchParams} from "next/navigation"; // Create this component
+import {useRouter} from 'next/navigation'; // ✅ Benar untuk App Router
 
 
 gsap.registerPlugin(ScrollToPlugin, MotionPathPlugin);
 
 // Wrap the main component with Suspense
 export default function Page() {
+
     return (
         <Suspense fallback={<LoadingSpinner/>}>
             <StealerPageContent/>
@@ -21,6 +23,7 @@ export default function Page() {
 }
 
 function StealerPageContent() {
+    const router = useRouter();
     const [stealerData, setStealerData] = useState([]);
     const [domain, setDomain] = useState("");
     const [isLoading, setIsLoading] = useState(false);
@@ -36,6 +39,12 @@ function StealerPageContent() {
     const [showEmptyAlert, setShowEmptyAlert] = useState(false);
 
     const handleSearch = async () => {
+
+        if (authState !== 'authenticated') {
+            router.push('/login');
+            return;
+        }
+
         setIsLoading(true);
 
         // Clear previous data with fade out animation
@@ -70,7 +79,7 @@ function StealerPageContent() {
                 setStealerData([]);
                 setShowEmptyAlert(true); // Trigger alert kosong
                 return;
-            }else{
+            } else {
                 setShowEmptyAlert(false);
             }
 
@@ -208,9 +217,8 @@ function StealerPageContent() {
                             />
                             <button
                                 onClick={handleSearch}
-                                disabled={isLoading || authState !== 'authenticated' || !domain.trim()}
-
-                                className={`${isLoading ? 'bg-gray-600 cursor-not-allowed' : 'bg-[#f03262] hover:bg-[#c91d4e]'} text-white px-6 py-2 rounded-lg transition-all duration-300 font-semibold whitespace-nowrap flex items-center justify-center min-w-[120px]`}
+                                disabled={isLoading}
+                                className={`${isLoading ? 'bg-gray-600 cursor-not-allowed' : 'bg-[#f03262] hover:bg-[#c91d4e]'} text-white px-6 py-2 rounded-lg transition-all duration-300 font-semibold whitespace-nowrap flex items-center justify-center min-w-[120px] hover:cursor-pointer`}
                             >
                                 {authState !== 'authenticated' ? (
                                     'Login to Search'

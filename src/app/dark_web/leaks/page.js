@@ -5,10 +5,12 @@ import {useState, useEffect, useRef} from "react";
 import {gsap} from 'gsap';
 import {ScrollToPlugin} from "gsap/ScrollToPlugin";
 import {MotionPathPlugin} from "gsap/MotionPathPlugin";
+import {useRouter} from "next/navigation";
 
 gsap.registerPlugin(ScrollToPlugin);
 
 export default function LeaksPage() {
+    const router = useRouter();
     const [breachData, setBreachData] = useState([]);
     const [searchQuery, setSearchQuery] = useState("");
     const [isLoading, setIsLoading] = useState(false);
@@ -24,6 +26,11 @@ export default function LeaksPage() {
     const [showEmptyAlert, setShowEmptyAlert] = useState(false);
 
     const handleSearch = async () => {
+        if (authState !== 'authenticated') {
+            router.push('/login');
+            return;
+        }
+
         setIsLoading(true);
 
         if (breachData.length > 0) {
@@ -178,7 +185,7 @@ export default function LeaksPage() {
                             />
                             <button
                                 onClick={handleSearch}
-                                disabled={isLoading || authState !== 'authenticated' || !searchQuery.trim()}
+                                disabled={isLoading}
 
                                 className={`${isLoading ? 'bg-gray-600 cursor-not-allowed' :
                                     authState !== 'authenticated' ? 'bg-gradient-to-r from-red-500 to-pink-500' :
