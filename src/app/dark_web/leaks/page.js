@@ -1,6 +1,6 @@
 'use client'
-import Navbar from "@/components/navbar";
-import Globe from "@/components/globe";
+import Navbar from "../../../components/navbar";
+import Globe from "../../../components/globe";
 import {useState, useEffect, useRef} from "react";
 import {gsap} from 'gsap';
 import {ScrollToPlugin} from "gsap/ScrollToPlugin";

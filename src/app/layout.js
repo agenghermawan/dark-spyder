@@ -1,6 +1,6 @@
 import { Poppins } from "next/font/google";
 import "./globals.css";
-import LoaderWrapper from "@/components/ui/loader-wrapper";
+import LoaderWrapper from "../components/ui/loader-wrapper";
 
 const poppins = Poppins({
     variable: "--font-poppins",

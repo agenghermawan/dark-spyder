@@ -2,7 +2,7 @@
 
 import React, {useState} from "react";
 import {FaKey, FaShieldAlt, FaTrash, FaCopy, FaQrcode} from "react-icons/fa";
-import Navbar from "@/components/dashboard/navbar";
+import Navbar from "../../components/dashboard/navbar";
 
 const Settings = () => {
     const [currentPassword, setCurrentPassword] = useState("");

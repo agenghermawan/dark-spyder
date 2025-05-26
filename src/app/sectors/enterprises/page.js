@@ -1,10 +1,10 @@
 "use client";
 
 import {useEffect, useRef, useState} from "react";
-import Navbar from "@/components/navbar";
-import Globe from "@/components/globe";
+import Navbar from "../../../components/navbar";
+import Globe from "../../../components/globe";
 import Image from "next/image";
-import Footer from "@/components/footer";
+import Footer from "../../../components/footer";
 
 function NetworkMesh() {
     const canvasRef = useRef(null);

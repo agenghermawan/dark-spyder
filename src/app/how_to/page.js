@@ -1,9 +1,9 @@
 'use client';
 
-import Navbar from "@/components/dashboard/navbar";
+import Navbar from "../../components/dashboard/navbar";
 import React, {useState} from "react";
 import {FaChevronDown, FaChevronUp} from "react-icons/fa";
-import Footer from "@/components/dashboard/footer";
+import Footer from "../../components/dashboard/footer";
 
 const TermsOfUse = () => {
     const [activeIndex, setActiveIndex] = useState(null);

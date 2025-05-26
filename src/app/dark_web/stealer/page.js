@@ -3,9 +3,9 @@ import {Suspense, useState, useEffect, useRef} from "react";
 import {gsap} from 'gsap';
 import {ScrollToPlugin} from "gsap/ScrollToPlugin";
 import {MotionPathPlugin} from "gsap/MotionPathPlugin";
-import Navbar from "@/components/navbar";
-import Globe from "@/components/globe";
-import LoadingSpinner from "@/components/ui/loading-spinner";
+import Navbar from "../../../components/navbar";
+import Globe from "../../../components/globe";
+import LoadingSpinner from "../../../components/ui/loading-spinner";
 import {useSearchParams} from "next/navigation"; // Create this component
 import {useRouter} from 'next/navigation'; // ✅ Benar untuk App Router
 

@@ -1,9 +1,9 @@
 'use client';
 
-import Navbar from "@/components/dashboard/navbar";
+import Navbar from "../../components/dashboard/navbar";
 import React, {useEffect, useState} from "react";
 import {FaSpider, FaSearch} from "react-icons/fa";
-import Footer from "@/components/dashboard/footer";
+import Footer from "../../components/dashboard/footer";
 
 const Leaks = () => {
     const [showSplash, setShowSplash] = useState(true);

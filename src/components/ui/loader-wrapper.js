@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import SlideLoader from "@/components/ui/loader-page";
+import SlideLoader from "../../components/ui/loader-page";
 
 export default function LoaderWrapper({ children }) {
     const [isLoading, setIsLoading] = useState(false);

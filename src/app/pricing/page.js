@@ -1,10 +1,10 @@
 'use client'
-import Navbar from "@/components/navbar";
-import Globe from "@/components/globe";
+import Navbar from "../../components/navbar";
+import Globe from "../../components/globe";
 import Image from "next/image";
 import Link from "next/link";
 import {useEffect, useState} from "react";
-import Footer from "@/components/footer";
+import Footer from "../../components/footer";
 
 export default function PricingPage() {
     const [authState, setAuthState] = useState('loading');
