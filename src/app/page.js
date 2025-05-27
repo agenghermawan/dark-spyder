@@ -36,86 +36,86 @@ export default function Home() {
     const imageTextRef = useRef(null);
 
     // Initialize animations
-    useEffect(() => {
-        // Hero section animation
-        gsap.from(heroRef.current, {
-            opacity: 0,
-            y: 50,
-            duration: 1,
-            ease: "power3.out",
-            delay: 0.5
-        });
-
-        // Product cards animation
-        productCardsRef.current.forEach((card, index) => {
-            gsap.from(card, {
-                scrollTrigger: {
-                    trigger: card,
-                    start: "top 80%",
-                    toggleActions: "play none none none"
-                },
-                opacity: 0,
-                y: 50,
-                duration: 0.6,
-                ease: "back.out(1.2)",
-                delay: index * 0.15
-            });
-        });
-
-        // Use cases section animation
-        gsap.from(useCasesRef.current, {
-            scrollTrigger: {
-                trigger: useCasesRef.current,
-                start: "top 75%",
-                toggleActions: "play none none none"
-            },
-            opacity: 0,
-            y: 80,
-            duration: 0.8,
-            ease: "power3.out"
-        });
-
-        // Footer animation
-        gsap.from(footerRef.current, {
-            scrollTrigger: {
-                trigger: footerRef.current,
-                start: "top 75%",
-                toggleActions: "play none none none"
-            },
-            opacity: 0,
-            y: 50,
-            duration: 0.8,
-            ease: "power3.out"
-        });
-
-        // Image + text section animation
-        gsap.from(imageTextRef.current, {
-            scrollTrigger: {
-                trigger: imageTextRef.current,
-                start: "top 75%",
-                toggleActions: "play none none none"
-            },
-            opacity: 0,
-            y: 80,
-            duration: 0.8,
-            ease: "power3.out"
-        });
-
-        // Clean up ScrollTrigger instances
-        return () => {
-            ScrollTrigger.getAll().forEach(trigger => trigger.kill());
-        };
-    }, []);
+    // useEffect(() => {
+    //     // Hero section animation
+    //     gsap.from(heroRef.current, {
+    //         opacity: 0,
+    //         y: 50,
+    //         duration: 1,
+    //         ease: "power3.out",
+    //         delay: 0.5
+    //     });
+    //
+    //     // Product cards animation
+    //     productCardsRef.current.forEach((card, index) => {
+    //         gsap.from(card, {
+    //             scrollTrigger: {
+    //                 trigger: card,
+    //                 start: "top 80%",
+    //                 toggleActions: "play none none none"
+    //             },
+    //             opacity: 0,
+    //             y: 50,
+    //             duration: 0.6,
+    //             ease: "back.out(1.2)",
+    //             delay: index * 0.15
+    //         });
+    //     });
+    //
+    //     // Use cases section animation
+    //     gsap.from(useCasesRef.current, {
+    //         scrollTrigger: {
+    //             trigger: useCasesRef.current,
+    //             start: "top 75%",
+    //             toggleActions: "play none none none"
+    //         },
+    //         opacity: 0,
+    //         y: 80,
+    //         duration: 0.8,
+    //         ease: "power3.out"
+    //     });
+    //
+    //     // Footer animation
+    //     gsap.from(footerRef.current, {
+    //         scrollTrigger: {
+    //             trigger: footerRef.current,
+    //             start: "top 75%",
+    //             toggleActions: "play none none none"
+    //         },
+    //         opacity: 0,
+    //         y: 50,
+    //         duration: 0.8,
+    //         ease: "power3.out"
+    //     });
+    //
+    //     // Image + text section animation
+    //     gsap.from(imageTextRef.current, {
+    //         scrollTrigger: {
+    //             trigger: imageTextRef.current,
+    //             start: "top 75%",
+    //             toggleActions: "play none none none"
+    //         },
+    //         opacity: 0,
+    //         y: 80,
+    //         duration: 0.8,
+    //         ease: "power3.out"
+    //     });
+    //
+    //     // Clean up ScrollTrigger instances
+    //     return () => {
+    //         ScrollTrigger.getAll().forEach(trigger => trigger.kill());
+    //     };
+    // }, []);
 
     // Tab change animation
-    useEffect(() => {
-        gsap.from(".tab-content", {
-            opacity: 0,
-            y: 20,
-            duration: 0.5,
-            ease: "power2.out"
-        });
-    }, [activeTab]);
+    // useEffect(() => {
+    //     gsap.from(".tab-content", {
+    //         opacity: 0,
+    //         y: 20,
+    //         duration: 0.5,
+    //         ease: "power2.out"
+    //     });
+    // }, [activeTab]);
 
     const handleDiscover = () => {
         router.push(`/dark_web/stealer?q=${encodeURIComponent(searchQuery)}`);
@@ -223,75 +223,96 @@ export default function Home() {
 
 
             {/* Intelligence Platform Section - Light/Dark Split */}
-            <section className="bg-gradient-to-b from-gray-900 to-black">
+            <section className="bg-gradient-to-b from-gray-900 to-black border-t border-b border-gray-800">
                 <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2">
-                    {/* Image Panel - Dark */}
-                    <div className="relative h-[500px] lg:h-auto order-2 lg:order-1">
+                    {/* Image Panel - Enhanced Dark */}
+                    <div className="relative h-[500px] lg:h-auto">
                         <Image
                             src="https://images.unsplash.com/photo-1550751827-4bd374c3f58b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80"
-                            alt="Cyber Threat Intelligence Dashboard"
+                            alt="Dark Web Intelligence Dashboard"
                             fill
-                            className="object-cover"
+                            className="object-cover opacity-90"
                         />
 
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex items-end p-10">
-                            <div className="bg-black/80 backdrop-blur-sm p-6 rounded-xl border border-gray-800">
-                                <h4 className="text-white font-bold mb-2">Live Threat Feed</h4>
-                                <p className="text-gray-300 text-sm">Monitoring 2,400+ dark web sources in real-time</p>
+                        {/* Animated overlay */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/70 to-transparent flex items-end p-10">
+                            <div className="bg-gradient-to-r from-black/90 to-gray-900/90 backdrop-blur-sm p-6 rounded-xl border border-[#f03262]/20 shadow-lg shadow-[#f03262]/10">
+                                <div className="flex items-center mb-2">
+                                    <div className="w-3 h-3 bg-[#f03262] rounded-full mr-2 animate-pulse"></div>
+                                    <h4 className="text-white font-bold">LIVE THREAT MONITORING</h4>
+                                </div>
+                                <p className="text-gray-300 text-sm font-mono tracking-wider">
+                                    Tracking 2,400+ darknet sources across 47 TLDs
+                                </p>
                             </div>
                         </div>
                     </div>
 
-                    {/* Content Panel - Light */}
-                    <div className="bg-white p-12 order-1 lg:order-2 flex flex-col justify-center">
-                        <span className="text-[#f03262] font-mono text-sm tracking-widest">OUR TECHNOLOGY</span>
-                        <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mt-2 mb-6">
-                            Advanced Cyber Intelligence Platform
+                    {/* Content Panel - Dark Theme */}
+                    <div className="bg-gray-900 p-12 border-l border-gray-800 flex flex-col justify-center">
+                        <span className="text-[#f03262] font-mono text-sm tracking-widest mb-2">DARKWEB SURVEILLANCE</span>
+                        <h2 className="text-3xl md:text-4xl font-bold text-white mt-2 mb-6 bg-gradient-to-r from-white to-[#f03262] bg-clip-text text-transparent">
+                            Advanced Threat Intelligence
                         </h2>
-                        <p className="text-gray-600 mb-8">
-                            Our unified cloud platform combines advanced algorithms with human expertise to deliver
-                            actionable intelligence for digital investigations and risk mitigation.
+                        <p className="text-gray-300 mb-8">
+                            Our platform combines machine learning with human analysts to monitor underground markets, private forums, and encrypted channels.
                         </p>
 
                         <div className="space-y-6">
-                            <div className="flex items-start">
-                                <div className="bg-[#f03262]/10 p-2 rounded-lg mr-4">
-                                    <CpuChipIcon className="w-5 h-5 text-[#f03262]"/>
+                            {/* Feature 1 */}
+                            <div className="group flex items-start p-4 rounded-lg transition-all hover:bg-gray-800/50 hover:border-l-2 hover:border-[#f03262]">
+                                <div className="bg-[#f03262]/20 p-2 rounded-lg mr-4 group-hover:bg-[#f03262]/30 transition-all">
+                                    <CpuChipIcon className="w-6 h-6 text-[#f03262]"/>
                                 </div>
                                 <div>
-                                    <h4 className="font-bold text-gray-900">Pattern Recognition Engine</h4>
-                                    <p className="text-gray-500">Proprietary technology identifies emerging threats with 94% accuracy</p>
+                                    <h4 className="font-bold text-white">Behavioral Pattern Detection</h4>
+                                    <p className="text-gray-400 text-sm mt-1">
+                                        Identifies emerging TTPs with 94% accuracy using neural networks trained on dark web data
+                                    </p>
                                 </div>
                             </div>
 
-                            <div className="flex items-start">
-                                <div className="bg-[#f03262]/10 p-2 rounded-lg mr-4">
-                                    <SignalIcon className="w-5 h-5 text-[#f03262]"/>
+                            {/* Feature 2 */}
+                            <div className="group flex items-start p-4 rounded-lg transition-all hover:bg-gray-800/50 hover:border-l-2 hover:border-[#f03262]">
+                                <div className="bg-[#f03262]/20 p-2 rounded-lg mr-4 group-hover:bg-[#f03262]/30 transition-all">
+                                    <SignalIcon className="w-6 h-6 text-[#f03262]"/>
                                 </div>
                                 <div>
-                                    <h4 className="font-bold text-gray-900">Global Coverage</h4>
-                                    <p className="text-gray-500">Monitoring dark web activity across 18 languages and 47 TLDs</p>
+                                    <h4 className="font-bold text-white">Global Darknet Coverage</h4>
+                                    <p className="text-gray-400 text-sm mt-1">
+                                        Monitoring Tor, I2P, and private forums in 18 languages including Russian, Chinese, and Arabic
+                                    </p>
                                 </div>
                             </div>
 
-                            <div className="flex items-start">
-                                <div className="bg-[#f03262]/10 p-2 rounded-lg mr-4">
-                                    <LockClosedIcon className="w-5 h-5 text-[#f03262]"/>
+                            {/* Feature 3 */}
+                            <div className="group flex items-start p-4 rounded-lg transition-all hover:bg-gray-800/50 hover:border-l-2 hover:border-[#f03262]">
+                                <div className="bg-[#f03262]/20 p-2 rounded-lg mr-4 group-hover:bg-[#f03262]/30 transition-all">
+                                    <LockClosedIcon className="w-6 h-6 text-[#f03262]"/>
                                 </div>
                                 <div>
-                                    <h4 className="font-bold text-gray-900">Secure Infrastructure</h4>
-                                    <p className="text-gray-500">Military-grade encryption and zero-trust architecture</p>
+                                    <h4 className="font-bold text-white">Covert Infrastructure</h4>
+                                    <p className="text-gray-400 text-sm mt-1">
+                                        Military-grade encryption with anonymous collection nodes and zero-trust architecture
+                                    </p>
                                 </div>
                             </div>
                         </div>
 
-                        <button
-                            className="mt-8 bg-[#f03262] hover:bg-[#d82a56] text-white px-6 py-3 rounded-lg font-medium w-fit transition-all">
-                            Platform Features
-                        </button>
+                        <div className="mt-10 flex flex-col sm:flex-row gap-4">
+                            <button className="bg-gradient-to-r from-[#f03262] to-[#d82a56] hover:from-[#f03262]/90 hover:to-[#d82a56]/90 text-white px-6 py-3 rounded-lg font-medium transition-all hover:shadow-lg hover:shadow-[#f03262]/30 flex items-center justify-center">
+                                <ShieldCheckIcon className="w-5 h-5 mr-2" />
+                                Request Access
+                            </button>
+                            <button className="border border-[#f03262] text-[#f03262] hover:bg-[#f03262]/10 px-6 py-3 rounded-lg font-medium transition-all flex items-center justify-center">
+                                <ArrowRightIcon className="w-5 h-5 mr-2" />
+                                View Sample Reports
+                            </button>
+                        </div>
                     </div>
                 </div>
             </section>
+
 
 
             {/* Use Cases Section */}

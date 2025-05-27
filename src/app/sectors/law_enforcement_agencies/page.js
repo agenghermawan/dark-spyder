@@ -2,313 +2,19 @@
 
 import { useEffect, useRef, useState } from "react";
 import Navbar from "../../../components/navbar";
-import Globe from "../../../components/globe";
 import Image from "next/image";
 import Footer from "../../../components/footer";
+import {
+  ShieldCheckIcon,
+  FingerPrintIcon,
+  LockClosedIcon,
+  MagnifyingGlassIcon,
+  ServerStackIcon,
+  GlobeAltIcon,
+  CpuChipIcon
+} from "@heroicons/react/24/outline";
 
-function NetworkMesh() {
-  const canvasRef = useRef(null);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-
-    let width = (canvas.width = window.innerWidth);
-    let height = (canvas.height = window.innerHeight);
-
-    const nodes = [];
-    const nodeCount = 80;
-    const maxDistance = 150;
-
-    class Node {
-      constructor() {
-        this.x = Math.random() * width;
-        this.y = Math.random() * height;
-        this.vx = (Math.random() - 0.5) * 0.7;
-        this.vy = (Math.random() - 0.5) * 0.7;
-        this.radius = 2;
-      }
-
-      move() {
-        this.x += this.vx;
-        this.y += this.vy;
-
-        if (this.x < 0 || this.x > width) this.vx *= -1;
-        if (this.y < 0 || this.y > height) this.vy *= -1;
-      }
-
-      draw() {
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-        ctx.fillStyle = "#ff7a9c"; // Neon Cyan
-        ctx.fill();
-      }
-    }
-
-    for (let i = 0; i < nodeCount; i++) {
-      nodes.push(new Node());
-    }
-
-    function drawLines() {
-      for (let a = 0; a < nodes.length; a++) {
-        for (let b = a + 1; b < nodes.length; b++) {
-          const dx = nodes[a].x - nodes[b].x;
-          const dy = nodes[a].y - nodes[b].y;
-          const distance = Math.sqrt(dx * dx + dy * dy);
-          if (distance < maxDistance) {
-            ctx.beginPath();
-            ctx.strokeStyle = `rgba(0, 255, 234, ${
-              1 - distance / maxDistance
-            })`; // Fade based on distance
-            ctx.moveTo(nodes[a].x, nodes[a].y);
-            ctx.lineTo(nodes[b].x, nodes[b].y);
-            ctx.stroke();
-          }
-        }
-      }
-    }
-
-    function animate() {
-      ctx.clearRect(0, 0, width, height);
-      nodes.forEach((node) => {
-        node.move();
-        node.draw();
-      });
-      drawLines();
-      requestAnimationFrame(animate);
-    }
-
-    animate();
-
-    const handleResize = () => {
-      width = canvas.width = window.innerWidth;
-      height = canvas.height = window.innerHeight;
-    };
-
-    window.addEventListener("resize", handleResize);
-
-    return () => {
-      window.removeEventListener("resize", handleResize);
-    };
-  }, []);
-
-  return (
-    <canvas
-      ref={canvasRef}
-      className="absolute top-0 left-0 w-full h-full -z-10"
-    />
-  );
-}
-
-export default function Page() {
-  const [activeTab, setActiveTab] = useState("law");
-
-  return (
-    <div>
-      <Navbar />
-
-      {/* Globe background */}
-      <div className="relative h-screen w-full">
-        <DataConnections />
-
-        {/* Floating text on top of Globe */}
-        <section className="absolute inset-0 flex items-center justify-center px-4 sm:px-6 lg:px-8 text-white z-10">
-          <div className="w-10/12 mx-auto">
-            <h2 className="text-6xl font-light  text-white mb-8 left">
-              StealthMole for Law Enforcement <br /> Agencies
-            </h2>
-            <h3 className="text-2xl font-light text-white mb-4 left">
-              Crack down on criminal activity and conduct web investigations
-              with ease
-            </h3>
-            <h5 className="text-xl font-light text-white mb-4 left">
-              StealthMole offers a comprehensive suite of solutions to address
-              the challenges faced by Law Enforcement Agencies, empowering them
-              to effectively carry out their duty to protect and save lives
-            </h5>
-            <button
-              className={`px-6 py-4 rounded-full text-sm font-medium transition-all duration-300 ${
-                activeTab === "law" ? "bg-[#F33D74] text-white" : "text-white"
-              }`}
-              onClick={() => setActiveTab("law")}
-            >
-              Law Enforcement Agencies
-            </button>
-          </div>
-        </section>
-      </div>
-
-      <section className="bg-black text-white py-10 px-6">
-        <div className="w-10/12 grid grid-cols-1 md:grid-cols-2 gap-8 mx-auto">
-          <h2 className="text-heading">
-            Understanding the challenges of Law Enforcement Agencies
-          </h2>
-          <div className="space-y-4">
-            <div>
-              <h3 className="text-xl font-bold mb-2">
-                Digital Footprint Expansion
-              </h3>
-              <p>
-                Criminal activities have migrated to the digital realm,
-                requiring LEAs to adapt and effectively investigate crimes
-                conducted through online platforms, communication channels, and
-                the dark web.
-              </p>
-            </div>
-            <div>
-              <h3 className="text-xl font-bold mb-2">
-                Anonymity and Encryption
-              </h3>
-              <p>
-                Perpetrators often leverage anonymization tools and encrypted
-                communication methods, making it challenging for LEAs to
-                identify and track criminals involved in illicit activities.
-              </p>
-            </div>
-            <div>
-              <h3 className="text-xl font-bold mb-2">
-                Data Overload and Analysis
-              </h3>
-              <p>
-                The vast amount of digital data available poses a significant
-                challenge for LEAs to efficiently process, analyze, and extract
-                actionable intelligence from various sources, hindering
-                effective investigations.
-              </p>
-            </div>
-            <div>
-              <h3 className="text-xl font-bold mb-2">
-                Threat Detection and Mitigation
-              </h3>
-              <p>
-                LEAs need proactive tools to identify and respond to emerging
-                threats, cybercrimes, and criminal networks, enhancing their
-                ability to prevent and mitigate potential harm.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section
-        className="py-16 px-4 sm:px-6 lg:px-8"
-        style={{
-          backgroundColor: "#0D0D10", // warna dasar hitam gelap
-          backgroundImage:
-            "radial-gradient(circle at top left, rgba(243, 61, 116, 0.3) 0%, rgba(13, 13, 16, 1) 40%)",
-          backgroundRepeat: "no-repeat",
-          backgroundSize: "cover",
-        }}
-      >
-        <div className="max-w-7xl mx-auto">
-          <h2 className="text-4xl font-light text-white mb-12 text-center">
-            Use Cases
-          </h2>
-
-          <div className="flex justify-center mb-8">
-            <div className="flex bg-[#0D0D10] rounded-full p-2 gap-2">
-              <button
-                className={`px-6 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
-                  activeTab === "law" ? "bg-[#F33D74] text-white" : "text-white"
-                }`}
-                onClick={() => setActiveTab("law")}
-              >
-                Digital Investigation
-              </button>
-              <button
-                className={`px-6 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
-                  activeTab === "gov" ? "bg-[#F33D74] text-white" : "text-white"
-                }`}
-                onClick={() => setActiveTab("gov")}
-              >
-                Suspect Hunting
-              </button>
-              <button
-                className={`px-6 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
-                  activeTab === "enterprise"
-                    ? "bg-[#F33D74] text-white"
-                    : "text-white"
-                }`}
-                onClick={() => setActiveTab("enterprise")}
-              >
-                Threat Detection and Response
-              </button>
-            </div>
-          </div>
-
-          {/* Content based on active tab */}
-          <div className="flex flex-col items-center text-center">
-            {activeTab === "law" && (
-              <>
-                <Image
-                  src="https://cdn.prod.website-files.com/64820a5a7bb824d4fde49544/6485ee54cdba2a48dbe7edce_matt-popovich-7mqsZsE6FaU-unsplash.jpg"
-                  alt="Law Enforcement"
-                  width={900}
-                  height={500}
-                  className="rounded-2xl mb-4"
-                />
-                <h3 className="text-2xl font-semibold text-white mb-4">
-                  Digital Investigation
-                </h3>
-                <p className="text-gray-400 max-w-3xl leading-relaxed">
-                  StealthMole provides LEAs with the investigation tools they
-                  need to effectively collect, analyze, and draw insights from
-                  the vast amount of data in the dark web
-                </p>
-              </>
-            )}
-
-            {activeTab === "gov" && (
-              <>
-                <Image
-                  src="https://cdn.prod.website-files.com/64820a5a7bb824d4fde49544/6485ee66ad4a2634dfaa52f7_sebastian-pichler-bAQH53VquTc-unsplash.jpg"
-                  alt="Law Enforcement"
-                  width={900}
-                  height={500}
-                  className="rounded-2xl mb-4"
-                />
-
-                <h3 className="text-2xl font-semibold text-white mb-4">
-                  Suspect Hunting
-                </h3>
-                <p className="text-gray-400 max-w-3xl leading-relaxed">
-                  StealthMole enables LEAs to efficiently cover more ground and
-                  gather more leads to track down criminals.
-                </p>
-              </>
-            )}
-
-            {activeTab === "enterprise" && (
-              <>
-                <Image
-                  src="https://cdn.prod.website-files.com/64820a5a7bb824d4fde49544/6485ee7025afd798f170a8d9_sean-pollock-PhYq704ffdA-unsplash-p-1080.jpg"
-                  alt="Law Enforcement"
-                  width={900}
-                  height={500}
-                  className="rounded-2xl mb-4"
-                />
-
-                <h3 className="text-2xl font-semibold text-white mb-4">
-                  Threat Detection and Response
-                </h3>
-                <p className="text-gray-400 max-w-3xl leading-relaxed">
-                  StealthMole enables LEAs to detect potential threats as soon
-                  as they emerge. Equipped with the right intelligence, LEAs can
-                  then swiftly take action.
-                </p>
-              </>
-            )}
-          </div>
-        </div>
-      </section>
-
-      <Footer/>
-    </div>
-  );
-}
-
-function DataConnections() {
+function CyberGrid() {
   const canvasRef = useRef(null);
 
   useEffect(() => {
@@ -325,45 +31,86 @@ function DataConnections() {
       constructor() {
         this.x = Math.random() * width;
         this.y = Math.random() * height;
-        this.size = 3 + Math.random() * 5;
+        this.size = 2 + Math.random() * 3;
         this.type = Math.random() > 0.5 ? 'source' : 'target';
-        this.color = this.type === 'source' ? '#FF2A6D' : '#05D9E8';
+        this.color = this.type === 'source' ? '#f03262' : '#00f0ff';
+        this.speed = 0.3 + Math.random() * 0.7;
+      }
+
+      update() {
+        // Add subtle movement
+        this.x += (Math.random() - 0.5) * this.speed;
+        this.y += (Math.random() - 0.5) * this.speed;
+
+        // Keep within bounds
+        this.x = Math.max(0, Math.min(width, this.x));
+        this.y = Math.max(0, Math.min(height, this.y));
       }
 
       draw() {
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-        ctx.fillStyle = this.color;
+
+        // Glow effect
+        const gradient = ctx.createRadialGradient(
+            this.x, this.y, 0,
+            this.x, this.y, this.size * 3
+        );
+        gradient.addColorStop(0, this.color);
+        gradient.addColorStop(1, 'rgba(0,0,0,0)');
+
+        ctx.fillStyle = gradient;
         ctx.fill();
       }
     }
 
-    const nodes = Array.from({ length: 30 }, () => new Node());
+    const nodes = Array.from({ length: 40 }, () => new Node());
     const connections = [];
 
-    // Create connections between nodes
-    for (let i = 0; i < nodes.length; i++) {
-      if (nodes[i].type === 'source') {
-        for (let j = 0; j < 2; j++) {
-          const target = nodes.find(n => n.type === 'target' && !connections.some(c => c.to === n));
-          if (target) {
-            connections.push({ from: nodes[i], to: target });
-          }
+    // Create dynamic connections
+    function updateConnections() {
+      connections.length = 0;
+      nodes.forEach(node => {
+        if (node.type === 'source') {
+          // Find closest 2 targets
+          const targets = nodes
+              .filter(n => n.type === 'target')
+              .sort((a, b) => {
+                const distA = Math.sqrt(Math.pow(node.x - a.x, 2) + Math.pow(node.y - a.y, 2));
+                const distB = Math.sqrt(Math.pow(node.x - b.x, 2) + Math.pow(node.y - b.y, 2));
+                return distA - distB;
+              })
+              .slice(0, 2);
+
+          targets.forEach(target => {
+            connections.push({
+              from: node,
+              to: target,
+              alpha: 0.3 + Math.random() * 0.7
+            });
+          });
         }
-      }
+      });
     }
 
     function animate() {
       ctx.clearRect(0, 0, width, height);
 
-      // Draw connections
+      // Update node positions
+      nodes.forEach(node => node.update());
+
+      // Update connections every 60 frames
+      if (Date.now() % 60 === 0) updateConnections();
+
+      // Draw connections with pulsing effect
       connections.forEach(conn => {
         const dx = conn.to.x - conn.from.x;
         const dy = conn.to.y - conn.from.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
+        const pulse = 0.5 + 0.5 * Math.sin(Date.now() * 0.005);
 
-        // Animate connection
-        const progress = (Date.now() % 2000) / 2000; // 2 second cycle
+        // Data flow animation
+        const progress = (Date.now() % 2000) / 2000;
         const animX = conn.from.x + dx * progress;
         const animY = conn.from.y + dy * progress;
 
@@ -371,14 +118,14 @@ function DataConnections() {
         ctx.beginPath();
         ctx.moveTo(conn.from.x, conn.from.y);
         ctx.lineTo(conn.to.x, conn.to.y);
-        ctx.strokeStyle = 'rgba(5, 217, 232, 0.1)';
-        ctx.lineWidth = 0.5;
+        ctx.strokeStyle = `rgba(240, 50, 98, ${conn.alpha * 0.3})`;
+        ctx.lineWidth = 0.8;
         ctx.stroke();
 
-        // Animated dot
+        // Animated data packet
         ctx.beginPath();
-        ctx.arc(animX, animY, 2, 0, Math.PI * 2);
-        ctx.fillStyle = '#00FFEA';
+        ctx.arc(animX, animY, 1.5, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(0, 240, 255, ${pulse})`;
         ctx.fill();
       });
 
@@ -388,6 +135,7 @@ function DataConnections() {
       requestAnimationFrame(animate);
     }
 
+    updateConnections();
     animate();
 
     const handleResize = () => {
@@ -400,7 +148,315 @@ function DataConnections() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  return <canvas ref={canvasRef} className="absolute top-0 left-0 w-full h-full -z-10" />;
+  return <canvas ref={canvasRef} className="absolute top-0 left-0 w-full h-full -z-10 opacity-70" />;
 }
 
+export default function LawEnforcementPage() {
+  const [activeTab, setActiveTab] = useState("investigation");
 
+  return (
+      <div className="bg-black text-white min-h-screen">
+        <Navbar />
+
+        {/* Cyberpunk Hero Section */}
+        <div className="relative h-screen w-full overflow-hidden">
+          <CyberGrid />
+
+          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/70 to-transparent flex items-center">
+            <div className="max-w-7xl mx-auto px-6 lg:px-8 py-24">
+              <div className="flex flex-col lg:flex-row items-center gap-12">
+                <div className="lg:w-1/2 space-y-8">
+                <span className="font-mono text-[#f03262] tracking-widest text-sm flex items-center">
+                  <span className="w-3 h-3 bg-[#f03262] rounded-full mr-2 animate-pulse"></span>
+                  LAW ENFORCEMENT SOLUTIONS
+                </span>
+                  <h1 className="text-5xl md:text-6xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-[#f03262]">
+                    Dark Web Intelligence Platform
+                  </h1>
+                  <p className="text-xl text-gray-300">
+                    Advanced tools for tracking criminal activity across Tor networks, encrypted markets, and underground forums
+                  </p>
+                  <div className="flex flex-wrap gap-4">
+                    <button className="bg-gradient-to-r from-[#f03262] to-[#d82a56] hover:from-[#f03262]/90 hover:to-[#d82a56]/90 text-white px-8 py-4 rounded-lg font-medium transition-all hover:shadow-lg hover:shadow-[#f03262]/30 flex items-center">
+                      <ShieldCheckIcon className="w-5 h-5 mr-2" />
+                      Request Demo
+                    </button>
+                    <button className="border border-[#f03262] text-[#f03262] hover:bg-[#f03262]/10 px-8 py-4 rounded-lg font-medium transition-all flex items-center">
+                      <MagnifyingGlassIcon className="w-5 h-5 mr-2" />
+                      View Case Studies
+                    </button>
+                  </div>
+                </div>
+
+                <div className="lg:w-1/2 relative">
+                  <div className="relative border-2 border-[#f03262]/30 rounded-xl overflow-hidden">
+                    <Image
+                        src="https://images.unsplash.com/photo-1563986768609-322da13575f3?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80"
+                        alt="Dark Web Monitoring Dashboard"
+                        width={800}
+                        height={500}
+                        className="object-cover opacity-90"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent"></div>
+                    <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black to-transparent">
+                      <div className="flex items-center">
+                        <div className="bg-[#f03262]/20 p-2 rounded-lg mr-4">
+                          <ServerStackIcon className="w-6 h-6 text-[#f03262]" />
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-white">Live Monitoring</h4>
+                          <p className="text-gray-300 text-sm">Tracking 3,200+ darknet endpoints in real-time</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Challenges Section */}
+        <section className="py-20 px-6 bg-gradient-to-b from-black to-gray-900">
+          <div className="max-w-7xl mx-auto">
+            <div className="text-center mb-16">
+              <span className="text-[#f03262] font-mono text-sm tracking-widest">OPERATIONAL CHALLENGES</span>
+              <h2 className="text-4xl md:text-5xl font-bold text-white mt-4">
+                Overcoming Digital Investigation Barriers
+              </h2>
+              <div className="w-24 h-1 bg-gradient-to-r from-[#f03262] to-[#d82a56] mx-auto mt-6"></div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+              {[
+                {
+                  icon: <GlobeAltIcon className="w-8 h-8 text-[#f03262]" />,
+                  title: "Dark Web Anonymity",
+                  description: "Criminals leverage Tor, I2P, and VPNs to hide their activities and identities",
+                  stats: ["85% of drug markets are Tor-hidden", "60+ privacy-focused cryptocurrencies"]
+                },
+                {
+                  icon: <LockClosedIcon className="w-8 h-8 text-[#f03262]" />,
+                  title: "Encrypted Communications",
+                  description: "End-to-end encryption makes intercepting criminal communications nearly impossible",
+                  stats: ["Signal, Wickr, Session adoption up 300%", "PGP still prevalent in darknet markets"]
+                },
+                {
+                  icon: <CpuChipIcon className="w-8 h-8 text-[#f03262]" />,
+                  title: "Data Overload",
+                  description: "Manual analysis can't keep pace with the volume of dark web activity",
+                  stats: ["2.5M+ new darknet listings monthly", "500GB+ daily chatter in criminal forums"]
+                },
+                {
+                  icon: <FingerPrintIcon className="w-8 h-8 text-[#f03262]" />,
+                  title: "Advanced OPSEC",
+                  description: "Sophisticated operational security makes attribution extremely difficult",
+                  stats: ["Chain hopping common in money laundering", "Multi-layered identity obfuscation"]
+                }
+              ].map((item, index) => (
+                  <div
+                      key={index}
+                      className="border border-gray-800 rounded-xl p-8 hover:border-[#f03262] transition-all hover:shadow-lg hover:shadow-[#f03262]/10 bg-gray-900/50"
+                  >
+                    <div className="w-14 h-14 bg-gray-800 rounded-lg flex items-center justify-center mb-6">
+                      {item.icon}
+                    </div>
+                    <h3 className="text-xl font-bold text-white mb-4">{item.title}</h3>
+                    <p className="text-gray-300 mb-6">{item.description}</p>
+                    <ul className="space-y-2">
+                      {item.stats.map((stat, i) => (
+                          <li key={i} className="text-sm text-gray-400 flex items-start">
+                            <span className="text-[#f03262] mr-2">•</span>
+                            {stat}
+                          </li>
+                      ))}
+                    </ul>
+                  </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Use Cases Section */}
+        <section className="py-20 px-6 bg-gradient-to-b from-gray-900 to-black">
+          <div className="max-w-7xl mx-auto">
+            <div className="text-center mb-16">
+              <span className="text-[#f03262] font-mono text-sm tracking-widest">OPERATIONAL USE CASES</span>
+              <h2 className="text-4xl md:text-5xl font-bold text-white mt-4">
+                Specialized Investigation Tools
+              </h2>
+            </div>
+
+            <div className="flex justify-center mb-12">
+              <div className="inline-flex bg-gray-900 rounded-full p-1 border border-gray-800 shadow-lg shadow-[#f03262]/10">
+                {['investigation', 'hunting', 'response'].map((tab) => (
+                    <button
+                        key={tab}
+                        onClick={() => setActiveTab(tab)}
+                        className={`px-6 py-3 rounded-full text-sm font-medium transition-all duration-300 ${
+                            activeTab === tab
+                                ? 'bg-gradient-to-r from-[#f03262] to-[#d82a56] text-white shadow-lg'
+                                : 'text-gray-300 hover:text-white hover:bg-gray-800'
+                        }`}
+                    >
+                      {tab === 'investigation' && 'Digital Forensics'}
+                      {tab === 'hunting' && 'Suspect Tracking'}
+                      {tab === 'response' && 'Threat Response'}
+                    </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+              <div className="space-y-6">
+                {activeTab === "investigation" && (
+                    <>
+                      <h3 className="text-3xl font-bold text-white">
+                        Dark Web Evidence Collection
+                      </h3>
+                      <p className="text-gray-300">
+                        Our platform automates the preservation of digital evidence from darknet markets and forums, creating court-admissible documentation chains with cryptographic verification.
+                      </p>
+                      <ul className="space-y-4">
+                        <li className="flex items-start">
+                          <div className="bg-[#f03262]/10 p-2 rounded-lg mr-4">
+                            <MagnifyingGlassIcon className="w-5 h-5 text-[#f03262]" />
+                          </div>
+                          <div>
+                            <h4 className="font-bold text-white">Automated Archiving</h4>
+                            <p className="text-gray-400">Continuous monitoring with WARC format preservation</p>
+                          </div>
+                        </li>
+                        <li className="flex items-start">
+                          <div className="bg-[#f03262]/10 p-2 rounded-lg mr-4">
+                            <FingerPrintIcon className="w-5 h-5 text-[#f03262]" />
+                          </div>
+                          <div>
+                            <h4 className="font-bold text-white">Blockchain Verification</h4>
+                            <p className="text-gray-400">SHA-256 hashes anchored to Ethereum blockchain</p>
+                          </div>
+                        </li>
+                      </ul>
+                    </>
+                )}
+
+                {activeTab === "hunting" && (
+                    <>
+                      <h3 className="text-3xl font-bold text-white">
+                        Criminal Network Mapping
+                      </h3>
+                      <p className="text-gray-300">
+                        Advanced entity recognition and relationship mapping reveals connections between darknet personas, cryptocurrency wallets, and real-world identities.
+                      </p>
+                      <ul className="space-y-4">
+                        <li className="flex items-start">
+                          <div className="bg-[#f03262]/10 p-2 rounded-lg mr-4">
+                            <GlobeAltIcon className="w-5 h-5 text-[#f03262]" />
+                          </div>
+                          <div>
+                            <h4 className="font-bold text-white">Cross-Platform Correlation</h4>
+                            <p className="text-gray-400">Links forum handles to market vendor accounts</p>
+                          </div>
+                        </li>
+                        <li className="flex items-start">
+                          <div className="bg-[#f03262]/10 p-2 rounded-lg mr-4">
+                            <CpuChipIcon className="w-5 h-5 text-[#f03262]" />
+                          </div>
+                          <div>
+                            <h4 className="font-bold text-white">Blockchain Analysis</h4>
+                            <p className="text-gray-400">Tracks cryptocurrency flows across mixers and exchanges</p>
+                          </div>
+                        </li>
+                      </ul>
+                    </>
+                )}
+
+                {activeTab === "response" && (
+                    <>
+                      <h3 className="text-3xl font-bold text-white">
+                        Real-Time Threat Interdiction
+                      </h3>
+                      <p className="text-gray-300">
+                        Immediate alerts when your jurisdiction is targeted by darknet threats, with automated takedown request generation for clearnet infrastructure.
+                      </p>
+                      <ul className="space-y-4">
+                        <li className="flex items-start">
+                          <div className="bg-[#f03262]/10 p-2 rounded-lg mr-4">
+                            <ServerStackIcon className="w-5 h-5 text-[#f03262]" />
+                          </div>
+                          <div>
+                            <h4 className="font-bold text-white">Critical Alert System</h4>
+                            <p className="text-gray-400">Push notifications for imminent threats</p>
+                          </div>
+                        </li>
+                        <li className="flex items-start">
+                          <div className="bg-[#f03262]/10 p-2 rounded-lg mr-4">
+                            <LockClosedIcon className="w-5 h-5 text-[#f03262]" />
+                          </div>
+                          <div>
+                            <h4 className="font-bold text-white">Automated Takedowns</h4>
+                            <p className="text-gray-400">Pre-formatted abuse reports for hosting providers</p>
+                          </div>
+                        </li>
+                      </ul>
+                    </>
+                )}
+              </div>
+
+              <div className="relative h-96 lg:h-[500px] rounded-xl overflow-hidden border border-[#f03262]/30">
+                {activeTab === "investigation" && (
+                    <Image
+                        src="https://images.unsplash.com/photo-1550751827-4bd374c3f58b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80"
+                        alt="Digital Forensics"
+                        fill
+                        className="object-cover"
+                    />
+                )}
+                {activeTab === "hunting" && (
+                    <Image
+                        src="https://images.unsplash.com/photo-1563986768609-322da13575f3?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80"
+                        alt="Suspect Tracking"
+                        fill
+                        className="object-cover"
+                    />
+                )}
+                {activeTab === "response" && (
+                    <Image
+                        src="https://images.unsplash.com/photo-1620712943543-bcc4688e7485?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1085&q=80"
+                        alt="Threat Response"
+                        fill
+                        className="object-cover"
+                    />
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* CTA Section */}
+        <section className="py-32 px-6 bg-gradient-to-b from-black to-gray-900">
+          <div className="max-w-4xl mx-auto text-center">
+            <div className="bg-gray-900 border border-gray-800 rounded-2xl p-12 shadow-lg shadow-[#f03262]/10">
+              <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
+                Ready to Illuminate the Dark Web?
+              </h2>
+              <p className="text-gray-300 mb-8 max-w-2xl mx-auto">
+                Schedule a confidential demo to see how our platform can enhance your investigative capabilities
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <button className="bg-gradient-to-r from-[#f03262] to-[#d82a56] hover:from-[#f03262]/90 hover:to-[#d82a56]/90 text-white px-8 py-4 rounded-lg font-medium transition-all hover:shadow-lg hover:shadow-[#f03262]/30">
+                  Request Law Enforcement Demo
+                </button>
+                <button className="border border-[#f03262] text-[#f03262] hover:bg-[#f03262]/10 px-8 py-4 rounded-lg font-medium transition-all">
+                  Contact Cybercrime Unit
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <Footer />
+      </div>
+  );
+}

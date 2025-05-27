@@ -35,10 +35,14 @@ function StealerPageContent() {
     const resultsRef = useRef(null);
     const rowsRef = useRef([]);
     const tableRef = useRef(null);
-    const [authState, setAuthState] = useState('loading'); // Add auth state
+    const [authState, setAuthState] = useState('loading');
     const [showEmptyAlert, setShowEmptyAlert] = useState(false);
 
     const handleSearch = async () => {
+        if (authState === 'loading') {
+            console.log("Waiting for auth state...");
+            return;
+        }
 
         if (authState !== 'authenticated') {
             router.push('/login');
@@ -47,7 +51,6 @@ function StealerPageContent() {
 
         setIsLoading(true);
 
-        // Clear previous data with fade out animation
         if (stealerData.length > 0) {
             gsap.to(rowsRef.current, {
                 opacity: 0,
@@ -77,13 +80,12 @@ function StealerPageContent() {
             const data = await response.json();
             if (!data.current_page_data || data.current_page_data.length === 0) {
                 setStealerData([]);
-                setShowEmptyAlert(true); // Trigger alert kosong
+                setShowEmptyAlert(true);
                 return;
             } else {
                 setShowEmptyAlert(false);
             }
 
-            // Transform API data to match your UI structure
             const transformedData = data.current_page_data.map(item => ({
                 password: item._source?.password || 'N/A',
                 origin: item._source?.domain || 'N/A',
@@ -94,7 +96,6 @@ function StealerPageContent() {
             }));
 
             setStealerData(transformedData);
-
             setPagination(prev => ({
                 ...prev,
                 total: data.total || 0
@@ -116,7 +117,6 @@ function StealerPageContent() {
             }, 100);
         }
     };
-
 
     const handlePagination = (direction) => {
         if (direction === 'prev' && pagination.page > 1) {
@@ -150,16 +150,14 @@ function StealerPageContent() {
             });
         }
 
-        // Cleanup function
         return () => {
             rowsRef.current.forEach(row => {
                 if (row) {
-                    row.replaceWith(row.cloneNode(true)); // simple way to remove all listeners
+                    row.replaceWith(row.cloneNode(true));
                 }
             });
         };
     }, [stealerData, isLoading]);
-
 
     useEffect(() => {
         const checkLoginStatus = async () => {
@@ -183,10 +181,12 @@ function StealerPageContent() {
         if (query) {
             setDomain(query);
             setPagination(prev => ({...prev, page: 1}));
-            // Delay search to allow state updates
-            setTimeout(() => handleSearch(), 100);
+
+            if (authState === 'authenticated') {
+                setTimeout(() => handleSearch(), 100);
+            }
         }
-    }, [searchParams]);
+    }, [searchParams, authState]);
 
 
     return (
