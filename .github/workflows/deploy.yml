@@ -1,0 +1,47 @@
+name: Deploy to GCP VM
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+
+    - name: Install dependencies
+      run: npm install
+
+    - name: Build Next.js app
+      run: npm run build
+
+    - name: Debug - list output folder
+      run: ls -la && ls -la out
+
+    - name: Copy files to VM
+      uses: appleboy/scp-action@v0.1.7
+      with:
+        host: ${{ secrets.GCLOUD_VM_HOST }}
+        username: ${{ secrets.GCLOUD_VM_USER }}
+        key: ${{ secrets.GCLOUD_SSH_KEY }}
+        source: "out"
+        target: "/home/agenghermawan32/app"
+
+
+    - name: Restart App via SSH
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.GCLOUD_VM_HOST }}
+        username: ${{ secrets.GCLOUD_VM_USER }}
+        key: ${{ secrets.GCLOUD_SSH_KEY }}
+        script: |
+          sudo systemctl restart nginx
