@@ -24,17 +24,13 @@ jobs:
       - name: Build Next.js
         run: npm run build
 
-      - name: Export (jika pakai static export)
-        run: npm run export
-        if: false  # kamu bisa hapus ini kalau pakai `next export`
-
       - name: Copy files to GCP VM via SSH
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.GCP_VM_HOST }}
           username: ${{ secrets.GCP_VM_USER }}
           key: ${{ secrets.GCP_SSH_KEY }}
-          source: ".next,package.json,public,node_modules"
+          source: ".next,package.json,public,pages,next.config.js"
           target: "/home/agenghermawan32/app"
 
       - name: Run remote commands via SSH
@@ -44,6 +40,6 @@ jobs:
           username: ${{ secrets.GCP_VM_USER }}
           key: ${{ secrets.GCP_SSH_KEY }}
           script: |
-            cd ~/next-app
+            cd ~/app
             npm install --production
             pm2 restart next || pm2 start npm --name "next" -- start
