@@ -1,15 +1,16 @@
 'use client'
-import Navbar from "../../components/navbar";
-import Globe from "../../components/globe";
-import Image from "next/image";
-import Link from "next/link";
-import {useEffect, useState} from "react";
-import Footer from "../../components/footer";
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import Script from 'next/script';
+import Navbar from '../../components/navbar';
+import Footer from '../..//components/footer';
 
 export default function PricingPage() {
     const [authState, setAuthState] = useState('loading');
     const [currentPlan, setCurrentPlan] = useState(null);
     const [remainingScans, setRemainingScans] = useState(null);
+    const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
+    const [selectedPlan, setSelectedPlan] = useState(null);
 
     useEffect(() => {
         const checkLoginStatus = async () => {
@@ -44,6 +45,68 @@ export default function PricingPage() {
 
         checkLoginStatus();
     }, []);
+
+    const handlePlanSelect = (plan) => {
+        if (authState === 'authenticated') {
+            setSelectedPlan(plan);
+            setShowSubscriptionModal(true);
+        } else {
+            // Redirect to login with plan highlight
+            window.location.href = `/login?redirect=/pricing&highlight=${plan.id}`;
+        }
+    };
+
+    const calculateDiscountedPrice = (basePrice, billingCycle) => {
+        const baseAmount = parseFloat(basePrice.replace('$', ''));
+        
+        // Apply discounts based on billing cycle
+        switch (billingCycle) {
+            case 'yearly':
+                return baseAmount * 10 * 0.8; // 20% discount for yearly
+            case 'quarterly':
+                return baseAmount * 3 * 0.9; // 10% discount for quarterly
+            case 'monthly':
+                return baseAmount;
+            case 'weekly':
+                return baseAmount / 4; // Weekly price is 1/4 of monthly
+            default:
+                return baseAmount;
+        }
+    };
+
+    const handleAtlosPayment = (plan, billingCycle) => {
+        const orderId = `order_${Date.now()}`;
+        const orderAmount = calculateDiscountedPrice(plan.price, billingCycle);
+        
+        if (window.atlos) {
+            window.atlos.Pay({
+                merchantId: process.env.NEXT_PUBLIC_ATLOS_MERCHANT_ID || 'XYZ123',
+                orderId: orderId,
+                orderAmount: orderAmount,
+                metadata: {
+                    planId: plan.id,
+                    billingCycle: billingCycle,
+                    domains: plan.domains,
+                    features: plan.features.join(', ')
+                },
+                onSuccess: () => {
+                    // You can add success handling here
+                    console.log('Payment successful');
+                },
+                onFailure: (error) => {
+                    // You can add error handling here
+                    console.error('Payment failed:', error);
+                }
+            });
+        } else {
+            console.error('Atlos payment script not loaded');
+        }
+    };
+
+    const handleSubscriptionSelect = (billingCycle) => {
+        handleAtlosPayment(selectedPlan, billingCycle);
+        setShowSubscriptionModal(false);
+    };
 
     const plans = [
         {
@@ -151,7 +214,71 @@ export default function PricingPage() {
 
     return (
         <div className="relative overflow-x-hidden">
+            {/* Atlos.io Payment Script */}
+            <Script src="https://atlos.io/packages/app/atlos.js" strategy="afterInteractive" />
+            
             <Navbar/>
+
+            {/* Subscription Modal */}
+            {showSubscriptionModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-[#1A1B1E] rounded-2xl p-8 max-w-md w-full">
+                        <h2 className="text-2xl font-bold text-white mb-4">Select Billing Cycle</h2>
+                        <p className="text-gray-400 mb-6">Choose how often you want to be billed</p>
+                        
+                        <div className="space-y-3 mb-6">
+                            <button 
+                                onClick={() => handleSubscriptionSelect('weekly')}
+                                className="w-full py-3 px-4 bg-gray-700 hover:bg-gray-600 rounded-md text-white text-left flex justify-between items-center"
+                            >
+                                <span>Weekly</span>
+                                <span className="font-bold">
+                                    ${calculateDiscountedPrice(selectedPlan.price, 'weekly').toFixed(2)}/week
+                                </span>
+                            </button>
+                            
+                            <button 
+                                onClick={() => handleSubscriptionSelect('monthly')}
+                                className="w-full py-3 px-4 bg-gray-700 hover:bg-gray-600 rounded-md text-white text-left flex justify-between items-center"
+                            >
+                                <span>Monthly</span>
+                                <span className="font-bold">
+                                    ${calculateDiscountedPrice(selectedPlan.price, 'monthly').toFixed(2)}/month
+                                </span>
+                            </button>
+                            
+                            <button 
+                                onClick={() => handleSubscriptionSelect('quarterly')}
+                                className="w-full py-3 px-4 bg-gray-700 hover:bg-gray-600 rounded-md text-white text-left flex justify-between items-center"
+                            >
+                                <span>Quarterly</span>
+                                <span className="font-bold">
+                                    ${calculateDiscountedPrice(selectedPlan.price, 'quarterly').toFixed(2)}/quarter
+                                    <span className="text-sm text-green-400 ml-2">(Save 10%)</span>
+                                </span>
+                            </button>
+                            
+                            <button 
+                                onClick={() => handleSubscriptionSelect('yearly')}
+                                className="w-full py-3 px-4 bg-[#f33d74] hover:bg-[#e63368] rounded-md text-white text-left flex justify-between items-center"
+                            >
+                                <span>Yearly</span>
+                                <span className="font-bold">
+                                    ${calculateDiscountedPrice(selectedPlan.price, 'yearly').toFixed(2)}/year
+                                    <span className="text-sm text-green-400 ml-2">(Save 20%)</span>
+                                </span>
+                            </button>
+                        </div>
+                        
+                        <button 
+                            onClick={() => setShowSubscriptionModal(false)}
+                            className="w-full py-2 text-gray-400 hover:text-white"
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* Pricing Section */}
             <section
@@ -229,32 +356,30 @@ export default function PricingPage() {
                                             Current Plan
                                         </button>
                                     ) : (
-                                        <Link href={`/upgrade?plan=${plan.id}`}>
-                                            <button className={`w-full py-3 rounded-md font-medium ${
+                                        <button 
+                                            onClick={() => handlePlanSelect(plan)}
+                                            className={`w-full py-3 rounded-md font-medium ${
                                                 plan.popular ? 'bg-[#f33d74] hover:bg-[#e63368]' : 'bg-gray-700 hover:bg-gray-600'
-                                            } transition-colors duration-300`}>
-                                                {plan.id === 'free' ? 'Downgrade' : 'Upgrade Now'}
-                                            </button>
-                                        </Link>
+                                            } transition-colors duration-300`}
+                                        >
+                                            Upgrade Now
+                                        </button>
                                     )
                                 ) : (
-                                    <Link href={{
-                                        pathname: '/login',
-                                        query: {redirect: `/pricing?highlight=${plan.id}`}
-                                    }}>
-                                        <button className={`w-full py-3 rounded-md font-medium ${
+                                    <button 
+                                        onClick={() => handlePlanSelect(plan)}
+                                        className={`w-full py-3 rounded-md font-medium ${
                                             plan.popular ? 'bg-[#f33d74] hover:bg-[#e63368]' : 'bg-gray-700 hover:bg-gray-600'
-                                        } transition-colors duration-300`}>
-                                            Get Started
-                                        </button>
-                                    </Link>
+                                        } transition-colors duration-300`}
+                                    >
+                                        Get Started
+                                    </button>
                                 )}
                             </div>
                         ))}
                     </div>
                 </div>
             </section>
-
 
             {/* Footer Section */}
             <Footer/>

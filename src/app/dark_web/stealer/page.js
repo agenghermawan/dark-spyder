@@ -32,11 +32,29 @@ function StealerPageContent() {
         size: 10,
         total: 0
     });
+    const [hasSubscription, setHasSubscription] = useState(true);
     const resultsRef = useRef(null);
     const rowsRef = useRef([]);
     const tableRef = useRef(null);
     const [authState, setAuthState] = useState('loading');
     const [showEmptyAlert, setShowEmptyAlert] = useState(false);
+
+    const checkSubscriptionStatus = async () => {
+        try {
+            const res = await fetch("/api/me", {
+                credentials: "include",
+            });
+            
+            if (res.ok) {
+                const data = await res.json();
+                setHasSubscription(data.user?.subscription?.status === 'active');
+                return data.user?.subscription?.status === 'active';
+            }
+            return false;
+        } catch {
+            return false;
+        }
+    };
 
     const handleSearch = async () => {
         if (authState === 'loading') {
@@ -50,6 +68,7 @@ function StealerPageContent() {
         }
 
         setIsLoading(true);
+        const isSubscribed = await checkSubscriptionStatus();
 
         if (stealerData.length > 0) {
             gsap.to(rowsRef.current, {
@@ -59,25 +78,29 @@ function StealerPageContent() {
                 stagger: 0.05,
                 ease: "power2.in",
                 onComplete: () => {
-                    loadNewData();
+                    loadNewData(isSubscribed);
                 }
             });
         } else {
-            await loadNewData();
+            await loadNewData(isSubscribed);
         }
     };
 
-    const loadNewData = async () => {
+    const loadNewData = async (isSubscribed) => {
         try {
             setIsLoading(true);
             setStealerData([]);
-            const response = await fetch(`/api/proxy?q=${domain}&type=stealer&page=${pagination.page}&size=${pagination.size}`);
+            
+            const response = await fetch(
+                `/api/proxy?q=${domain}&type=stealer&page=${pagination.page}&size=${pagination.size}`
+            );
 
             if (!response.ok) {
                 throw new Error(`Network response was not ok: ${response.status} ${response.statusText}`);
             }
 
             const data = await response.json();
+            
             if (!data.current_page_data || data.current_page_data.length === 0) {
                 setStealerData([]);
                 setShowEmptyAlert(true);
@@ -86,16 +109,31 @@ function StealerPageContent() {
                 setShowEmptyAlert(false);
             }
 
-            const transformedData = data.current_page_data.map(item => ({
-                password: item._source?.password || 'N/A',
-                origin: item._source?.domain || 'N/A',
-                email: item._source?.username || 'N/A',
-                source: item._source?.threatintel || 'Unknown',
-                lastBreach: "N/A",
-                checksum: item._source?.Checksum || 'N/A'
-            }));
+            // If user has subscription, show all data
+            // if (isSubscribed) {
+            if (true) {
+                const transformedData = data.current_page_data.map(item => ({
+                    password: item._source?.password || 'N/A',
+                    origin: item._source?.domain || 'N/A',
+                    email: item._source?.username || 'N/A',
+                    source: item._source?.threatintel || 'Unknown',
+                    lastBreach: "N/A",
+                    checksum: item._source?.Checksum || 'N/A'
+                }));
+                setStealerData(transformedData);
+            } else {
+                // If no subscription, show teaser with just the count
+                setStealerData([{
+                    password: '🔒 Subscription Required',
+                    origin: domain,
+                    email: `${data.total} results found`,
+                    source: 'Upgrade to view',
+                    lastBreach: "N/A",
+                    checksum: 'N/A',
+                    isTeaser: true
+                }]);
+            }
 
-            setStealerData(transformedData);
             setPagination(prev => ({
                 ...prev,
                 total: data.total || 0
@@ -188,7 +226,6 @@ function StealerPageContent() {
         }
     }, [searchParams, authState]);
 
-
     return (
         <div>
             <Navbar/>
@@ -198,16 +235,16 @@ function StealerPageContent() {
                 <CyberParticles/>
 
                 {/* Floating text on top of Globe */}
-                <section
-                    className="absolute inset-0 flex items-center justify-center px-4 sm:px-6 lg:px-8 text-white z-10">
+                <section className="absolute inset-0 flex items-center justify-center px-4 sm:px-6 lg:px-8 text-white z-10">
                     <div className="max-w-3xl mx-auto text-center">
                         <h2 className="text-4xl font-bold mb-4">Uncover Hidden Threats</h2>
                         <p className="text-xl mb-8 text-gray-300">
-                            Run recon on exposed credentials <br/> across the darknet using breach intelligence.
+                            {hasSubscription 
+                                ? "Full access to all compromised credentials"
+                                : "Subscribe to unlock full access to breach data"}
                         </p>
 
-                        <div
-                            className="flex flex-row gap-2 max-w-xl mx-auto shadow-lg rounded-lg overflow-hidden w-full">
+                        <div className="flex flex-row gap-2 max-w-xl mx-auto shadow-lg rounded-lg overflow-hidden w-full">
                             <input
                                 type="text"
                                 value={domain}
@@ -243,13 +280,13 @@ function StealerPageContent() {
             {stealerData.length > 0 && (
                 <section className="py-16 px-4 sm:px-6 lg:px-8 bg-[#0f0f10]" ref={resultsRef}>
                     <div className="max-w-7xl mx-auto">
-                        <p className="text-sm uppercase text-green-500 mb-2 tracking-widest text-center">🧠 Threat Intel
-                            Extract</p>
-                        <h2 className="text-4xl font-light text-white mb-8 text-center">Compromised Credentials</h2>
+                        <p className="text-sm uppercase text-green-500 mb-2 tracking-widest text-center">🧠 Threat Intel Extract</p>
+                        <h2 className="text-4xl font-light text-white mb-8 text-center">
+                            {hasSubscription ? "Compromised Credentials" : "🔒 Subscription Required"}
+                        </h2>
 
                         <div className="overflow-x-auto" ref={tableRef}>
-                            <table
-                                className="min-w-full bg-gradient-to-br from-[#111215]/90 via-[#1a1b20]/90 to-[#111215]/90 backdrop-blur-lg text-white rounded-xl shadow-2xl font-mono border border-[#2e2e2e] overflow-hidden">
+                            <table className="min-w-full bg-gradient-to-br from-[#111215]/90 via-[#1a1b20]/90 to-[#111215]/90 backdrop-blur-lg text-white rounded-xl shadow-2xl font-mono border border-[#2e2e2e] overflow-hidden">
                                 <thead>
                                 <tr className="text-left border-b border-gray-700 text-gray-400 bg-gradient-to-r from-[#1e1e24] to-[#2a2a32]">
                                     <th className="py-4 px-6">Exposed Data</th>
@@ -263,67 +300,73 @@ function StealerPageContent() {
                                     <tr
                                         key={index}
                                         ref={el => rowsRef.current[index] = el}
-                                        className="border-b border-gray-800 hover:bg-gradient-to-r from-[#1a1a20] to-[#25252d] transition-all duration-300 group"
+                                        className={`border-b border-gray-800 ${!entry.isTeaser ? 'hover:bg-gradient-to-r from-[#1a1a20] to-[#25252d]' : 'bg-gradient-to-r from-[#1a1a20]/50 to-[#25252d]/50'} transition-all duration-300 group`}
                                     >
                                         <td className="py-4 px-6">
                                             <div className="space-y-2">
                                                 <div className="flex items-center">
-                                                    <span
-                                                        className="text-xs bg-gradient-to-r from-purple-600 to-purple-800 px-2 py-1 rounded mr-2">🧬 pass</span>
-                                                    <span
-                                                        className="font-medium group-hover:text-purple-300 transition-colors">{entry.password}</span>
+                                                    <span className={`text-xs ${entry.isTeaser ? 'bg-gradient-to-r from-gray-600 to-gray-800' : 'bg-gradient-to-r from-purple-600 to-purple-800'} px-2 py-1 rounded mr-2`}>
+                                                        {entry.isTeaser ? '🔒' : '🧬'} pass
+                                                    </span>
+                                                    <span className={`font-medium ${entry.isTeaser ? 'text-gray-400' : 'group-hover:text-purple-300'} transition-colors`}>
+                                                        {entry.password}
+                                                    </span>
                                                 </div>
                                                 <div className="flex items-center">
-                                                    <span
-                                                        className="text-xs bg-gradient-to-r from-blue-600 to-blue-800 px-2 py-1 rounded mr-2">🌐 origin</span>
-                                                    <span
-                                                        className="group-hover:text-blue-300 transition-colors">{entry.origin}</span>
+                                                    <span className={`text-xs ${entry.isTeaser ? 'bg-gradient-to-r from-gray-600 to-gray-800' : 'bg-gradient-to-r from-blue-600 to-blue-800'} px-2 py-1 rounded mr-2`}>
+                                                        {entry.isTeaser ? '🔍' : '🌐'} origin
+                                                    </span>
+                                                    <span className={`${entry.isTeaser ? 'text-gray-300' : 'group-hover:text-blue-300'} transition-colors`}>
+                                                        {entry.origin}
+                                                    </span>
                                                 </div>
                                                 <div className="flex items-center">
-                                                    <span
-                                                        className="text-xs bg-gradient-to-r from-green-600 to-green-800 px-2 py-1 rounded mr-2">📧 identity</span>
-                                                    <span
-                                                        className="group-hover:text-green-300 transition-colors">{entry.email}</span>
+                                                    <span className={`text-xs ${entry.isTeaser ? 'bg-gradient-to-r from-gray-600 to-gray-800' : 'bg-gradient-to-r from-green-600 to-green-800'} px-2 py-1 rounded mr-2`}>
+                                                        {entry.isTeaser ? '📊' : '📧'} identity
+                                                    </span>
+                                                    <span className={`${entry.isTeaser ? 'text-gray-300' : 'group-hover:text-green-300'} transition-colors`}>
+                                                        {entry.email}
+                                                    </span>
                                                 </div>
                                             </div>
                                         </td>
                                         <td className="py-4 px-6">
-                                            <span
-                                                className="inline-flex items-center px-3 py-1 rounded-full bg-gradient-to-r from-gray-700 to-gray-800 text-gray-300 text-sm">
+                                            <span className={`inline-flex items-center px-3 py-1 rounded-full ${entry.isTeaser ? 'bg-gradient-to-r from-gray-700 to-gray-800' : 'bg-gradient-to-r from-gray-700 to-gray-800'} text-gray-300 text-sm`}>
                                                 {entry.source}
                                             </span>
                                         </td>
                                         <td className="py-4 px-6">
-                                            <span
-                                                className={`inline-flex items-center px-3 py-1 rounded-full text-sm ${entry.lastBreach === "N/A" ? 'bg-gradient-to-r from-gray-700 to-gray-800 text-gray-400' : 'bg-gradient-to-r from-red-700 to-red-800 text-red-100'}`}>
+                                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm ${entry.lastBreach === "N/A" ? 'bg-gradient-to-r from-gray-700 to-gray-800 text-gray-400' : 'bg-gradient-to-r from-red-700 to-red-800 text-red-100'}`}>
                                                 {entry.lastBreach}
                                             </span>
                                         </td>
                                         <td className="py-4 px-6 text-center">
-                                            <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
+                                            {entry.isTeaser ? (
                                                 <button
-                                                    className="bg-gradient-to-r from-cyan-600 to-cyan-700 hover:from-cyan-500 hover:to-cyan-600 text-white px-4 py-2 rounded-lg text-sm transition-all transform hover:scale-105 shadow-lg hover:shadow-cyan-500/20 flex items-center justify-center gap-1"
+                                                    onClick={() => router.push('/pricing')}
+                                                    className="bg-gradient-to-r from-[#f03262] to-[#c91d4e] hover:from-[#e63368] hover:to-[#d11a4f] text-white px-4 py-2 rounded-lg text-sm transition-all transform hover:scale-105 shadow-lg hover:shadow-[#f03262]/20 flex items-center justify-center gap-1"
                                                 >
-                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4"
-                                                         fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path strokeLinecap="round" strokeLinejoin="round"
-                                                              strokeWidth={2}
-                                                              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                                                     </svg>
-                                                    Extract Logs
+                                                    Upgrade Now
                                                 </button>
-                                                <button
-                                                    className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white px-4 py-2 rounded-lg text-sm transition-all transform hover:scale-105 shadow-lg hover:shadow-purple-500/20 flex items-center justify-center gap-1"
-                                                >
-                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4"
-                                                         fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path strokeLinecap="round" strokeLinejoin="round"
-                                                              strokeWidth={2}
-                                                              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                                    </svg>
-                                                    Confirm Breach
-                                                </button>
-                                            </div>
+                                            ) : (
+                                                <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
+                                                    <button className="bg-gradient-to-r from-cyan-600 to-cyan-700 hover:from-cyan-500 hover:to-cyan-600 text-white px-4 py-2 rounded-lg text-sm transition-all transform hover:scale-105 shadow-lg hover:shadow-cyan-500/20 flex items-center justify-center gap-1">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                                                        </svg>
+                                                        Extract Logs
+                                                    </button>
+                                                    <button className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white px-4 py-2 rounded-lg text-sm transition-all transform hover:scale-105 shadow-lg hover:shadow-purple-500/20 flex items-center justify-center gap-1">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                                        </svg>
+                                                        Confirm Breach
+                                                    </button>
+                                                </div>
+                                            )}
                                         </td>
                                     </tr>
                                 ))}
@@ -331,74 +374,65 @@ function StealerPageContent() {
                             </table>
                             <div className="mt-6 flex justify-between items-center">
                                 <p className="text-gray-500 text-sm">
-                                    Showing {stealerData.length} of {pagination.total} entries (Page {pagination.page})
+                                    Showing {hasSubscription ? stealerData.length : 1} of {pagination.total} entries (Page {pagination.page})
                                 </p>
-                                <div className="flex space-x-2">
-                                    <button
-                                        onClick={() => handlePagination('prev')}
-                                        disabled={pagination.page === 1}
-                                        className={`px-4 py-2 text-sm ${pagination.page === 1 ? 'bg-gray-800 cursor-not-allowed' : 'bg-gray-800 hover:bg-gray-700'} rounded-lg transition-colors`}
-                                    >
-                                        Previous
-                                    </button>
-                                    <button
-                                        onClick={() => handlePagination('next')}
-                                        disabled={pagination.page * pagination.size >= pagination.total}
-                                        className={`px-4 py-2 text-sm ${pagination.page * pagination.size >= pagination.total ? 'bg-[#f03262]/50 cursor-not-allowed' : 'bg-[#f03262] hover:bg-[#c91d4e]'} rounded-lg transition-colors`}
-                                    >
-                                        Next
-                                    </button>
-                                </div>
+                                {hasSubscription && (
+                                    <div className="flex space-x-2">
+                                        <button
+                                            onClick={() => handlePagination('prev')}
+                                            disabled={pagination.page === 1}
+                                            className={`px-4 py-2 text-sm ${pagination.page === 1 ? 'bg-gray-800 cursor-not-allowed' : 'bg-gray-800 hover:bg-gray-700'} rounded-lg transition-colors`}
+                                        >
+                                            Previous
+                                        </button>
+                                        <button
+                                            onClick={() => handlePagination('next')}
+                                            disabled={pagination.page * pagination.size >= pagination.total}
+                                            className={`px-4 py-2 text-sm ${pagination.page * pagination.size >= pagination.total ? 'bg-[#f03262]/50 cursor-not-allowed' : 'bg-[#f03262] hover:bg-[#c91d4e]'} rounded-lg transition-colors`}
+                                        >
+                                            Next
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
                 </section>
             )}
 
-
-            {
-                showEmptyAlert && (
-                    <section className="py-16 px-4 sm:px-6 lg:px-8 bg-[#0f0f10]" ref={resultsRef}>
-                        <div className="max-w-7xl mx-auto">
-                            <p className="text-sm uppercase text-green-500 mb-2 tracking-widest text-center">🧠 Threat Intel
-                                Extract</p>
-                            <h2 className="text-4xl font-light text-white mb-8 text-center">Compromised Credentials</h2>
-
-                            <div className="overflow-x-auto" ref={tableRef}>
-                                <table
-                                    className="min-w-full bg-gradient-to-br from-[#111215]/90 via-[#1a1b20]/90 to-[#111215]/90 backdrop-blur-lg text-white rounded-xl shadow-2xl font-mono border border-[#2e2e2e] overflow-hidden">
-                                    <thead>
-                                    <tr className="text-left border-b border-gray-700 text-gray-400 bg-gradient-to-r from-[#1e1e24] to-[#2a2a32]">
-                                        <th className="py-4 px-6">Exposed Data</th>
-                                        <th className="py-4 px-6">Intel Source</th>
-                                        <th className="py-4 px-6">Last Seen in Dump</th>
-                                        <th className="py-4 px-6 text-center">Actions</th>
-                                    </tr>
-                                    </thead>
-                                    <tbody>
-                                    <tr className="border-b border-gray-800">
-                                        <td colSpan="4" className="py-8 px-6 text-center text-gray-400">
-                                            <div className="flex flex-col items-center justify-center">
-                                                <svg className="w-12 h-12 mb-4 text-gray-600" fill="none"
-                                                     stroke="currentColor"
-                                                     viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5"
-                                                          d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                                </svg>
-                                                <p className="text-lg font-medium">No compromised credentials found</p>
-                                                <p className="text-sm mt-1">Try searching with different keyword</p>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    </tbody>
-                                </table>
-                            </div>
+            {showEmptyAlert && (
+                <section className="py-16 px-4 sm:px-6 lg:px-8 bg-[#0f0f10]" ref={resultsRef}>
+                    <div className="max-w-7xl mx-auto">
+                        <p className="text-sm uppercase text-green-500 mb-2 tracking-widest text-center">🧠 Threat Intel Extract</p>
+                        <h2 className="text-4xl font-light text-white mb-8 text-center">Compromised Credentials</h2>
+                        <div className="overflow-x-auto" ref={tableRef}>
+                            <table className="min-w-full bg-gradient-to-br from-[#111215]/90 via-[#1a1b20]/90 to-[#111215]/90 backdrop-blur-lg text-white rounded-xl shadow-2xl font-mono border border-[#2e2e2e] overflow-hidden">
+                                <thead>
+                                <tr className="text-left border-b border-gray-700 text-gray-400 bg-gradient-to-r from-[#1e1e24] to-[#2a2a32]">
+                                    <th className="py-4 px-6">Exposed Data</th>
+                                    <th className="py-4 px-6">Intel Source</th>
+                                    <th className="py-4 px-6">Last Seen in Dump</th>
+                                    <th className="py-4 px-6 text-center">Actions</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr className="border-b border-gray-800">
+                                    <td colSpan="4" className="py-8 px-6 text-center text-gray-400">
+                                        <div className="flex flex-col items-center justify-center">
+                                            <svg className="w-12 h-12 mb-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                            </svg>
+                                            <p className="text-lg font-medium">No compromised credentials found</p>
+                                            <p className="text-sm mt-1">Try searching with different keyword</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                                </tbody>
+                            </table>
                         </div>
-                    </section>
-
-
-                )
-            }
+                    </div>
+                </section>
+            )}
         </div>
     );
 }
