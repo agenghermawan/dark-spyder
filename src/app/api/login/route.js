@@ -23,7 +23,7 @@ export async function POST(req) {
         // Membuat JWT token
         const token = jwt.sign(
             {user},
-            process.env.JWT_SECRET,
+            'asdfasdfasdfasdf', // Ganti dengan secret key yang aman
             {expiresIn: '1d'}
         );
 

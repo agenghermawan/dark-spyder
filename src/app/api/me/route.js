@@ -12,7 +12,7 @@ export async function GET(req) {
 
     try {
         // Verifikasi dan dekode token
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const decoded = jwt.verify(token, 'asdfasdfasdfasdf'); // Ganti dengan secret key yang sesuai
         console.log("Decoded user:", decoded.user);  // Memastikan data user terdekripsi dengan benar
 
         return NextResponse.json({ user: decoded.user });
