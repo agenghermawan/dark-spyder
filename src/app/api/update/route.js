@@ -2,14 +2,10 @@ export const dynamic = 'force-dynamic';
 import jwt from "jsonwebtoken";
 
 export async function GET(req) {
-    console.log("🔍 Proxy route accessed");
-
     // Retrieve search parameters from the URL
     const {searchParams} = new URL(req.url);
     const q = searchParams.get('q');
     const type = searchParams.get('type');
-    const page = searchParams.get('page');
-    const size = searchParams.get('size');
 
     const token = req.cookies.get("token")?.value;
 
@@ -29,7 +25,9 @@ export async function GET(req) {
             {status: 401, headers: {'Content-Type': 'application/json'}}
         );
     }
-    const res = await fetch(`http://103.245.181.5:5001/search?q=${q}&type=${type}&page=${page}&size=${size}`, {
+
+    // Ganti endpoint update sesuai backend kamu
+    const res = await fetch(`http://103.245.181.5:5001/update?q=${q}&type=${type}`, {
         headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${decodedUser.user}`

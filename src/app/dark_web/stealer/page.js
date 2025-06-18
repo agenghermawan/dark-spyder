@@ -174,32 +174,7 @@ function StealerPageContent() {
     }
   }, [pagination.page]);
 
-  useEffect(() => {
-    const handleMouseEnter = (row) => {
-      gsap.to(row, {
-        scale: 1.02,
-        boxShadow: "0 10px 25px -5px rgba(240, 50, 98, 0.3)",
-        duration: 0.3,
-        ease: "power2.out",
-      });
-    };
 
-    if (stealerData.length > 0 && !isLoading) {
-      rowsRef.current.forEach((row) => {
-        if (row) {
-          row.addEventListener("mouseenter", () => handleMouseEnter(row));
-        }
-      });
-    }
-
-    return () => {
-      rowsRef.current.forEach((row) => {
-        if (row) {
-          row.replaceWith(row.cloneNode(true));
-        }
-      });
-    };
-  }, [stealerData, isLoading]);
 
   useEffect(() => {
     const checkLoginStatus = async () => {
@@ -359,9 +334,18 @@ function StealerPageContent() {
                             </span>
                           </div>
                           <div className="flex items-center">
-                            <button onClick={console.log("clicked")}>
-                              Read More
-                            </button>
+                            <span
+                              className={`${
+                                entry.isTeaser
+                                  ? "text-gray-300"
+                                  : "group-hover:text-blue-300"
+                              } transition-colors`}
+                            >
+                              <DomainList
+                                domainsString={entry.origin}
+                                limit={3}
+                              />
+                            </span>
                           </div>
                           <div className="flex items-center">
                             <span
@@ -753,3 +737,31 @@ function CyberParticles() {
     />
   );
 }
+
+const DomainList = ({ domainsString, limit = 3 }) => {
+  // Pisahkan string jadi array
+  const domains = domainsString
+    .split(",")
+    .map((d) => d.trim())
+    .filter(Boolean);
+  const [showAll, setShowAll] = useState(false);
+
+  if (domains.length === 0) return <span>-</span>;
+
+  return (
+    <span>
+      {showAll
+        ? domains.join(", ")
+        : domains.slice(0, limit).join(", ") +
+          (domains.length > limit ? ", ..." : "")}
+      {domains.length > limit && (
+        <button
+          onClick={() => setShowAll((prev) => !prev)}
+          className="ml-2 text-blue-400 hover:underline focus:outline-none text-xs"
+        >
+          {showAll ? "Read Less" : "Read More"}
+        </button>
+      )}
+    </span>
+  );
+};

@@ -140,6 +140,21 @@ export default function LeaksPage() {
         }).filter(Boolean); // Remove any null/undefined entries
     };
 
+    const callUpdateEndpoint = async (q) => {
+        try {
+            const response = await fetch(`/api/update?q=${encodeURIComponent(searchQuery)}&type=all`, {
+                method: "GET",
+                credentials: "include"
+            });
+            
+            if (!response.ok) {
+                console.error("Failed to trigger update endpoint.");
+            }
+        } catch (error) {
+            console.error("Error calling update endpoint:", error);
+        }
+    };
+
     const loadNewData = async (isSubscribed) => {
         try {
             setIsLoading(true);
@@ -158,6 +173,8 @@ export default function LeaksPage() {
             if (!data.current_page_data || data.current_page_data.length === 0) {
                 setBreachData([]);
                 setShowEmptyAlert(true);
+
+                await callUpdateEndpoint(searchQuery);
                 return;
             } else {
                 setShowEmptyAlert(false);
@@ -219,29 +236,6 @@ export default function LeaksPage() {
         }
     }, [pagination.page]);
 
-    useEffect(() => {
-        if (breachData.length > 0 && !isLoading) {
-            rowsRef.current.forEach(row => {
-                row?.addEventListener('mouseenter', () => {
-                    gsap.to(row, {
-                        scale: 1.02,
-                        boxShadow: "0 10px 25px -5px rgba(10, 175, 255, 0.3)",
-                        duration: 0.3,
-                        ease: "power2.out"
-                    });
-                });
-                
-                row?.addEventListener('mouseleave', () => {
-                    gsap.to(row, {
-                        scale: 1,
-                        boxShadow: "none",
-                        duration: 0.3,
-                        ease: "power2.out"
-                    });
-                });
-            });
-        }
-    }, [breachData, isLoading]);
 
     useEffect(() => {
         const checkLoginStatus = async () => {
@@ -479,8 +473,6 @@ export default function LeaksPage() {
         </div>
     );
 }
-
-
 
 function LeaksParticles() {
     const canvasRef = useRef(null);
