@@ -1,22 +1,20 @@
 export const dynamic = 'force-dynamic';
-import jwt from "jsonwebtoken";
 
 export async function GET(req) {
-    // Parse all params
+    // Parse all params dari URL
     const { searchParams } = new URL(req.url);
 
-    // Build backend query string dynamically
+    // Build backend query string
     let backendUrl = "http://103.245.181.5:5001/search?";
     let paramsArr = [];
     for (const [key, value] of searchParams.entries()) {
-        // Only append non-empty params
         if (value && value !== "undefined" && value !== "null") {
             paramsArr.push(`${encodeURIComponent(key)}=${encodeURIComponent(value)}`);
         }
     }
     backendUrl += paramsArr.join('&');
 
-    // Auth (same as your code)
+    // Ambil token JWT dari cookie
     const token = req.cookies.get("token")?.value;
     if (!token) {
         return new Response(
@@ -25,21 +23,11 @@ export async function GET(req) {
         );
     }
 
-    let decodedUser;
-    try {
-        decodedUser = jwt.decode(token);
-    } catch (error) {
-        return new Response(
-            JSON.stringify({ message: "Failed to decode token" }),
-            { status: 401, headers: { 'Content-Type': 'application/json' } }
-        );
-    }
-
-    // Fetch from backend!
+    // Proxy request ke backend dengan JWT token dari cookie
     const res = await fetch(backendUrl, {
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${decodedUser.user}`
+            'Authorization': `Bearer ${token}` // <-- pakai token asli!
         }
     });
 

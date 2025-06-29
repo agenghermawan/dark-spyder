@@ -16,7 +16,7 @@ export default function LeaksPage() {
     const [searchInput, setSearchInput] = useState("");
     const [searchQuery, setSearchQuery] = useState(""); // show all by default
     const [isLoading, setIsLoading] = useState(false);
-    const [pagination, setPagination] = useState({page: 1, size: DEFAULT_SIZE, total: 0});
+    const [pagination, setPagination] = useState({ page: 1, size: DEFAULT_SIZE, total: 0 });
     const [sizeInput, setSizeInput] = useState(DEFAULT_SIZE);
     const [pageInput, setPageInput] = useState(1);
     const resultsRef = useRef(null);
@@ -24,104 +24,85 @@ export default function LeaksPage() {
     const [authState, setAuthState] = useState("loading");
     const [showEmptyAlert, setShowEmptyAlert] = useState(false);
     const [hasSubscription, setHasSubscription] = useState(false);
+    const [hasSearched, setHasSearched] = useState(false); // <- supaya tidak auto-fetch di awal
 
-
-    // Check subscription status
-    const checkSubscriptionStatus = async () => {
-        try {
-            const res = await fetch("/api/me", {credentials: "include"});
-            if (res.ok) {
-                const data = await res.json();
-                setHasSubscription(data.user?.subscription?.status === "active");
-                return data.user?.subscription?.status === "active";
-            }
-            return false;
-        } catch {
-            return false;
-        }
-    };
-
-    // Transform API data to card format
+    // Transform API data to card format (jangan sampai flatten lebih dari yang diterima)
     const transformBreachData = (apiData) => {
         return apiData.current_page_data
-            .flatMap((item) => {
+            .map((item) => {
                 const source = item._source;
-                const data = source?.Data;
-                const isArrayData = Array.isArray(data);
-                const isObjectData = data && typeof data === "object" && !Array.isArray(data);
-                const dataItems = isArrayData ? data : isObjectData ? [data] : [];
-                return dataItems.map((dataItem) => {
-                    const email = dataItem?.email || dataItem?.Email || "N/A";
-                    const fullName =
-                        dataItem?.FullName ||
-                        (dataItem?.FirstName && dataItem?.LastName
-                            ? `${dataItem.FirstName} ${dataItem.LastName}`
-                            : "N/A");
-                    const location =
-                        dataItem?.Location ||
-                        dataItem?.Region ||
-                        dataItem?.Locality ||
-                        (dataItem?.Country ? `${dataItem.Country}` : "N/A");
-                    const position =
-                        dataItem?.Title ||
-                        dataItem?.JobTitle ||
-                        (dataItem?.fields?.includes("password")
-                            ? "Credentials exposed"
-                            : "N/A");
-                    const company =
-                        dataItem?.CompanyName ||
-                        dataItem?.JobCompanyName ||
-                        (dataItem?.origin
-                            ? `From: ${
-                                Array.isArray(dataItem.origin)
-                                    ? dataItem.origin.join(", ")
-                                    : dataItem.origin
-                            }`
-                            : "N/A");
-                    const password =
-                        dataItem?.password ||
-                        (source?.source?.passwordless === 1
-                            ? "No password exposed"
-                            : "Not exposed");
-                    const breachDate =
-                        source?.source?.breach_date ||
-                        (source.Source === "LinkedIn Scraped Data"
-                            ? "2021 (Scraped)"
+                const dataItem = Array.isArray(source?.Data) ? source.Data[0] : source?.Data;
+                if (!dataItem) return null;
+                const email = dataItem?.email || dataItem?.Email || "N/A";
+                const fullName =
+                    dataItem?.FullName ||
+                    (dataItem?.FirstName && dataItem?.LastName
+                        ? `${dataItem.FirstName} ${dataItem.LastName}`
+                        : "N/A");
+                const location =
+                    dataItem?.Location ||
+                    dataItem?.Region ||
+                    dataItem?.Locality ||
+                    (dataItem?.Country ? `${dataItem.Country}` : "N/A");
+                const position =
+                    dataItem?.Title ||
+                    dataItem?.JobTitle ||
+                    (dataItem?.fields?.includes("password")
+                        ? "Credentials exposed"
+                        : "N/A");
+                const company =
+                    dataItem?.CompanyName ||
+                    dataItem?.JobCompanyName ||
+                    (dataItem?.origin
+                        ? `From: ${
+                            Array.isArray(dataItem.origin)
+                                ? dataItem.origin.join(", ")
+                                : dataItem.origin
+                        }`
+                        : "N/A");
+                const password =
+                    dataItem?.password ||
+                    (source?.source?.passwordless === 1
+                        ? "No password exposed"
+                        : "Not exposed");
+                const breachDate =
+                    source?.source?.breach_date ||
+                    (source.Source === "LinkedIn Scraped Data"
+                        ? "2021 (Scraped)"
+                        : source.Source === "Stealer Logs"
+                            ? "Recent"
+                            : "Unknown date");
+                const severity =
+                    source.Source === "Stealer Logs"
+                        ? "High"
+                        : source.Source === "LinkedIn Scraped Data"
+                            ? "Low"
+                            : password !== "Not exposed"
+                                ? "Critical"
+                                : "Medium";
+                return {
+                    id: item._id,
+                    email,
+                    name: fullName,
+                    firstName: dataItem?.FirstName,
+                    lastName: dataItem?.LastName,
+                    location,
+                    position,
+                    company,
+                    summary: dataItem?.Summary || source?.Info || "No summary available",
+                    source: source?.Source || "Unknown",
+                    breachDate,
+                    records:
+                        source.Source === "LinkedIn Scraped Data"
+                            ? "400M+ records"
                             : source.Source === "Stealer Logs"
-                                ? "Recent"
-                                : "Unknown date");
-                    const severity =
-                        source.Source === "Stealer Logs"
-                            ? "High"
-                            : source.Source === "LinkedIn Scraped Data"
-                                ? "Low"
-                                : password !== "Not exposed"
-                                    ? "Critical"
-                                    : "Medium";
-                    return {
-                        id: item._id,
-                        email,
-                        name: fullName,
-                        firstName: dataItem?.FirstName,
-                        lastName: dataItem?.LastName,
-                        location,
-                        position,
-                        company,
-                        summary: dataItem?.Summary || source?.Info || "No summary available",
-                        source: source?.Source || "Unknown",
-                        breachDate,
-                        records:
-                            source.Source === "LinkedIn Scraped Data"
-                                ? "400M+ records"
-                                : source.Source === "Stealer Logs"
-                                    ? "Compilation"
-                                    : "N/A",
-                        severity,
-                        passwordExposed: password,
-                        additionalFields: dataItem?.fields || [],
-                        rawData: dataItem,
-                    };
-                });
+                                ? "Compilation"
+                                : "N/A",
+                    severity,
+                    passwordExposed: password,
+                    additionalFields: dataItem?.fields || [],
+                    rawData: dataItem,
+                };
             })
             .filter(Boolean);
     };
@@ -145,10 +126,10 @@ export default function LeaksPage() {
     };
 
     // Fetch data from API
-    const loadNewData = async (isSubscribed) => {
+    const loadNewData = async () => {
         try {
             setIsLoading(true);
-            const {page, size} = pagination;
+            const { page, size } = pagination;
             const response = await fetch(
                 `/api/leaks?q=${searchQuery}&type=breach&page=${page}&size=${size}`
             );
@@ -161,11 +142,13 @@ export default function LeaksPage() {
             if (!data.current_page_data || data.current_page_data.length === 0) {
                 setBreachData([]);
                 setShowEmptyAlert(true);
-                await callUpdateEndpoint();
+                await callUpdateEndpoint(); // tidak pakai await!
                 setPagination((prev) => ({
                     ...prev,
                     total: 0
                 }));
+
+
                 return;
             } else {
                 setShowEmptyAlert(false);
@@ -182,10 +165,10 @@ export default function LeaksPage() {
             setIsLoading(false);
             setTimeout(() => {
                 if (resultsRef.current) {
-                    import("gsap").then(({default: gsap}) => {
+                    import("gsap").then(({ default: gsap }) => {
                         gsap.to(window, {
                             duration: 1,
-                            scrollTo: {y: resultsRef.current, offsetY: 50},
+                            scrollTo: { y: resultsRef.current, offsetY: 50 },
                             ease: "power3.out",
                         });
                     });
@@ -194,17 +177,30 @@ export default function LeaksPage() {
         }
     };
 
-    // Search: always reset page to 1 and use the latest sizeInput as per page value
+    // Handle user search
     const handleSearch = () => {
         if (authState === "loading" || isLoading) return;
         if (authState !== "authenticated") {
             router.push("/login");
             return;
         }
-        setIsLoading(true);
+
+        setPagination(prev => ({
+            ...prev,
+            page: 1,
+            size: sizeInput
+        }));
         setShowEmptyAlert(false);
         setBreachData([]);
-        loadNewData();
+        setHasSearched(true);
+
+        if (searchInput === searchQuery) {
+            // Query tidak berubah, trigger manual
+            loadNewData();
+        } else {
+            // Query berubah, biarkan useEffect yang tangani
+            setSearchQuery(searchInput);
+        }
     };
 
     // Pagination controls
@@ -218,7 +214,6 @@ export default function LeaksPage() {
         ) {
             setPagination((prev) => ({ ...prev, page: prev.page + 1 }));
         }
-        // JANGAN panggil loadNewData di sini!
     };
 
     // Limit/Per Page input
@@ -246,6 +241,7 @@ export default function LeaksPage() {
             page: 1 // reset ke page 1 saat ubah limit
         }));
     };
+
     useEffect(() => { setPageInput(pagination.page); }, [pagination.page]);
 
     const handlePageInputKeyDown = (e) => {
@@ -272,26 +268,19 @@ export default function LeaksPage() {
         }));
     };
 
+    // Main effect to fetch data on search, page, or size change
     useEffect(() => {
-        if (
-            authState === "authenticated" &&
-            pagination.size > 0 && // only fetch when valid
-            pagination.page > 0
-        ) {
-            setIsLoading(true);
-            setShowEmptyAlert(false);
-            setBreachData([]);
+        if (authState === "authenticated" && hasSearched) {
             loadNewData();
         }
         // eslint-disable-next-line
-    }, [pagination.size, pagination.page]);
-
+    }, [searchQuery, pagination.page, pagination.size, hasSearched, authState]);
 
     // On mount: check login/subscription
     useEffect(() => {
         const checkLoginStatus = async () => {
             try {
-                const res = await fetch("/api/me", {credentials: "include"});
+                const res = await fetch("/api/me", { credentials: "include" });
                 if (res.ok) {
                     const data = await res.json();
                     setAuthState("authenticated");
@@ -308,9 +297,9 @@ export default function LeaksPage() {
 
     return (
         <div className="relative">
-            <Navbar/>
+            <Navbar />
             <div className="relative h-screen w-full">
-                <LeaksParticles/>
+                <LeaksParticles />
                 <section
                     className="absolute inset-0 flex items-center justify-center px-4 sm:px-6 lg:px-8 text-white z-10">
                     <div className="max-w-3xl mx-auto text-center">
@@ -318,7 +307,7 @@ export default function LeaksPage() {
                             Discover Exposed Credentials Instantly
                         </h2>
                         <p className="text-xl mb-8 text-gray-300">
-                            Monitor the dark web for compromised emails, domains, and accounts.<br/>
+                            Monitor the dark web for compromised emails, domains, and accounts.<br />
                             Protect your organization by searching global breach intelligence in seconds.
                         </p>
                         <div
@@ -395,9 +384,9 @@ export default function LeaksPage() {
                                     <div className="col-span-full flex justify-center items-center py-16">
                                         <svg className="animate-spin h-12 w-12 text-cyan-400" viewBox="0 0 24 24">
                                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
-                                                    strokeWidth="4"/>
+                                                    strokeWidth="4" />
                                             <path className="opacity-75" fill="currentColor"
-                                                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                                                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                                         </svg>
                                     </div>
                                 ) : breachData.length === 0 && showEmptyAlert ? (
@@ -407,7 +396,7 @@ export default function LeaksPage() {
                                     </div>
                                 ) : (
                                     breachData.map((entry, idx) => (
-                                        <LeakCardDynamic key={entry._id || idx} entry={entry}/>
+                                        <LeakCardDynamic key={entry.id || idx} entry={entry} />
                                     ))
                                 )}
                             </div>

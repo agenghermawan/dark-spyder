@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import jwt from "jsonwebtoken";
 
 export async function POST(req) {
     const { access_id, totp } = await req.json();
@@ -14,8 +13,7 @@ export async function POST(req) {
     const data = await res.json();
 
     if (res.ok && data.token) {
-        // Buat JWT token (opsional: isi payload sesuai kebutuhan)
-        const token = jwt.sign({ access_id }, 'asdfasdfasdfasdf', { expiresIn: '1d' });
+        const token = data.token;
 
         const response = NextResponse.json({ message: "Login successful" });
 

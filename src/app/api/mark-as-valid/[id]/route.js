@@ -1,5 +1,4 @@
 export const dynamic = 'force-dynamic';
-import jwt from "jsonwebtoken";
 
 export async function PUT(req, { params }) {
     const { id } = params;
@@ -12,16 +11,6 @@ export async function PUT(req, { params }) {
         );
     }
 
-    let decodedUser;
-    try {
-        decodedUser = jwt.decode(token);
-    } catch (error) {
-        return new Response(
-            JSON.stringify({ message: "Failed to decode token" }),
-            { status: 401, headers: { 'Content-Type': 'application/json' } }
-        );
-    }
-
     let reqBody;
     try {
         reqBody = await req.json();
@@ -29,12 +18,12 @@ export async function PUT(req, { params }) {
         reqBody = {};
     }
 
-    // Forward the request to backend
+    // Forward the request to backend, pakai token JWT asli!
     const res = await fetch(`http://103.245.181.5:5001/mark-as-valid/${id}`, {
         method: "PUT",
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${decodedUser.user}`,
+            'Authorization': `Bearer ${token}`, // <-- pakai token asli!
         },
         body: JSON.stringify({ valid: reqBody.valid }),
     });

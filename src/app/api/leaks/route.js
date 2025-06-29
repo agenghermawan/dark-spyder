@@ -1,5 +1,4 @@
 export const dynamic = 'force-dynamic';
-import jwt from "jsonwebtoken";
 
 export async function GET(req) {
     console.log("🔍 Proxy route accessed");
@@ -11,8 +10,8 @@ export async function GET(req) {
     const page = searchParams.get('page');
     const size = searchParams.get('size');
 
+    // Ambil JWT token dari cookie
     const token = req.cookies.get("token")?.value;
-
     if (!token) {
         return new Response(
             JSON.stringify({message: "Unauthorized: Token missing"}),
@@ -20,23 +19,16 @@ export async function GET(req) {
         );
     }
 
-    let decodedUser;
-    try {
-        decodedUser = jwt.decode(token);
-    } catch (error) {
-        return new Response(
-            JSON.stringify({message: "Failed to decode token"}),
-            {status: 401, headers: {'Content-Type': 'application/json'}}
-        );
-    }
-
-
-    const res = await fetch(`http://103.245.181.5:5001/search?q=${q}&type=${type}&page=${page}&size=${size}`, {
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${decodedUser.user}`
+    // Forward token asli ke backend (jangan decode/jangan ambil .user)
+    const res = await fetch(
+        `http://103.245.181.5:5001/search?q=${encodeURIComponent(q)}&type=${encodeURIComponent(type)}&page=${encodeURIComponent(page)}&size=${encodeURIComponent(size)}`,
+        {
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+            }
         }
-    });
+    );
 
     const data = await res.json();
 
