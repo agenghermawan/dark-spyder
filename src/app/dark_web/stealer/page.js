@@ -1,767 +1,760 @@
 "use client";
-import { Suspense, useState, useEffect, useRef } from "react";
-import { gsap } from "gsap";
-import { ScrollToPlugin } from "gsap/ScrollToPlugin";
-import { MotionPathPlugin } from "gsap/MotionPathPlugin";
+import {Suspense, useState, useEffect, useRef} from "react";
+import {gsap} from "gsap";
+import {ScrollToPlugin} from "gsap/ScrollToPlugin";
+import {MotionPathPlugin} from "gsap/MotionPathPlugin";
 import Navbar from "../../../components/navbar";
 import LoadingSpinner from "../../../components/ui/loading-spinner";
-import { useSearchParams } from "next/navigation";
-import { useRouter } from "next/navigation";
+import {useSearchParams} from "next/navigation";
+import {useRouter} from "next/navigation";
+import ExposedData from "../../../components/stealer/exposed_data";
+import StealerAdvancedSearchModal from "../../../components/stealer/advance_search";
 
 gsap.registerPlugin(ScrollToPlugin, MotionPathPlugin);
 
-// Wrap the main component with Suspense
 export default function Page() {
-  return (
-    <Suspense fallback={<LoadingSpinner />}>
-      <StealerPageContent />
-    </Suspense>
-  );
+    return (
+        <Suspense fallback={<LoadingSpinner/>}>
+            <StealerPageContent/>
+        </Suspense>
+    );
 }
 
 function StealerPageContent() {
-  const router = useRouter();
-  const [stealerData, setStealerData] = useState([]);
-  const [domain, setDomain] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [pagination, setPagination] = useState({
-    page: 1,
-    size: 10,
-    total: 0,
-  });
-  const [hasSubscription, setHasSubscription] = useState(true);
-  const resultsRef = useRef(null);
-  const rowsRef = useRef([]);
-  const tableRef = useRef(null);
-  const [authState, setAuthState] = useState("loading");
-  const [showEmptyAlert, setShowEmptyAlert] = useState(false);
+    const router = useRouter();
+    const searchParams = useSearchParams();
 
-  const checkSubscriptionStatus = async () => {
-    try {
-      const res = await fetch("/api/me", {
-        credentials: "include",
-      });
+    // State
+    const [stealerData, setStealerData] = useState([]);
+    const [domain, setDomain] = useState("");
+    const [isLoading, setIsLoading] = useState(false);
+    const [pagination, setPagination] = useState({page: 1, size: 10, total: 0});
+    const [pageInput, setPageInput] = useState(1); // for direct page jump
+    const [sizeInput, setSizeInput] = useState(10); // for page size/limit
+    const [hasSubscription, setHasSubscription] = useState(true);
+    const [authState, setAuthState] = useState("loading");
+    const [showEmptyAlert, setShowEmptyAlert] = useState(false);
+    const [showAdvanced, setShowAdvanced] = useState(false);
+    const [markingId, setMarkingId] = useState(null);
+    const [updatedIds, setUpdatedIds] = useState({});
 
-      if (res.ok) {
-        const data = await res.json();
-        setHasSubscription(true);
-        // setHasSubscription(data.user?.subscription?.status === 'active');
-        return data.user?.subscription?.status === "active";
-      }
-      return false;
-    } catch {
-      return false;
-    }
-  };
+    // Refs
+    const resultsRef = useRef(null);
+    const rowsRef = useRef([]);
+    const tableRef = useRef(null);
+    const searchParamsRef = useRef({domain: ""});
 
-  const handleSearch = async () => {
-    if (authState === "loading") {
-      console.log("Waiting for auth state...");
-      return;
-    }
+    // --- AUTH ---
+    useEffect(() => {
+        const checkLoginStatus = async () => {
+            try {
+                const res = await fetch("/api/me", {credentials: "include"});
+                setAuthState(res.ok ? "authenticated" : "unauthenticated");
+            } catch {
+                setAuthState("unauthenticated");
+            }
+        };
+        checkLoginStatus();
+    }, []);
 
-    if (authState !== "authenticated") {
-      router.push("/login");
-      return;
-    }
-
-    setIsLoading(true);
-    const isSubscribed = await checkSubscriptionStatus();
-
-    if (stealerData.length > 0) {
-      gsap.to(rowsRef.current, {
-        opacity: 0,
-        y: -20,
-        duration: 0.4,
-        stagger: 0.05,
-        ease: "power2.in",
-        onComplete: () => {
-          loadNewData(isSubscribed);
-        },
-      });
-    } else {
-      await loadNewData(isSubscribed);
-    }
-  };
-
-  const loadNewData = async (isSubscribed) => {
-    try {
-      setIsLoading(true);
-      setStealerData([]);
-
-      const response = await fetch(
-        `/api/proxy?q=${domain}&type=stealer&page=${pagination.page}&size=${pagination.size}`
-      );
-
-      if (!response.ok) {
-        throw new Error(
-          `Network response was not ok: ${response.status} ${response.statusText}`
-        );
-      }
-
-      const data = await response.json();
-
-      if (!data.current_page_data || data.current_page_data.length === 0) {
-        setStealerData([]);
-        setShowEmptyAlert(true);
-        return;
-      } else {
+    // --- FETCH DATA (for all search/pagination/limit) ---
+    const fetchStealerData = async ({params = {}, page = 1, size = 10}) => {
+        setIsLoading(true);
         setShowEmptyAlert(false);
-      }
+        searchParamsRef.current = params;
 
-      // If user has subscription, show all data
-      // if (isSubscribed) {
-      if (true) {
-        const transformedData = data.current_page_data.map((item) => ({
-          password: item._source?.password || "N/A",
-          origin: item._source?.domain || "N/A",
-          email: item._source?.username || "N/A",
-          source: item._source?.threatintel || "Unknown",
-          lastBreach: "N/A",
-          checksum: item._source?.Checksum || "N/A",
-        }));
-        setStealerData(transformedData);
-      } else {
-        // If no subscription, show teaser with just the count
-        setStealerData([
-          {
-            password: "🔒 Subscription Required",
-            origin: domain,
-            email: `${data.total} results found`,
-            source: "Upgrade to view",
-            lastBreach: "N/A",
-            checksum: "N/A",
-            isTeaser: true,
-          },
-        ]);
-      }
+        const query =
+            Object.entries(params)
+                .filter(([k, v]) => v && v.trim())
+                .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+                .join("&") +
+            `&type=stealer&page=${page}&size=${size}`;
 
-      setPagination((prev) => ({
-        ...prev,
-        total: data.total || 0,
-      }));
-    } catch (error) {
-      console.error("Error fetching data:", error.message);
-    } finally {
-      setIsLoading(false);
+        try {
+            const res = await fetch(`/api/proxy?${query}`);
+            if (!res.ok) throw new Error("API not OK");
+            const data = await res.json();
 
-      setTimeout(() => {
-        if (resultsRef.current) {
-          gsap.to(window, {
-            duration: 1,
-            scrollTo: { y: resultsRef.current, offsetY: 50 },
-            ease: "power3.out",
-          });
+            if (!data.current_page_data || data.current_page_data.length === 0) {
+                setStealerData([]);
+                setShowEmptyAlert(true);
+            } else {
+                setStealerData(
+                    data.current_page_data.map((item) => ({
+                        id: item._id,
+                        password: item._source?.password || "N/A",
+                        origin: item._source?.domain || "N/A",
+                        email: item._source?.username || "N/A",
+                        source: item._source?.threatintel || "Unknown",
+                        lastBreach: "N/A",
+                        checksum: item._source?.Checksum || "N/A",
+                        valid: item._source?.valid ?? null,
+                    }))
+                );
+                setShowEmptyAlert(false);
+            }
+            setPagination((prev) => ({
+                ...prev,
+                page,
+                size,
+                total: data.total || 0,
+            }));
+            setPageInput(page); // sync input with current page
+            setSizeInput(size); // sync input with current size
+        } catch {
+            setShowEmptyAlert(true);
+            setStealerData([]);
+        } finally {
+            setIsLoading(false);
+            setTimeout(() => {
+                if (resultsRef.current) {
+                    resultsRef.current.scrollIntoView({behavior: "smooth"});
+                }
+            }, 100);
         }
-      }, 100);
-    }
-  };
-
-  const handlePagination = (direction) => {
-    if (direction === "prev" && pagination.page > 1) {
-      setPagination((prev) => ({ ...prev, page: prev.page - 1 }));
-    } else if (
-      direction === "next" &&
-      pagination.page * pagination.size < pagination.total
-    ) {
-      setPagination((prev) => ({ ...prev, page: prev.page + 1 }));
-    }
-  };
-
-  useEffect(() => {
-    if (pagination.page !== 1) {
-      loadNewData();
-    }
-  }, [pagination.page]);
-
-
-
-  useEffect(() => {
-    const checkLoginStatus = async () => {
-      try {
-        const res = await fetch("/api/me", {
-          credentials: "include",
-        });
-        setAuthState(res.ok ? "authenticated" : "unauthenticated");
-      } catch {
-        setAuthState("unauthenticated");
-      }
     };
 
-    checkLoginStatus();
-  }, []);
+    // --- BASIC SEARCH ---
+    const handleSearch = async () => {
+        if (authState === "loading") return;
+        if (authState !== "authenticated") {
+            router.push("/login");
+            return;
+        }
+        setPagination((prev) => ({...prev, page: 1}));
+        await fetchStealerData({params: {domain}, page: 1, size: pagination.size});
+    };
 
-  const searchParams = useSearchParams();
+    // --- ADVANCED SEARCH ---
+    const handleAdvancedSearch = async (params) => {
+        setIsLoading(true);
+        setShowEmptyAlert(false);
+        setStealerData([]); // Kosongkan data sebelum fetch baru
 
-  useEffect(() => {
-    const query = searchParams.get("q");
-    if (query) {
-      setDomain(query);
-      setPagination((prev) => ({ ...prev, page: 1 }));
+        await fetchStealerData({params, page: 1, size: pagination.size});
+        setPagination((prev) => ({...prev, page: 1}));
+        setShowAdvanced(false);
+    };
 
-      if (authState === "authenticated") {
-        setTimeout(() => handleSearch(), 100);
-      }
-    }
-  }, [searchParams, authState]);
+    // --- PAGINATION ---
+    const handlePagination = async (direction) => {
+        let newPage = pagination.page;
+        if (direction === "prev" && newPage > 1) newPage--;
+        else if (direction === "next" && newPage * pagination.size < pagination.total) newPage++;
+        setPagination((prev) => ({...prev, page: newPage}));
+        await fetchStealerData({
+            params: searchParamsRef.current,
+            page: newPage,
+            size: pagination.size,
+        });
+    };
 
-  return (
-    <div>
-      <Navbar />
+    // --- HANDLE PAGE JUMP ---
+    const handlePageInputChange = (e) => {
+        const value = e.target.value;
+        setPageInput(value);
+    };
+    const handlePageInputBlur = async () => {
+        let value = parseInt(pageInput, 10);
+        if (isNaN(value) || value < 1) value = 1;
+        const maxPage = Math.ceil(pagination.total / pagination.size) || 1;
+        if (value > maxPage) value = maxPage;
+        setPageInput(value);
+        setPagination((prev) => ({...prev, page: value}));
+        await fetchStealerData({
+            params: searchParamsRef.current,
+            page: value,
+            size: pagination.size,
+        });
+    };
 
-      {/* Globe background */}
-      <div className="relative h-screen w-full">
-        <CyberParticles />
+    // --- HANDLE LIMIT (SIZE) ---
+    const handleSizeInputChange = (e) => {
+        let value = parseInt(e.target.value, 10);
+        if (isNaN(value) || value < 1) value = 10;
+        if (value > 1000) value = 1000;
+        setSizeInput(value);
+    };
+    const handleSizeInputBlur = async () => {
+        let value = parseInt(sizeInput, 10);
+        if (isNaN(value) || value < 1) value = 10;
+        if (value > 1000) value = 1000;
+        setSizeInput(value);
+        setPagination((prev) => ({...prev, size: value, page: 1}));
+        await fetchStealerData({
+            params: searchParamsRef.current,
+            page: 1,
+            size: value,
+        });
+    };
 
-        {/* Floating text on top of Globe */}
-        <section className="absolute inset-0 flex items-center justify-center px-4 sm:px-6 lg:px-8 text-white z-10">
-          <div className="max-w-3xl mx-auto text-center">
-            <h2 className="text-4xl font-bold mb-4">Uncover Hidden Threats</h2>
-            <p className="text-xl mb-8 text-gray-300">
-              {hasSubscription
-                ? "Full access to all compromised credentials"
-                : "Subscribe to unlock full access to breach data"}
-            </p>
+    // --- PAGINATION EFFECT ---
+    useEffect(() => {
+        if (pagination.page !== 1) {
+            fetchStealerData({
+                params: searchParamsRef.current,
+                page: pagination.page,
+                size: pagination.size,
+            });
+        }
+        // eslint-disable-next-line
+    }, [pagination.page]);
 
-            <div className="flex flex-row gap-2 max-w-xl mx-auto shadow-lg rounded-lg overflow-hidden w-full">
-              <input
-                type="text"
-                value={domain}
-                onChange={(e) => setDomain(e.target.value)}
-                placeholder="Target domain for recon..."
-                className="input-glass bg-black text-white placeholder-gray-500 border border-gray-700 flex-1 px-4 py-2 rounded-lg transition-all duration-300 focus:ring-2 focus:ring-[#f03262] focus:border-transparent"
-              />
-              <button
-                onClick={handleSearch}
-                disabled={isLoading}
-                className={`${
-                  isLoading
-                    ? "bg-gray-600 cursor-not-allowed"
-                    : "bg-[#f03262] hover:bg-[#c91d4e]"
-                } text-white px-6 py-2 rounded-lg transition-all duration-300 font-semibold whitespace-nowrap flex items-center justify-center min-w-[120px] hover:cursor-pointer`}
-              >
-                {authState !== "authenticated" ? (
-                  "Login to Search"
-                ) : isLoading ? (
-                  <>
-                    <svg
-                      className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      ></circle>
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      ></path>
-                    </svg>
-                    Scanning
-                  </>
-                ) : (
-                  "Initiate Recon"
-                )}
-              </button>
-            </div>
-          </div>
-        </section>
-      </div>
+    // --- SEARCH ON URL PARAM ---
+    useEffect(() => {
+        const query = searchParams.get("q");
+        if (query) {
+            setDomain(query);
+            setPagination((prev) => ({...prev, page: 1}));
+            if (authState === "authenticated") {
+                setTimeout(() => handleSearch(), 100);
+            }
+        }
+        // eslint-disable-next-line
+    }, [searchParams, authState]);
 
-      {stealerData.length > 0 && (
-        <section
-          className="py-16 px-4 sm:px-6 lg:px-8 bg-[#0f0f10]"
-          ref={resultsRef}
-        >
-          <div className="max-w-7xl mx-auto">
-            <p className="text-sm uppercase text-green-500 mb-2 tracking-widest text-center">
-              🧠 Threat Intel Extract
-            </p>
-            <h2 className="text-4xl font-light text-white mb-8 text-center">
-              {hasSubscription
-                ? "Compromised Credentials"
-                : "🔒 Subscription Required"}
-            </h2>
+    // --- MARK VALID/NOT VALID ---
+    const markAsValid = async (id, isValid = true) => {
+        setMarkingId(id);
+        try {
+            const res = await fetch(`/api/mark-as-valid/${id}`, {
+                method: "PUT",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({valid: isValid}),
+            });
+            if (res.ok) {
+                setUpdatedIds((prev) => ({...prev, [id]: isValid}));
+            }
+        } finally {
+            setMarkingId(null);
+        }
+    };
 
-            <div className="overflow-x-auto" ref={tableRef}>
-              <table className="min-w-full bg-gradient-to-br from-[#111215]/90 via-[#1a1b20]/90 to-[#111215]/90 backdrop-blur-lg text-white rounded-xl shadow-2xl font-mono border border-[#2e2e2e] overflow-hidden">
-                <thead>
-                  <tr className="text-left border-b border-gray-700 text-gray-400 bg-gradient-to-r from-[#1e1e24] to-[#2a2a32]">
-                    <th className="py-4 px-6">Exposed Data</th>
-                    <th className="py-4 px-6">Intel Source</th>
-                    <th className="py-4 px-6">Last Seen in Dump</th>
-                    <th className="py-4 px-6 text-center">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {stealerData.map((entry, index) => (
-                    <tr
-                      key={index}
-                      ref={(el) => (rowsRef.current[index] = el)}
-                      className={`border-b border-gray-800 ${
-                        !entry.isTeaser
-                          ? "hover:bg-gradient-to-r from-[#1a1a20] to-[#25252d]"
-                          : "bg-gradient-to-r from-[#1a1a20]/50 to-[#25252d]/50"
-                      } transition-all duration-300 group`}
-                    >
-                      <td className="py-4 px-6">
-                        <div className="space-y-2">
-                          <div className="flex items-center">
-                            <span
-                              className={`text-xs ${
-                                entry.isTeaser
-                                  ? "bg-gradient-to-r from-gray-600 to-gray-800"
-                                  : "bg-gradient-to-r from-purple-600 to-purple-800"
-                              } px-2 py-1 rounded mr-2`}
+    // --- RENDER ---
+    return (
+        <div>
+            <Navbar/>
+
+            {/* Background */}
+            <div className="relative h-screen w-full">
+                <CyberParticles/>
+
+                {/* Floating text on top of Globe */}
+                <section
+                    className="absolute inset-0 flex items-center justify-center px-4 sm:px-6 lg:px-8 text-white z-10">
+                    <div className="max-w-3xl mx-auto text-center">
+                        <h2 className="text-4xl font-bold mb-4">Uncover Hidden Credentials</h2>
+                        <p className="text-xl mb-8 text-gray-300">
+                            {hasSubscription
+                                ? "Full access to all compromised credentials"
+                                : "Subscribe to unlock full access to breach data"}
+                        </p>
+                        <div
+                            className="flex flex-row gap-2 max-w-xl mx-auto shadow-lg rounded-lg overflow-hidden w-full">
+                            <input
+                                type="text"
+                                value={domain}
+                                onChange={(e) => setDomain(e.target.value)}
+                                placeholder="Uncover Credential Leaks"
+                                onKeyDown={(e) => {
+                                    if (e.key === "Enter" && authState === "authenticated") {
+                                        handleSearch();
+                                    }
+                                }}
+                                className="input-glass bg-black text-white placeholder-gray-500 border border-gray-700 flex-1 px-4 py-2 rounded-lg transition-all duration-300 focus:ring-2 focus:ring-[#f03262] focus:border-transparent"
+                            />
+                            <button
+                                onClick={handleSearch}
+                                disabled={isLoading}
+                                className={`${
+                                    isLoading
+                                        ? "bg-gray-600 cursor-not-allowed"
+                                        : "bg-[#f03262] hover:bg-[#c91d4e]"
+                                } text-white px-6 py-2 rounded-lg transition-all duration-300 font-semibold whitespace-nowrap flex items-center justify-center min-w-[120px] hover:cursor-pointer`}
                             >
-                              {entry.isTeaser ? "🔒" : "🧬"} pass
-                            </span>
-                            <span
-                              className={`font-medium ${
-                                entry.isTeaser
-                                  ? "text-gray-400"
-                                  : "group-hover:text-purple-300"
-                              } transition-colors`}
-                            >
-                              {entry.password}
-                            </span>
-                          </div>
-                          <div className="flex items-center">
-                            <span
-                              className={`${
-                                entry.isTeaser
-                                  ? "text-gray-300"
-                                  : "group-hover:text-blue-300"
-                              } transition-colors`}
-                            >
-                              <DomainList
-                                domainsString={entry.origin}
-                                limit={3}
-                              />
-                            </span>
-                          </div>
-                          <div className="flex items-center">
-                            <span
-                              className={`text-xs ${
-                                entry.isTeaser
-                                  ? "bg-gradient-to-r from-gray-600 to-gray-800"
-                                  : "bg-gradient-to-r from-green-600 to-green-800"
-                              } px-2 py-1 rounded mr-2`}
-                            >
-                              {entry.isTeaser ? "📊" : "📧"} identity
-                            </span>
-                            <span
-                              className={`${
-                                entry.isTeaser
-                                  ? "text-gray-300"
-                                  : "group-hover:text-green-300"
-                              } transition-colors`}
-                            >
-                              {entry.email}
-                            </span>
-                          </div>
+                                {authState !== "authenticated" ? (
+                                    "Login to Search"
+                                ) : isLoading ? (
+                                    <>
+                                        <svg
+                                            className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            fill="none"
+                                            viewBox="0 0 24 24"
+                                        >
+                                            <circle
+                                                className="opacity-25"
+                                                cx="12"
+                                                cy="12"
+                                                r="10"
+                                                stroke="currentColor"
+                                                strokeWidth="4"
+                                            ></circle>
+                                            <path
+                                                className="opacity-75"
+                                                fill="currentColor"
+                                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                            ></path>
+                                        </svg>
+                                        Scanning
+                                    </>
+                                ) : (
+                                    "Uncover"
+                                )}
+                            </button>
                         </div>
-                      </td>
-                      <td className="py-4 px-6">
-                        <span
-                          className={`inline-flex items-center px-3 py-1 rounded-full ${
-                            entry.isTeaser
-                              ? "bg-gradient-to-r from-gray-700 to-gray-800"
-                              : "bg-gradient-to-r from-gray-700 to-gray-800"
-                          } text-gray-300 text-sm`}
-                        >
-                          {entry.source}
-                        </span>
-                      </td>
-                      <td className="py-4 px-6">
-                        <span
-                          className={`inline-flex items-center px-3 py-1 rounded-full text-sm ${
-                            entry.lastBreach === "N/A"
-                              ? "bg-gradient-to-r from-gray-700 to-gray-800 text-gray-400"
-                              : "bg-gradient-to-r from-red-700 to-red-800 text-red-100"
-                          }`}
-                        >
-                          {entry.lastBreach}
-                        </span>
-                      </td>
-                      <td className="py-4 px-6 text-center">
-                        {entry.isTeaser ? (
-                          <button
-                            onClick={() => router.push("/pricing")}
-                            className="bg-gradient-to-r from-[#f03262] to-[#c91d4e] hover:from-[#e63368] hover:to-[#d11a4f] text-white px-4 py-2 rounded-lg text-sm transition-all transform hover:scale-105 shadow-lg hover:shadow-[#f03262]/20 flex items-center justify-center gap-1"
-                          >
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              className="h-4 w-4"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M13 10V3L4 14h7v7l9-11h-7z"
-                              />
-                            </svg>
-                            Upgrade Now
-                          </button>
-                        ) : (
-                          <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
-                            <button className="bg-gradient-to-r from-cyan-600 to-cyan-700 hover:from-cyan-500 hover:to-cyan-600 text-white px-4 py-2 rounded-lg text-sm transition-all transform hover:scale-105 shadow-lg hover:shadow-cyan-500/20 flex items-center justify-center gap-1">
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                className="h-4 w-4"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-                                />
-                              </svg>
-                              Extract Logs
-                            </button>
-                            <button className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white px-4 py-2 rounded-lg text-sm transition-all transform hover:scale-105 shadow-lg hover:shadow-purple-500/20 flex items-center justify-center gap-1">
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                className="h-4 w-4"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                                />
-                              </svg>
-                              Confirm Breach
-                            </button>
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <div className="mt-6 flex justify-between items-center">
-                <p className="text-gray-500 text-sm">
-                  Showing {hasSubscription ? stealerData.length : 1} of{" "}
-                  {pagination.total} entries (Page {pagination.page})
-                </p>
-                {hasSubscription && (
-                  <div className="flex space-x-2">
-                    <button
-                      onClick={() => handlePagination("prev")}
-                      disabled={pagination.page === 1}
-                      className={`px-4 py-2 text-sm ${
-                        pagination.page === 1
-                          ? "bg-gray-800 cursor-not-allowed"
-                          : "bg-gray-800 hover:bg-gray-700"
-                      } rounded-lg transition-colors`}
-                    >
-                      Previous
-                    </button>
-                    <button
-                      onClick={() => handlePagination("next")}
-                      disabled={
-                        pagination.page * pagination.size >= pagination.total
-                      }
-                      className={`px-4 py-2 text-sm ${
-                        pagination.page * pagination.size >= pagination.total
-                          ? "bg-[#f03262]/50 cursor-not-allowed"
-                          : "bg-[#f03262] hover:bg-[#c91d4e]"
-                      } rounded-lg transition-colors`}
-                    >
-                      Next
-                    </button>
-                  </div>
-                )}
-              </div>
+                    </div>
+                </section>
             </div>
-          </div>
-        </section>
-      )}
 
-      {showEmptyAlert && (
-        <section
-          className="py-16 px-4 sm:px-6 lg:px-8 bg-[#0f0f10]"
-          ref={resultsRef}
-        >
-          <div className="max-w-7xl mx-auto">
-            <p className="text-sm uppercase text-green-500 mb-2 tracking-widest text-center">
-              🧠 Threat Intel Extract
-            </p>
-            <h2 className="text-4xl font-light text-white mb-8 text-center">
-              Compromised Credentials
-            </h2>
-            <div className="overflow-x-auto" ref={tableRef}>
-              <table className="min-w-full bg-gradient-to-br from-[#111215]/90 via-[#1a1b20]/90 to-[#111215]/90 backdrop-blur-lg text-white rounded-xl shadow-2xl font-mono border border-[#2e2e2e] overflow-hidden">
-                <thead>
-                  <tr className="text-left border-b border-gray-700 text-gray-400 bg-gradient-to-r from-[#1e1e24] to-[#2a2a32]">
-                    <th className="py-4 px-6">Exposed Data</th>
-                    <th className="py-4 px-6">Intel Source</th>
-                    <th className="py-4 px-6">Last Seen in Dump</th>
-                    <th className="py-4 px-6 text-center">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr className="border-b border-gray-800">
-                    <td
-                      colSpan="4"
-                      className="py-8 px-6 text-center text-gray-400"
-                    >
-                      <div className="flex flex-col items-center justify-center">
-                        <svg
-                          className="w-12 h-12 mb-4 text-gray-600"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth="1.5"
-                            d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                          />
-                        </svg>
-                        <p className="text-lg font-medium">
-                          No compromised credentials found
+            {/* Table and Advanced Search */}
+            {(stealerData.length > 0 || showEmptyAlert) && (
+                <section className="py-16 px-4 sm:px-6 lg:px-8 " ref={resultsRef}>
+                    <div className="w-10/12 mx-auto">
+                        <p className="text-sm uppercase text-green-500 mb-2 tracking-widest text-center">
+                            🧠 Threat Intel Extract
                         </p>
-                        <p className="text-sm mt-1">
-                          Try searching with different keyword
-                        </p>
-                      </div>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </section>
-      )}
-    </div>
-  );
+                        <h2 className="text-4xl font-light text-white mb-8 text-center">
+                            {hasSubscription
+                                ? "Compromised Credentials"
+                                : "🔒 Subscription Required"}
+                        </h2>
+                        <div className="overflow-x-auto" ref={tableRef}>
+                            {/* Action Bar */}
+                            <div className="flex justify-between items-center mb-4">
+                                <button
+                                    className="bg-gradient-to-r from-yellow-500 to-yellow-700 hover:from-yellow-400 hover:to-yellow-600 text-white px-5 py-2 rounded-lg text-sm font-semibold shadow-lg transition-all"
+                                >
+                                    Extract Logs
+                                </button>
+                                <button
+                                    className="bg-gradient-to-r from-blue-600 to-purple-600 px-5 py-2 rounded-lg text-white font-semibold shadow-lg transition-all hover:scale-105"
+                                    onClick={() => setShowAdvanced(true)}
+                                >
+                                    Advanced Search
+                                </button>
+                            </div>
+                            {/* Modal */}
+                            <StealerAdvancedSearchModal
+                                open={showAdvanced}
+                                onClose={() => setShowAdvanced(false)}
+                                onSearch={handleAdvancedSearch}
+                                defaultDomain={domain}
+                                isLoading={isLoading}
+                            />
+                            {/* Domain search bar (optional, can be moved to modal if you prefer) */}
+                            <div className="mb-4 flex items-center gap-3 flex-wrap">
+                                <input
+                                    type="text"
+                                    value={domain}
+                                    onChange={e => setDomain(e.target.value)}
+                                    placeholder="Search by Domain"
+                                    className="px-4 py-2 rounded-lg bg-black/30 border border-gray-700 text-white placeholder-gray-400 focus:ring-2 focus:ring-[#f03262] focus:border-transparent"
+                                    style={{minWidth: 170}}
+                                />
+                                <button
+                                    onClick={handleSearch}
+                                    className="bg-[#f03262] hover:bg-[#c91d4e] text-white px-5 py-2 rounded-lg font-semibold transition-all"
+                                    disabled={isLoading}
+                                >
+                                    {isLoading ? "Searching..." : "Search"}
+                                </button>
+                                {/* LIMIT/Size input */}
+
+                            </div>
+                            {stealerData.length > 0 ? (
+                                <table
+                                    className="min-w-full bg-gradient-to-br from-[#111215]/90 via-[#1a1b20]/90 to-[#111215]/90 backdrop-blur-lg text-white rounded-xl shadow-2xl font-mono border border-[#2e2e2e] overflow-hidden">
+                                    <thead>
+                                    <tr className="text-left border-b border-gray-700 text-gray-400 bg-gradient-to-r from-[#1e1e24] to-[#2a2a32]">
+                                        <th className="py-4 px-6">Exposed Data</th>
+                                        <th className="py-4 px-6">Intel Source</th>
+                                        <th className="py-4 px-6">Last Seen in Dump</th>
+                                        <th className="py-4 px-6 text-center">Actions</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    {stealerData.map((entry, index) => (
+                                        <tr
+                                            key={index}
+                                            ref={(el) => (rowsRef.current[index] = el)}
+                                            className={`border-b border-gray-800 ${
+                                                !entry.isTeaser
+                                                    ? "hover:bg-gradient-to-r from-[#1a1a20] to-[#25252d]"
+                                                    : "bg-gradient-to-r from-[#1a1a20]/50 to-[#25252d]/50"
+                                            } transition-all duration-300 group`}
+                                        >
+                                            <ExposedData entry={entry}/>
+                                            <td className="py-4 px-6">
+                          <span
+                              className={`inline-flex items-center px-3 py-1 rounded-full bg-gradient-to-r from-gray-700 to-gray-800 text-gray-300 text-sm`}
+                          >
+                            {entry.source}
+                          </span>
+                                            </td>
+                                            <td className="py-4 px-6">
+                          <span
+                              className={`inline-flex items-center px-3 py-1 rounded-full text-sm ${
+                                  entry.lastBreach === "N/A"
+                                      ? "bg-gradient-to-r from-gray-700 to-gray-800 text-gray-400"
+                                      : "bg-gradient-to-r from-red-700 to-red-800 text-red-100"
+                              }`}
+                          >
+                            {entry.lastBreach}
+                          </span>
+                                            </td>
+                                            <td className="py-4 px-6 text-center">
+                                                {entry.isTeaser ? (
+                                                    <button
+                                                        onClick={() => router.push("/pricing")}
+                                                        className="bg-gradient-to-r from-[#f03262] to-[#c91d4e] hover:from-[#e63368] hover:to-[#d11a4f] text-white px-4 py-2 rounded-lg text-sm transition-all transform hover:scale-105 shadow-lg hover:shadow-[#f03262]/20 flex items-center justify-center gap-1"
+                                                    >
+                                                        <svg
+                                                            xmlns="http://www.w3.org/2000/svg"
+                                                            className="h-4 w-4"
+                                                            fill="none"
+                                                            viewBox="0 0 24 24"
+                                                            stroke="currentColor"
+                                                        >
+                                                            <path
+                                                                strokeLinecap="round"
+                                                                strokeLinejoin="round"
+                                                                strokeWidth={2}
+                                                                d="M13 10V3L4 14h7v7l9-11h-7z"
+                                                            />
+                                                        </svg>
+                                                        Upgrade Now
+                                                    </button>
+                                                ) : (
+                                                    <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
+                                                        {updatedIds[entry.id] === true ? (
+                                                            <button
+                                                                onClick={() => markAsValid(entry.id, false)}
+                                                                disabled={markingId === entry.id}
+                                                                className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white px-4 py-2 rounded-lg text-sm transition-all transform hover:scale-105 shadow-lg hover:shadow-red-500/20 flex items-center justify-center gap-1"
+                                                            >
+                                                                Mark as Not Valid
+                                                            </button>
+                                                        ) : updatedIds[entry.id] === false ? (
+                                                            <button
+                                                                onClick={() => markAsValid(entry.id, true)}
+                                                                disabled={markingId === entry.id}
+                                                                className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white px-4 py-2 rounded-lg text-sm transition-all transform hover:scale-105 shadow-lg hover:shadow-green-500/20 flex items-center justify-center gap-1"
+                                                            >
+                                                                Mark as Valid
+                                                            </button>
+                                                        ) : (
+                                                            <>
+                                                                <button
+                                                                    onClick={() => markAsValid(entry.id, true)}
+                                                                    disabled={markingId === entry.id}
+                                                                    className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white px-4 py-2 rounded-lg text-sm transition-all transform hover:scale-105 shadow-lg hover:shadow-green-500/20 flex items-center justify-center gap-1"
+                                                                >
+                                                                    Mark as Valid
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => markAsValid(entry.id, false)}
+                                                                    disabled={markingId === entry.id}
+                                                                    className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white px-4 py-2 rounded-lg text-sm transition-all transform hover:scale-105 shadow-lg hover:shadow-red-500/20 flex items-center justify-center gap-1"
+                                                                >
+                                                                    Mark as Not Valid
+                                                                </button>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    </tbody>
+                                </table>
+                            ) : (
+                                showEmptyAlert && (
+                                    <table
+                                        className="min-w-full bg-gradient-to-br from-[#111215]/90 via-[#1a1b20]/90 to-[#111215]/90 backdrop-blur-lg text-white rounded-xl shadow-2xl font-mono border border-[#2e2e2e] overflow-hidden">
+                                        <thead>
+                                        <tr className="text-left border-b border-gray-700 text-gray-400 bg-gradient-to-r from-[#1e1e24] to-[#2a2a32]">
+                                            <th className="py-4 px-6">Exposed Data</th>
+                                            <th className="py-4 px-6">Intel Source</th>
+                                            <th className="py-4 px-6">Last Seen in Dump</th>
+                                            <th className="py-4 px-6 text-center">Actions</th>
+                                        </tr>
+                                        </thead>
+                                        <tbody>
+                                        <tr className="border-b border-gray-800">
+                                            <td colSpan="4" className="py-8 px-6 text-center text-gray-400">
+                                                <div className="flex flex-col items-center justify-center">
+                                                    <svg
+                                                        className="w-12 h-12 mb-4 text-gray-600"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        viewBox="0 0 24 24"
+                                                    >
+                                                        <path
+                                                            strokeLinecap="round"
+                                                            strokeLinejoin="round"
+                                                            strokeWidth="1.5"
+                                                            d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                                                        />
+                                                    </svg>
+                                                    <p className="text-lg font-medium">
+                                                        No compromised credentials found
+                                                    </p>
+                                                    <p className="text-sm mt-1">
+                                                        Try searching with different keyword
+                                                    </p>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        </tbody>
+                                    </table>
+                                )
+                            )}
+                            {/* Pagination */}
+                            {hasSubscription && (
+                                <div className="mt-6 flex flex-col md:flex-row md:justify-between md:items-center gap-3">
+                                    {/* Left: Showing info */}
+                                    <div className="flex items-center gap-2">
+                                        <p className="text-gray-500 text-sm">
+                                            Showing {hasSubscription ? stealerData.length : 1} of {pagination.total} entries (Page {pagination.page})
+                                        </p>
+                                    </div>
+                                    {/* Right: Pagination & Limit Controls */}
+                                    <div className="flex flex-wrap items-center gap-3">
+                                        <button
+                                            onClick={() => handlePagination("prev")}
+                                            disabled={pagination.page === 1}
+                                            className={`px-4 py-2 text-sm ${
+                                                pagination.page === 1
+                                                    ? "bg-gray-800 cursor-not-allowed"
+                                                    : "bg-gray-800 hover:bg-gray-700"
+                                            } rounded-lg transition-colors`}
+                                        >
+                                            Previous
+                                        </button>
+                                        <button
+                                            onClick={() => handlePagination("next")}
+                                            disabled={pagination.page * pagination.size >= pagination.total}
+                                            className={`px-4 py-2 text-sm ${
+                                                pagination.page * pagination.size >= pagination.total
+                                                    ? "bg-[#f03262]/50 cursor-not-allowed"
+                                                    : "bg-[#f03262] hover:bg-[#c91d4e]"
+                                            } rounded-lg transition-colors`}
+                                        >
+                                            Next
+                                        </button>
+                                        <label className="ml-2 text-sm text-gray-300">Limit/Per Page:</label>
+                                        <input
+                                            type="number"
+                                            min={1}
+                                            max={1000}
+                                            value={sizeInput}
+                                            onChange={handleSizeInputChange}
+                                            onBlur={handleSizeInputBlur}
+                                            className="w-20 px-2 py-2 rounded-md border border-gray-700 bg-black/30 text-white text-center focus:ring-2 focus:ring-[#f03262] focus:border-transparent"
+                                            title="Entries per page (max 1000)"
+                                        />
+                                        <label className="ml-2 text-sm text-gray-300">Page:</label>
+                                        <input
+                                            type="number"
+                                            min={1}
+                                            max={Math.max(1, Math.ceil(pagination.total / pagination.size))}
+                                            value={pageInput}
+                                            onChange={handlePageInputChange}
+                                            onBlur={handlePageInputBlur}
+                                            className="w-16 px-2 py-2 rounded-md border border-gray-700 bg-black/30 text-white text-center focus:ring-2 focus:ring-[#f03262] focus:border-transparent"
+                                            title="Go to page"
+                                        />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </section>
+            )}
+        </div>
+    );
 }
+
 
 function CyberParticles() {
-  const canvasRef = useRef(null);
+    const canvasRef = useRef(null);
 
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext("2d");
 
-    // Initial setup
-    let width = (canvas.width = window.innerWidth);
-    let height = (canvas.height = window.innerHeight);
+        // Initial setup
+        let width = (canvas.width = window.innerWidth);
+        let height = (canvas.height = window.innerHeight);
 
-    // Configuration
-    const config = {
-      particleCount: 80,
-      connectionDistance: 120,
-      colors: {
-        primary: "#ff2a6d",
-        secondary: "#05d9e8",
-        tertiary: "#d300c5",
-      },
-    };
+        // Configuration
+        const config = {
+            particleCount: 80,
+            connectionDistance: 120,
+            colors: {
+                primary: "#ff2a6d",
+                secondary: "#05d9e8",
+                tertiary: "#d300c5",
+            },
+        };
 
-    // Particle types
-    class DataParticle {
-      constructor() {
-        this.reset();
-        this.velocity = 0.5 + Math.random() * 2;
-        this.size = 2 + Math.random() * 3;
-        this.char = String.fromCharCode(
-          Math.random() > 0.3
-            ? 48 + Math.floor(Math.random() * 10) // Numbers
-            : 97 + Math.floor(Math.random() * 26) // Letters
-        );
-      }
+        // Particle types
+        class DataParticle {
+            constructor() {
+                this.reset();
+                this.velocity = 0.5 + Math.random() * 2;
+                this.size = 2 + Math.random() * 3;
+                this.char = String.fromCharCode(
+                    Math.random() > 0.3
+                        ? 48 + Math.floor(Math.random() * 10) // Numbers
+                        : 97 + Math.floor(Math.random() * 26) // Letters
+                );
+            }
 
-      reset() {
-        this.x = Math.random() * width;
-        this.y = height + 20;
-        this.alpha = 0.1 + Math.random() * 0.9;
-      }
+            reset() {
+                this.x = Math.random() * width;
+                this.y = height + 20;
+                this.alpha = 0.1 + Math.random() * 0.9;
+            }
 
-      update() {
-        this.y -= this.velocity;
-        if (this.y < -20) this.reset();
-      }
+            update() {
+                this.y -= this.velocity;
+                if (this.y < -20) this.reset();
+            }
 
-      draw() {
-        ctx.font = `${this.size}px 'Courier New', monospace`;
-        ctx.fillStyle = `rgba(${
-          Math.random() > 0.7 ? "255, 42, 109" : "5, 217, 232"
-        }, ${this.alpha})`;
-        ctx.fillText(this.char, this.x, this.y);
-      }
-    }
-
-    class NetworkNode {
-      constructor() {
-        this.x = Math.random() * width;
-        this.y = Math.random() * height;
-        this.baseSize = 2 + Math.random() * 4;
-        this.pulseSpeed = 0.01 + Math.random() * 0.03;
-        this.pulsePhase = Math.random() * Math.PI * 2;
-      }
-
-      update() {
-        this.pulsePhase += this.pulseSpeed;
-      }
-
-      draw() {
-        const pulseSize = this.baseSize * (1 + Math.sin(this.pulsePhase) * 0.5);
-
-        // Glow effect
-        const gradient = ctx.createRadialGradient(
-          this.x,
-          this.y,
-          0,
-          this.x,
-          this.y,
-          pulseSize * 3
-        );
-        gradient.addColorStop(0, config.colors.secondary);
-        gradient.addColorStop(1, "rgba(5, 217, 232, 0)");
-
-        ctx.fillStyle = gradient;
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, pulseSize * 3, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Core dot
-        ctx.fillStyle = config.colors.primary;
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, pulseSize, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    }
-
-    // Initialize particles
-    const particles = {
-      data: Array.from(
-        { length: config.particleCount / 2 },
-        () => new DataParticle()
-      ),
-      nodes: Array.from(
-        { length: config.particleCount / 4 },
-        () => new NetworkNode()
-      ),
-    };
-
-    // Connection logic
-    function drawConnections() {
-      for (let i = 0; i < particles.nodes.length; i++) {
-        for (let j = i + 1; j < particles.nodes.length; j++) {
-          const nodeA = particles.nodes[i];
-          const nodeB = particles.nodes[j];
-
-          const dx = nodeA.x - nodeB.x;
-          const dy = nodeA.y - nodeB.y;
-          const distance = Math.sqrt(dx * dx + dy * dy);
-
-          if (distance < config.connectionDistance) {
-            const opacity = 1 - distance / config.connectionDistance;
-            ctx.strokeStyle = `rgba(210, 0, 197, ${opacity * 0.2})`;
-            ctx.lineWidth = 0.5;
-            ctx.beginPath();
-            ctx.moveTo(nodeA.x, nodeA.y);
-            ctx.lineTo(nodeB.x, nodeB.y);
-            ctx.stroke();
-          }
+            draw() {
+                ctx.font = `${this.size}px 'Courier New', monospace`;
+                ctx.fillStyle = `rgba(${
+                    Math.random() > 0.7 ? "255, 42, 109" : "5, 217, 232"
+                }, ${this.alpha})`;
+                ctx.fillText(this.char, this.x, this.y);
+            }
         }
-      }
-    }
 
-    // Animation loop
-    let animationFrame;
+        class NetworkNode {
+            constructor() {
+                this.x = Math.random() * width;
+                this.y = Math.random() * height;
+                this.baseSize = 2 + Math.random() * 4;
+                this.pulseSpeed = 0.01 + Math.random() * 0.03;
+                this.pulsePhase = Math.random() * Math.PI * 2;
+            }
 
-    function animate() {
-      ctx.fillStyle = "rgba(10, 10, 20, 0.15)";
-      ctx.fillRect(0, 0, width, height);
+            update() {
+                this.pulsePhase += this.pulseSpeed;
+            }
 
-      // Update and draw particles
-      particles.data.forEach((p) => {
-        p.update();
-        p.draw();
-      });
+            draw() {
+                const pulseSize = this.baseSize * (1 + Math.sin(this.pulsePhase) * 0.5);
 
-      particles.nodes.forEach((n) => {
-        n.update();
-        n.draw();
-      });
+                // Glow effect
+                const gradient = ctx.createRadialGradient(
+                    this.x,
+                    this.y,
+                    0,
+                    this.x,
+                    this.y,
+                    pulseSize * 3
+                );
+                gradient.addColorStop(0, config.colors.secondary);
+                gradient.addColorStop(1, "rgba(5, 217, 232, 0)");
 
-      drawConnections();
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, pulseSize * 3, 0, Math.PI * 2);
+                ctx.fill();
 
-      animationFrame = requestAnimationFrame(animate);
-    }
+                // Core dot
+                ctx.fillStyle = config.colors.primary;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, pulseSize, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
 
-    // Start animation
-    animate();
+        // Initialize particles
+        const particles = {
+            data: Array.from(
+                {length: config.particleCount / 2},
+                () => new DataParticle()
+            ),
+            nodes: Array.from(
+                {length: config.particleCount / 4},
+                () => new NetworkNode()
+            ),
+        };
 
-    // Handle resize
-    const handleResize = () => {
-      width = canvas.width = window.innerWidth;
-      height = canvas.height = window.innerHeight;
-    };
+        // Connection logic
+        function drawConnections() {
+            for (let i = 0; i < particles.nodes.length; i++) {
+                for (let j = i + 1; j < particles.nodes.length; j++) {
+                    const nodeA = particles.nodes[i];
+                    const nodeB = particles.nodes[j];
 
-    window.addEventListener("resize", handleResize);
+                    const dx = nodeA.x - nodeB.x;
+                    const dy = nodeA.y - nodeB.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
 
-    // Cleanup
-    return () => {
-      cancelAnimationFrame(animationFrame);
-      window.removeEventListener("resize", handleResize);
-    };
-  }, []);
+                    if (distance < config.connectionDistance) {
+                        const opacity = 1 - distance / config.connectionDistance;
+                        ctx.strokeStyle = `rgba(210, 0, 197, ${opacity * 0.2})`;
+                        ctx.lineWidth = 0.5;
+                        ctx.beginPath();
+                        ctx.moveTo(nodeA.x, nodeA.y);
+                        ctx.lineTo(nodeB.x, nodeB.y);
+                        ctx.stroke();
+                    }
+                }
+            }
+        }
 
-  return (
-    <canvas
-      ref={canvasRef}
-      className="fixed top-0 left-0 w-full h-full -z-10 pointer-events-none"
-    />
-  );
+        // Animation loop
+        let animationFrame;
+
+        function animate() {
+            ctx.fillStyle = "rgba(10, 10, 20, 0.15)";
+            ctx.fillRect(0, 0, width, height);
+
+            // Update and draw particles
+            particles.data.forEach((p) => {
+                p.update();
+                p.draw();
+            });
+
+            particles.nodes.forEach((n) => {
+                n.update();
+                n.draw();
+            });
+
+            drawConnections();
+
+            animationFrame = requestAnimationFrame(animate);
+        }
+
+        // Start animation
+        animate();
+
+        // Handle resize
+        const handleResize = () => {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        };
+
+        window.addEventListener("resize", handleResize);
+
+        // Cleanup
+        return () => {
+            cancelAnimationFrame(animationFrame);
+            window.removeEventListener("resize", handleResize);
+        };
+    }, []);
+
+    return (
+        <canvas
+            ref={canvasRef}
+            className="fixed top-0 left-0 w-full h-full -z-10 pointer-events-none"
+        />
+    );
 }
-
-const DomainList = ({ domainsString, limit = 3 }) => {
-  // Pisahkan string jadi array
-  const domains = domainsString
-    .split(",")
-    .map((d) => d.trim())
-    .filter(Boolean);
-  const [showAll, setShowAll] = useState(false);
-
-  if (domains.length === 0) return <span>-</span>;
-
-  return (
-    <span>
-      {showAll
-        ? domains.join(", ")
-        : domains.slice(0, limit).join(", ") +
-          (domains.length > limit ? ", ..." : "")}
-      {domains.length > limit && (
-        <button
-          onClick={() => setShowAll((prev) => !prev)}
-          className="ml-2 text-blue-400 hover:underline focus:outline-none text-xs"
-        >
-          {showAll ? "Read Less" : "Read More"}
-        </button>
-      )}
-    </span>
-  );
-};

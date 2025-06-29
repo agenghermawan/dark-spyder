@@ -1,44 +1,232 @@
 'use client';
-import Navbar from "../../components/navbar";
-import Footer from "../../components/footer";
-import {useState, useRef, useEffect} from "react";
-import {gsap} from "gsap";
-import {ScrollTrigger} from "gsap/ScrollTrigger";
-import {
-    FingerPrintIcon,
-    GlobeAltIcon,
-    CodeBracketIcon,
-    CloudArrowUpIcon,
-    ServerIcon,
-    ArrowPathIcon,
-    ChartBarIcon,
-    BoltIcon
-} from '@heroicons/react/24/outline';
+import React, {useState} from "react";
 import Image from "next/image";
+import Navbar from "../../components/navbar";
 
-gsap.registerPlugin(ScrollTrigger);
+// Utility: Format date to "x days ago"
+const formatTimeAgo = (dateString) => {
+    if (!dateString) return "-";
+    const createdDate = new Date(dateString);
+    const now = new Date();
+    const diffMs = now - createdDate;
+    if (isNaN(diffMs)) return "-";
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    if (diffDays < 1) {
+        const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+        if (diffHours < 1) {
+            const diffMins = Math.floor(diffMs / (1000 * 60));
+            return `${diffMins} min ago`;
+        }
+        return `${diffHours} hour ago`;
+    }
+    return `${diffDays} days ago`;
+};
 
-export default function Vulnerabilities() {
-    const [activeTab, setActiveTab] = useState('web');
-    const heroRef = useRef(null);
-    const featuresRef = useRef(null);
-    const statsRef = useRef(null);
-    const ctaRef = useRef(null);
+const VulnerabilityPage = () => {
+    const [scanInput, setScanInput] = useState("");
+    const [scanResult, setScanResult] = useState(null);
+    const [loadingScan, setLoadingScan] = useState(false);
+    const [scanError, setScanError] = useState(null);
 
+    // Replace with your actual ProjectDiscovery API key
+    const API_KEY = "cf9452c4-7a79-4352-a1d3-9de3ba517347";
+
+    // Scanning handler
+    const handleScan = async () => {
+        setLoadingScan(true);
+        setScanError(null);
+        setScanResult(null);
+
+        try {
+            const params = new URLSearchParams();
+            if (scanInput.trim()) params.append("search", scanInput.trim());
+            params.append("offset", 0);
+            params.append("limit", 100);
+
+            const options = {
+                method: "GET",
+                headers: {"X-API-Key": API_KEY},
+            };
+
+            const url = `https://api.projectdiscovery.io/v1/asset/enumerate/contents?${params.toString()}`;
+
+            const res = await fetch(url, options);
+            if (!res.ok) throw new Error(`HTTP error! Status: ${res.status}`);
+            const data = await res.json();
+            setScanResult(data);
+        } catch (err) {
+            setScanError(err.message || "Scanning failed.");
+        } finally {
+            setLoadingScan(false);
+        }
+    };
+
+    // Render each asset result in a modern table (like "stealer" style)
+    const renderScanTable = () => {
+        if (!scanResult?.data || Object.keys(scanResult.data).length === 0)
+            return (
+                <table className="min-w-full text-white font-mono border border-[#2e2e2e]">
+                    <thead>
+                    <tr className="text-left border-b border-gray-700 text-gray-400 bg-gradient-to-r from-[#1e1e24] to-[#2a2a32]">
+                        <th className="py-4 px-6 text-center">Asset</th>
+                        <th className="py-4 px-6 text-center">Status</th>
+                        <th className="py-4 px-6 text-center">IP(s)</th>
+                        <th className="py-4 px-6 text-center">ASN</th>
+                        <th className="py-4 px-6 text-center">Tech</th>
+                        <th className="py-4 px-6 text-center">Server</th>
+                        <th className="py-4 px-6 text-center">Redirect</th>
+                        <th className="py-4 px-6 text-center">Last Update</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr className="border-b border-gray-800">
+                        <td colSpan="8" className="py-8 px-6 text-center text-gray-400">
+                            <div className="flex flex-col items-center justify-center">
+                                <svg
+                                    className="w-12 h-12 mb-4 text-gray-600"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth="1.5"
+                                        d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                                    />
+                                </svg>
+                                <p className="text-lg font-medium">
+                                    No vulnerability data found
+                                </p>
+                                <p className="text-sm mt-1">
+                                    {scanInput
+                                        ? <>Try searching with different keyword.<br/><span
+                                            className="text-gray-500">Keyword: <span
+                                            className="font-mono">{scanInput}</span></span></>
+                                        : "Try scanning a specific asset or with a different filter."
+                                    }
+                                </p>
+                            </div>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+
+
+            );
+
+        return (
+            <div className="overflow-x-auto rounded-xl shadow-xl" style={{background: "rgba(20,20,25,0.95)"}}>
+                <table className="min-w-full text-white font-mono border border-[#2e2e2e]">
+                    <thead>
+                    <tr className="text-left border-b border-gray-700 text-gray-400 bg-gradient-to-r from-[#1e1e24] to-[#2a2a32]">
+                        <th className="py-4 px-6">Asset</th>
+                        <th className="py-4 px-6">Status</th>
+                        <th className="py-4 px-6">IP(s)</th>
+                        <th className="py-4 px-6">ASN</th>
+                        <th className="py-4 px-6">Tech</th>
+                        <th className="py-4 px-6">Server</th>
+                        <th className="py-4 px-6">Redirect</th>
+                        <th className="py-4 px-6">Last Update</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {Object.values(scanResult.data).map((item, idx) => {
+                        const techName = item.technologies?.[0];
+                        const techDetail = techName && item.technology_details && item.technology_details[techName];
+                        const techIcon = techDetail?.icon;
+                        return (
+                            <tr key={item.id || idx}
+                                className="border-b border-gray-800 transition-all group hover:bg-gradient-to-r from-[#1a1a20] to-[#25252d]">
+                                <td className="py-4 px-6">
+                                    <div className="flex flex-col gap-0.5">
+                                        <span className="font-bold text-white">{item.host || item.domain_name}</span>
+                                        <span className="text-xs text-gray-400">{item.name}</span>
+                                        <span
+                                            className="inline-flex items-center text-xs bg-blue-950 px-2 py-0.5 rounded mt-1 text-indigo-300 font-semibold">
+                      {item.status_code} {item.title && <span className="ml-1 text-gray-500">{item.title}</span>}
+                    </span>
+                                    </div>
+                                </td>
+                                <td className="py-4 px-6">
+                                    {item.body && item.body.toLowerCase().includes("moved permanently") ? (
+                                        <span
+                                            className="bg-gradient-to-r from-yellow-700 to-yellow-800 text-yellow-100 px-3 py-1 rounded text-xs">
+                      Redirected
+                    </span>
+                                    ) : (
+                                        <span
+                                            className="bg-gradient-to-r from-green-700 to-green-800 text-green-100 px-3 py-1 rounded text-xs">
+                      OK
+                    </span>
+                                    )}
+                                </td>
+                                <td className="py-4 px-6">
+                                    <div className="flex flex-col gap-1">
+                                        {item.ip?.map(ip =>
+                                            <span key={ip}
+                                                  className="bg-[#222] px-2 py-0.5 rounded text-xs mb-0.5 font-mono text-gray-100 border border-gray-700">{ip}</span>
+                                        )}
+                                    </div>
+                                </td>
+                                <td className="py-4 px-6">
+                                    {item.asn ? (
+                                        <span className="bg-[#23232b] rounded px-2 py-0.5 text-xs text-gray-300">
+                      <strong>{item.asn.as_number}</strong>
+                      <span className="text-gray-400"> | </span>
+                                            {item.asn.as_name?.toLowerCase()}
+                                            <span className="text-gray-400"> | </span>
+                                            {item.asn.as_country}
+                    </span>
+                                    ) : "-"}
+                                </td>
+                                <td className="py-4 px-6">
+                                    <div className="flex items-center gap-1">
+                                        {techIcon && (
+                                            <Image src={techIcon} alt={techName} width={18} height={18}
+                                                   className="inline rounded bg-white p-0.5"/>
+                                        )}
+                                        <span
+                                            className="bg-[#23232b] rounded px-2 py-0.5 text-xs text-orange-300">{techName}</span>
+                                    </div>
+                                </td>
+                                <td className="py-4 px-6">
+                                    {item.webserver && (
+                                        <span
+                                            className="bg-[#23232b] rounded px-2 py-0.5 text-xs text-cyan-300">{item.webserver}</span>
+                                    )}
+                                </td>
+                                <td className="py-4 px-6">
+                                    {item.redirect_location ? (
+                                        <a href={item.redirect_location} target="_blank" rel="noopener noreferrer"
+                                           className="text-xs text-yellow-300 underline break-all">{item.redirect_location}</a>
+                                    ) : "-"}
+                                </td>
+                                <td className="py-4 px-6">
+                                  <span
+                                      className="inline-flex items-center px-3 py-1 rounded-full text-xs bg-gradient-to-r from-gray-700 to-gray-800 text-gray-300">
+                                    {formatTimeAgo(item.updated_at || item.created_at)}
+                                  </span>
+                                </td>
+
+                            </tr>
+                        )
+                    })}
+                    </tbody>
+                </table>
+            </div>
+        );
+    };
 
     return (
         <div className="bg-black text-white min-h-screen">
             <Navbar/>
-
             {/* Hero Section */}
-            <section
-                ref={heroRef}
-                className="relative h-screen w-full bg-gradient-to-b from-black to-gray-900 overflow-hidden"
-            >
-                <div className="absolute inset-0 flex items-center justify-center px-6 z-10">
+            <section className="relative min-h-screen w-full bg-gradient-to-b from-black to-gray-900 overflow-hidden">
+                <div className="absolute inset-0 flex flex-col items-center justify-center px-6 z-10">
                     <div className="max-w-4xl mx-auto text-center">
                         <span className="text-[#f03262] font-mono text-sm tracking-widest mb-4 inline-block">
-                            VULNERABILITY INTELLIGENCE
+                          VULNERABILITY INTELLIGENCE
                         </span>
                         <h1 className="text-5xl md:text-7xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-white to-[#f03262]">
                             Zero-Day Protection
@@ -46,329 +234,64 @@ export default function Vulnerabilities() {
                         <p className="text-xl md:text-2xl text-gray-300 mb-10 max-w-3xl mx-auto">
                             Proactively discover and remediate security flaws before attackers can exploit them
                         </p>
-                        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                        {/* SCAN INPUT */}
+                        <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center items-center">
+                            <input
+                                type="text"
+                                placeholder="Enter your target (domain, IP, etc)"
+                                className="px-6 py-3 rounded-lg border border-gray-700 bg-gray-900 text-white w-full sm:w-96 mb-2 sm:mb-0"
+                                value={scanInput}
+                                onChange={e => setScanInput(e.target.value)}
+                                disabled={loadingScan}
+                            />
                             <button
-                                className="bg-[#f03262] hover:bg-[#d82a56] text-white px-8 py-4 rounded-lg font-medium transition-all hover:scale-105 shadow-lg shadow-[#f03262]/30">
-                                Request Demo
-                            </button>
-                            <button
-                                className="border border-[#f03262] text-[#f03262] hover:bg-[#f03262]/10 px-8 py-4 rounded-lg font-medium transition-all">
-                                View Vulnerability Database
+                                onClick={handleScan}
+                                className="bg-[#f03262] hover:bg-[#d82a56] text-white px-8 py-3 rounded-lg font-medium transition-all hover:scale-105 shadow-lg shadow-[#f03262]/30"
+                                disabled={loadingScan || !scanInput}
+                            >
+                                {loadingScan ? "Scanning..." : "Start Scanning"}
                             </button>
                         </div>
+                        {/* SCAN ERROR (still in hero, for visibility) */}
+                        {scanError && (
+                            <div className="mt-4 text-red-400 text-center">{scanError}</div>
+                        )}
                     </div>
                 </div>
-
                 {/* Animated background elements */}
-                <div className="absolute inset-0 overflow-hidden opacity-20">
+                <div className="absolute inset-0 overflow-hidden opacity-20 pointer-events-none select-none">
                     {[...Array(20)].map((_, i) => (
                         <div
                             key={i}
                             className="absolute rounded-full bg-[#f03262]"
                             style={{
-                                width: Math.random() * 10 + 5 + 'px',
-                                height: Math.random() * 10 + 5 + 'px',
-                                top: Math.random() * 100 + '%',
-                                left: Math.random() * 100 + '%',
-                                animation: `float ${Math.random() * 10 + 10}s linear infinite`,
-                                animationDelay: Math.random() * 5 + 's'
+                                width: 18 + 'px',
+                                height: 18 + 'px',
+                                top: (i * 5 % 100) + '%',
+                                left: ((i * 13) % 100) + '%',
+                                opacity: 0.2 + (i % 4) * 0.2,
+                                filter: 'blur(2px)'
                             }}
                         />
                     ))}
                 </div>
             </section>
-
-            {/* Vulnerability Types Section */}
-            <section className="py-20 bg-gradient-to-b from-gray-900 to-black px-6">
-                <div className="max-w-7xl mx-auto">
-                    <div className="text-center mb-16">
-                        <span className="text-[#f03262] font-mono text-sm tracking-widest">THREAT COVERAGE</span>
-                        <h2 className="text-4xl md:text-5xl font-bold text-white mt-4">
-                            Comprehensive Vulnerability Detection
+            {/* Scan Result Section (AFTER hero section) */}
+            {scanResult && (
+                <section className="pt-8 pb-20 bg-black px-6">
+                    <div className="max-w-7xl mx-auto">
+                        <p className="text-sm uppercase text-blue-400 mb-2 tracking-widest text-center">
+                            🔎 Security Flaw Findings
+                        </p>
+                        <h2 className="text-4xl font-light text-white mb-8 text-center">
+                            Vulnerability Exposure Report
                         </h2>
-                        <div className="w-24 h-1 bg-gradient-to-r from-[#f03262] to-[#d82a56] mx-auto mt-6"></div>
+                        {renderScanTable()}
                     </div>
-
-                    {/* Tab Navigation */}
-                    <div className="flex justify-center mb-12">
-                        <div
-                            className="inline-flex bg-gray-900 rounded-full p-1 border border-gray-800 shadow-lg shadow-[#f03262]/10">
-                            {['web', 'api', 'cloud', 'network'].map((tab) => (
-                                <button
-                                    key={tab}
-                                    onClick={() => setActiveTab(tab)}
-                                    className={`px-6 py-3 rounded-full text-sm font-medium transition-all duration-300 ${
-                                        activeTab === tab
-                                            ? 'bg-gradient-to-r from-[#f03262] to-[#d82a56] text-white shadow-lg'
-                                            : 'text-gray-300 hover:text-white hover:bg-gray-800'
-                                    }`}
-                                >
-                                    {tab === 'web' && 'Web Apps'}
-                                    {tab === 'api' && 'APIs'}
-                                    {tab === 'cloud' && 'Cloud'}
-                                    {tab === 'network' && 'Network'}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Tab Content */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-                        {[
-                            {
-                                id: 'web',
-                                icon: <CodeBracketIcon className="w-10 h-10 text-[#f03262]"/>,
-                                title: 'Web Application',
-                                description: 'Detect OWASP Top 10 vulnerabilities including XSS, SQLi, CSRF, and more',
-                                stats: ['10,000+ web templates', '95% detection rate', '<5% false positives']
-                            },
-                            {
-                                id: 'api',
-                                icon: <ServerIcon className="w-10 h-10 text-[#f03262]"/>,
-                                title: 'API Security',
-                                description: 'Identify broken authentication, excessive data exposure, and misconfigurations',
-                                stats: ['REST & GraphQL support', 'Automated fuzzing', 'Business logic flaws']
-                            },
-                            {
-                                id: 'cloud',
-                                icon: <CloudArrowUpIcon className="w-10 h-10 text-[#f03262]"/>,
-                                title: 'Cloud Infrastructure',
-                                description: 'Find IAM misconfigurations, exposed storage, and vulnerable containers',
-                                stats: ['AWS/Azure/GCP coverage', 'CIS benchmark checks', 'Infra-as-code scanning']
-                            },
-                            {
-                                id: 'network',
-                                icon: <GlobeAltIcon className="w-10 h-10 text-[#f03262]"/>,
-                                title: 'Network Services',
-                                description: 'Uncover vulnerable services, open ports, and protocol weaknesses',
-                                stats: ['2000+ CVEs covered', 'Zero-day detection', 'Live attack simulation']
-                            }
-                        ].map((item) => (
-                            <div
-                                key={item.id}
-                                className={`border rounded-xl p-8 transition-all ${
-                                    activeTab === item.id
-                                        ? 'border-[#f03262] bg-gray-800/50 shadow-lg shadow-[#f03262]/20'
-                                        : 'border-gray-800 hover:border-[#f03262] hover:bg-gray-800/30'
-                                }`}
-                            >
-                                <div className="flex items-center mb-6">
-                                    <div className="p-3 rounded-lg bg-gray-800 mr-4">
-                                        {item.icon}
-                                    </div>
-                                    <h3 className="text-2xl font-bold text-white">{item.title}</h3>
-                                </div>
-                                <p className="text-gray-300 mb-6">{item.description}</p>
-                                <ul className="space-y-3">
-                                    {item.stats.map((stat, i) => (
-                                        <li key={i} className="flex items-center text-gray-400">
-                                            <BoltIcon className="w-4 h-4 text-[#f03262] mr-2"/>
-                                            {stat}
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </section>
-
-            {/* Features Section */}
-            <section
-                ref={featuresRef}
-                className="py-20 bg-black px-6 border-t border-gray-800"
-            >
-                <div className="max-w-7xl mx-auto">
-                    <div className="text-center mb-16">
-                        <span className="text-[#f03262] font-mono text-sm tracking-widest">OUR TECHNOLOGY</span>
-                        <h2 className="text-4xl md:text-5xl font-bold text-white mt-4">
-                            Advanced Vulnerability Scanning
-                        </h2>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                        {[
-                            {
-                                icon: <FingerPrintIcon className="w-10 h-10 text-[#f03262]"/>,
-                                title: "Signature-less Detection",
-                                description: "Our behavioral analysis engine identifies zero-day vulnerabilities without relying on known signatures",
-                                highlight: "Reduces false negatives by 40%"
-                            },
-                            {
-                                icon: <ArrowPathIcon className="w-10 h-10 text-[#f03262]"/>,
-                                title: "Continuous Monitoring",
-                                description: "Automatically rescans your assets when new vulnerabilities are discovered",
-                                highlight: "Real-time alerting"
-                            },
-                            {
-                                icon: <ChartBarIcon className="w-10 h-10 text-[#f03262]"/>,
-                                title: "Risk Prioritization",
-                                description: "AI-powered scoring system helps focus on the most critical vulnerabilities first",
-                                highlight: "EPSS + CVSS integration"
-                            }
-                        ].map((feature, index) => (
-                            <div
-                                key={index}
-                                className="feature-card bg-gray-900 border border-gray-800 rounded-xl p-8 hover:border-[#f03262] transition-all hover:shadow-lg hover:shadow-[#f03262]/10"
-                            >
-                                <div className="w-14 h-14 bg-gray-800 rounded-lg flex items-center justify-center mb-6">
-                                    {feature.icon}
-                                </div>
-                                <h3 className="text-xl font-bold text-white mb-3">{feature.title}</h3>
-                                <p className="text-gray-300 mb-5">{feature.description}</p>
-                                <div
-                                    className="text-sm px-3 py-2 bg-[#f03262]/10 text-[#f03262] rounded-md inline-block">
-                                    {feature.highlight}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </section>
-
-            {/* Stats Section */}
-            <section
-                ref={statsRef}
-                className="py-20 bg-gradient-to-b from-black to-gray-900 px-6"
-            >
-                <div className="max-w-7xl mx-auto">
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-                        {[
-                            {value: "10M+", label: "Vulnerabilities Detected"},
-                            {value: "99.7%", label: "Scan Accuracy"},
-                            {value: "24/7", label: "Monitoring"},
-                            {value: "200+", label: "Integrations"}
-                        ].map((stat, index) => (
-                            <div
-                                key={index}
-                                className="stat-item text-center p-6 bg-gray-900 border border-gray-800 rounded-xl hover:border-[#f03262] transition-all"
-                            >
-                                <div className="text-4xl md:text-5xl font-bold text-[#f03262] mb-3">
-                                    {stat.value}
-                                </div>
-                                <div className="text-gray-300 text-sm uppercase tracking-wider">
-                                    {stat.label}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </section>
-
-            {/* CTA Section */}
-            <section
-                ref={ctaRef}
-                className="py-32 px-6 bg-gradient-to-r from-gray-900 to-black"
-            >
-                <div className="max-w-4xl mx-auto text-center bg-gray-900 border border-gray-800 rounded-2xl p-12">
-                    <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
-                        Ready to uncover your hidden vulnerabilities?
-                    </h2>
-                    <p className="text-gray-300 mb-8 max-w-2xl mx-auto">
-                        Our security experts will demonstrate how our platform can help protect your digital assets
-                    </p>
-                    <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                        <button
-                            className="bg-[#f03262] hover:bg-[#d82a56] text-white px-8 py-4 rounded-lg font-medium transition-all hover:scale-105 shadow-lg shadow-[#f03262]/30">
-                            Request Demo
-                        </button>
-                        <button
-                            className="border border-[#f03262] text-[#f03262] hover:bg-[#f03262]/10 px-8 py-4 rounded-lg font-medium transition-all">
-                            Contact Sales
-                        </button>
-                    </div>
-                </div>
-            </section>
-
-            <footer className="bg-[#0D0D10] border-t border-gray-800">
-                {/* Main Container */}
-                <div className="max-w-7xl mx-auto px-6 py-16">
-
-                    {/* Content Grid - New Layout */}
-                    <div className="grid grid-cols-1 md:grid-cols-12 gap-10">
-                        {/* Brand Column */}
-                        <div className="md:col-span-3">
-                            <div className="flex items-center mb-6">
-                                <Image
-                                    src="/image/logo.png"
-                                    alt="Clandestine"
-                                    width={120}
-                                    height={48}
-                                    className="invert"
-                                />
-                            </div>
-                            <p className="text-gray-400 text-sm">
-                                AI-powered dark web intelligence platform protecting your digital assets
-                            </p>
-                        </div>
-
-                        {/* Navigation - Same Categories */}
-                        <div className="md:col-span-9 grid grid-cols-2 md:grid-cols-3 gap-8">
-                            {/* Company - Same wording */}
-                            <div>
-                                <h3 className="text-white font-medium mb-4 text-sm uppercase tracking-wider">Company</h3>
-                                <ul className="space-y-3">
-                                    {['About', 'Contact us'].map((item) => (
-                                        <li key={item}>
-                                            <a href="#"
-                                               className="text-gray-400 hover:text-[#f33d74] text-sm transition-colors">
-                                                {item}
-                                            </a>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-
-                            {/* Products - Same wording */}
-                            <div>
-                                <h3 className="text-white font-medium mb-4 text-sm uppercase tracking-wider">Products</h3>
-                                <ul className="space-y-3">
-                                    {['Database Stealer', 'Database Leaks'].map((item) => (
-                                        <li key={item}>
-                                            <a href="#"
-                                               className="text-gray-400 hover:text-[#f33d74] text-sm transition-colors">
-                                                {item}
-                                            </a>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-
-                            {/* Sectors - Same wording */}
-                            <div>
-                                <h3 className="text-white font-medium mb-4 text-sm uppercase tracking-wider">Sectors</h3>
-                                <ul className="space-y-3">
-                                    {['Law Enforcement Agencies', 'Governments', 'Enterprises'].map((item) => (
-                                        <li key={item}>
-                                            <a href="#"
-                                               className="text-gray-400 hover:text-[#f33d74] text-sm transition-colors">
-                                                {item}
-                                            </a>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Bottom Bar - Same wording */}
-                    <div
-                        className="border-t border-gray-800 mt-16 pt-8 pb-12 flex flex-col md:flex-row justify-between items-center">
-          <span className="text-gray-500 text-sm mb-4 md:mb-0">
-            © 2025 Clandestine Project. All rights reserved
-          </span>
-                        <div className="flex space-x-6">
-                            <a href="#" className="text-gray-500 hover:text-[#f33d74] text-sm transition-colors">
-                                Terms & Conditions
-                            </a>
-                            <a href="#" className="text-gray-500 hover:text-[#f33d74] text-sm transition-colors">
-                                Privacy Policy
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </footer>
-
+                </section>
+            )}
         </div>
     );
-}
+};
+
+export default VulnerabilityPage;

@@ -1,23 +1,10 @@
 export const dynamic = 'force-dynamic';
 import jwt from "jsonwebtoken";
 
-export async function GET(req) {
-    // Parse all params
-    const { searchParams } = new URL(req.url);
-
-    // Build backend query string dynamically
-    let backendUrl = "http://103.245.181.5:5001/search?";
-    let paramsArr = [];
-    for (const [key, value] of searchParams.entries()) {
-        // Only append non-empty params
-        if (value && value !== "undefined" && value !== "null") {
-            paramsArr.push(`${encodeURIComponent(key)}=${encodeURIComponent(value)}`);
-        }
-    }
-    backendUrl += paramsArr.join('&');
-
-    // Auth (same as your code)
+export async function PUT(req, { params }) {
+    const { id } = params;
     const token = req.cookies.get("token")?.value;
+
     if (!token) {
         return new Response(
             JSON.stringify({ message: "Unauthorized: Token missing" }),
@@ -35,18 +22,27 @@ export async function GET(req) {
         );
     }
 
-    // Fetch from backend!
-    const res = await fetch(backendUrl, {
+    let reqBody;
+    try {
+        reqBody = await req.json();
+    } catch {
+        reqBody = {};
+    }
+
+    // Forward the request to backend
+    const res = await fetch(`http://103.245.181.5:5001/mark-as-valid/${id}`, {
+        method: "PUT",
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${decodedUser.user}`
-        }
+            'Authorization': `Bearer ${decodedUser.user}`,
+        },
+        body: JSON.stringify({ valid: reqBody.valid }),
     });
 
     const data = await res.json();
 
     return new Response(JSON.stringify(data), {
         status: res.status,
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json' },
     });
 }
