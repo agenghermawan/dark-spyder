@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
-import { useRouter } from "next/navigation";
-import { toast } from "react-toastify";
+import React, {useState} from "react";
+import {useRouter} from "next/navigation";
+import {toast} from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Image from "next/image";
 import Link from "next/link";
@@ -20,7 +20,7 @@ export default function LoginPage() {
         // Call API to authenticate
         const response = await fetch("/api/login", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {"Content-Type": "application/json"},
             body: JSON.stringify({
                 access_id: accessId,
                 totp: totp,
@@ -45,11 +45,14 @@ export default function LoginPage() {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white">
+        <div
+            className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white">
             {/* Glowing Background Effect */}
-            <div className="absolute inset-0 bg-gradient-to-br from-purple-900/20 via-blue-900/20 to-green-900/20"></div>
+            <div
+                className="absolute inset-0 bg-gradient-to-br from-purple-900/20 via-blue-900/20 to-green-900/20"></div>
             {/* Login Card */}
-            <div className="w-full max-w-md relative p-8 rounded-xl bg-gray-900/90 backdrop-blur-lg border border-gray-800 shadow-2xl overflow-hidden">
+            <div
+                className="w-full max-w-md relative p-8 rounded-xl bg-gray-900/90 backdrop-blur-lg border border-gray-800 shadow-2xl overflow-hidden">
                 <h1 className="text-4xl font-bold mb-8 text-center bg-gradient-to-r from-purple-500 to-green-400 bg-clip-text text-transparent">
                     <Link href={"/"} className="flex flex-col items-center">
                         <Image
@@ -113,19 +116,14 @@ export default function LoginPage() {
                 {/* Register menu */}
                 <div className="mt-8 text-center text-sm text-gray-400">
                     Don't have an access ID?{" "}
-                    <Link href="/register" className="text-purple-400 hover:text-purple-300 underline font-semibold transition-colors">
+                    <Link href="/register"
+                          className="text-purple-400 hover:text-purple-300 underline font-semibold transition-colors">
                         Get Started
                     </Link>
                 </div>
                 {/* Footer */}
                 <p className="mt-6 text-center text-sm text-gray-500">
-                    &copy; 2025{" "}
-                    <a
-                        href="#"
-                        className="text-purple-400 hover:text-purple-300 underline transition-colors"
-                    >
-                        Cladestine Project
-                    </a>
+                    &copy;  2025 Clandestine Project. All rights reserved
                 </p>
             </div>
         </div>

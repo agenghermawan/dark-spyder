@@ -1,9 +1,11 @@
 'use client';
-import React, {useState} from "react";
+
+import React, {useState, useEffect} from "react";
+import {useRouter} from "next/navigation";
 import Image from "next/image";
 import Navbar from "../../components/navbar";
 
-// Utility: Format date to "x days ago"
+// Utility: Format date to "x days/hours/mins ago"
 const formatTimeAgo = (dateString) => {
     if (!dateString) return "-";
     const createdDate = new Date(dateString);
@@ -22,17 +24,36 @@ const formatTimeAgo = (dateString) => {
     return `${diffDays} days ago`;
 };
 
+const API_KEY = "cf9452c4-7a79-4352-a1d3-9de3ba517347"; // TODO: Move to env variable if possible!
+
 const VulnerabilityPage = () => {
+    const [authState, setAuthState] = useState("loading"); // 'loading' | 'authenticated' | 'unauthenticated'
     const [scanInput, setScanInput] = useState("");
     const [scanResult, setScanResult] = useState(null);
     const [loadingScan, setLoadingScan] = useState(false);
     const [scanError, setScanError] = useState(null);
 
-    // Replace with your actual ProjectDiscovery API key
-    const API_KEY = "cf9452c4-7a79-4352-a1d3-9de3ba517347";
+    const router = useRouter();
 
-    // Scanning handler
+    // Check login status on mount
+    useEffect(() => {
+        const checkLoginStatus = async () => {
+            try {
+                const res = await fetch("/api/me", {credentials: "include"});
+                setAuthState(res.ok ? "authenticated" : "unauthenticated");
+            } catch {
+                setAuthState("unauthenticated");
+            }
+        };
+        checkLoginStatus();
+    }, []);
+
+    // Scan handler
     const handleScan = async () => {
+        if (authState !== "authenticated") {
+            router.push("/login");
+            return;
+        }
         setLoadingScan(true);
         setScanError(null);
         setScanResult(null);
@@ -49,7 +70,6 @@ const VulnerabilityPage = () => {
             };
 
             const url = `https://api.projectdiscovery.io/v1/asset/enumerate/contents?${params.toString()}`;
-
             const res = await fetch(url, options);
             if (!res.ok) throw new Error(`HTTP error! Status: ${res.status}`);
             const data = await res.json();
@@ -61,9 +81,9 @@ const VulnerabilityPage = () => {
         }
     };
 
-    // Render each asset result in a modern table (like "stealer" style)
+    // Render scan result table
     const renderScanTable = () => {
-        if (!scanResult?.data || Object.keys(scanResult.data).length === 0)
+        if (!scanResult?.data || Object.keys(scanResult.data).length === 0) {
             return (
                 <table className="min-w-full text-white font-mono border border-[#2e2e2e]">
                     <thead>
@@ -82,22 +102,12 @@ const VulnerabilityPage = () => {
                     <tr className="border-b border-gray-800">
                         <td colSpan="8" className="py-8 px-6 text-center text-gray-400">
                             <div className="flex flex-col items-center justify-center">
-                                <svg
-                                    className="w-12 h-12 mb-4 text-gray-600"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth="1.5"
-                                        d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                                    />
+                                <svg className="w-12 h-12 mb-4 text-gray-600" fill="none" stroke="currentColor"
+                                     viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5"
+                                          d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                 </svg>
-                                <p className="text-lg font-medium">
-                                    No vulnerability data found
-                                </p>
+                                <p className="text-lg font-medium">No vulnerability data found</p>
                                 <p className="text-sm mt-1">
                                     {scanInput
                                         ? <>Try searching with different keyword.<br/><span
@@ -111,9 +121,8 @@ const VulnerabilityPage = () => {
                     </tr>
                     </tbody>
                 </table>
-
-
             );
+        }
 
         return (
             <div className="overflow-x-auto rounded-xl shadow-xl" style={{background: "rgba(20,20,25,0.95)"}}>
@@ -144,21 +153,21 @@ const VulnerabilityPage = () => {
                                         <span className="text-xs text-gray-400">{item.name}</span>
                                         <span
                                             className="inline-flex items-center text-xs bg-blue-950 px-2 py-0.5 rounded mt-1 text-indigo-300 font-semibold">
-                      {item.status_code} {item.title && <span className="ml-1 text-gray-500">{item.title}</span>}
-                    </span>
+                        {item.status_code} {item.title && <span className="ml-1 text-gray-500">{item.title}</span>}
+                      </span>
                                     </div>
                                 </td>
                                 <td className="py-4 px-6">
                                     {item.body && item.body.toLowerCase().includes("moved permanently") ? (
                                         <span
                                             className="bg-gradient-to-r from-yellow-700 to-yellow-800 text-yellow-100 px-3 py-1 rounded text-xs">
-                      Redirected
-                    </span>
+                        Redirected
+                      </span>
                                     ) : (
                                         <span
                                             className="bg-gradient-to-r from-green-700 to-green-800 text-green-100 px-3 py-1 rounded text-xs">
-                      OK
-                    </span>
+                        OK
+                      </span>
                                     )}
                                 </td>
                                 <td className="py-4 px-6">
@@ -172,12 +181,12 @@ const VulnerabilityPage = () => {
                                 <td className="py-4 px-6">
                                     {item.asn ? (
                                         <span className="bg-[#23232b] rounded px-2 py-0.5 text-xs text-gray-300">
-                      <strong>{item.asn.as_number}</strong>
-                      <span className="text-gray-400"> | </span>
+                        <strong>{item.asn.as_number}</strong>
+                        <span className="text-gray-400"> | </span>
                                             {item.asn.as_name?.toLowerCase()}
                                             <span className="text-gray-400"> | </span>
                                             {item.asn.as_country}
-                    </span>
+                      </span>
                                     ) : "-"}
                                 </td>
                                 <td className="py-4 px-6">
@@ -203,12 +212,11 @@ const VulnerabilityPage = () => {
                                     ) : "-"}
                                 </td>
                                 <td className="py-4 px-6">
-                                  <span
-                                      className="inline-flex items-center px-3 py-1 rounded-full text-xs bg-gradient-to-r from-gray-700 to-gray-800 text-gray-300">
-                                    {formatTimeAgo(item.updated_at || item.created_at)}
-                                  </span>
+                    <span
+                        className="inline-flex items-center px-3 py-1 rounded-full text-xs bg-gradient-to-r from-gray-700 to-gray-800 text-gray-300">
+                      {formatTimeAgo(item.updated_at || item.created_at)}
+                    </span>
                                 </td>
-
                             </tr>
                         )
                     })}
@@ -225,16 +233,16 @@ const VulnerabilityPage = () => {
             <section className="relative min-h-screen w-full bg-gradient-to-b from-black to-gray-900 overflow-hidden">
                 <div className="absolute inset-0 flex flex-col items-center justify-center px-6 z-10">
                     <div className="max-w-4xl mx-auto text-center">
-                        <span className="text-[#f03262] font-mono text-sm tracking-widest mb-4 inline-block">
-                          VULNERABILITY INTELLIGENCE
-                        </span>
+            <span className="text-[#f03262] font-mono text-sm tracking-widest mb-4 inline-block">
+              VULNERABILITY INTELLIGENCE
+            </span>
                         <h1 className="text-5xl md:text-7xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-white to-[#f03262]">
                             Zero-Day Protection
                         </h1>
                         <p className="text-xl md:text-2xl text-gray-300 mb-10 max-w-3xl mx-auto">
                             Proactively discover and remediate security flaws before attackers can exploit them
                         </p>
-                        {/* SCAN INPUT */}
+                        {/* Scan Input */}
                         <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center items-center">
                             <input
                                 type="text"
@@ -242,17 +250,28 @@ const VulnerabilityPage = () => {
                                 className="px-6 py-3 rounded-lg border border-gray-700 bg-gray-900 text-white w-full sm:w-96 mb-2 sm:mb-0"
                                 value={scanInput}
                                 onChange={e => setScanInput(e.target.value)}
-                                disabled={loadingScan}
+                                disabled={loadingScan || authState !== "authenticated"}
                             />
                             <button
-                                onClick={handleScan}
+                                onClick={() => {
+                                    if (authState !== "authenticated") {
+                                        router.push("/login");
+                                        return;
+                                    }
+                                    handleScan();
+                                }}
                                 className="bg-[#f03262] hover:bg-[#d82a56] text-white px-8 py-3 rounded-lg font-medium transition-all hover:scale-105 shadow-lg shadow-[#f03262]/30"
-                                disabled={loadingScan || !scanInput}
                             >
-                                {loadingScan ? "Scanning..." : "Start Scanning"}
+                                {authState === "loading"
+                                    ? "Checking..."
+                                    : authState !== "authenticated"
+                                        ? "Login to Scan"
+                                        : loadingScan
+                                            ? "Scanning..."
+                                            : "Start Scanning"}
                             </button>
                         </div>
-                        {/* SCAN ERROR (still in hero, for visibility) */}
+
                         {scanError && (
                             <div className="mt-4 text-red-400 text-center">{scanError}</div>
                         )}
@@ -276,7 +295,7 @@ const VulnerabilityPage = () => {
                     ))}
                 </div>
             </section>
-            {/* Scan Result Section (AFTER hero section) */}
+            {/* Scan Result Section */}
             {scanResult && (
                 <section className="pt-8 pb-20 bg-black px-6">
                     <div className="max-w-7xl mx-auto">

@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
-import { useRouter } from "next/navigation";
-import { FaExclamationTriangle, FaCopy, FaDownload, FaLock } from "react-icons/fa";
-import { toast } from "react-toastify";
+import React, {useState} from "react";
+import {useRouter} from "next/navigation";
+import {FaExclamationTriangle, FaCopy, FaDownload, FaLock} from "react-icons/fa";
+import {toast} from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { QRCodeCanvas } from "qrcode.react";
+import QRCode from "react-qr-code";
 import ReCAPTCHA from "react-google-recaptcha";
 import Link from "next/link";
 
@@ -34,12 +34,12 @@ export default function RegisterPage() {
     // Copy to clipboard
     const handleCopy = (val) => {
         navigator.clipboard.writeText(val);
-        toast.success("Copied to clipboard", { autoClose: 1500 });
+        toast.success("Copied to clipboard", {autoClose: 1500});
     };
 
     // Download as txt
     const handleDownload = () => {
-        const blob = new Blob([accessId], { type: "text/plain" });
+        const blob = new Blob([accessId], {type: "text/plain"});
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
@@ -71,7 +71,7 @@ export default function RegisterPage() {
         try {
             const res = await fetch("/api/register", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {"Content-Type": "application/json"},
                 body: JSON.stringify({})
             });
             const data = await res.json();
@@ -101,22 +101,25 @@ export default function RegisterPage() {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white relative">
+        <div
+            className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white relative">
             {/* Background Glow */}
-            <div className="absolute inset-0 bg-gradient-to-br from-purple-900/20 via-blue-900/20 to-green-900/20"></div>
+            <div
+                className="absolute inset-0 bg-gradient-to-br from-purple-900/20 via-blue-900/20 to-green-900/20"></div>
 
             {/* Register Card */}
-            <div className="w-full max-w-lg relative p-8 rounded-xl bg-gray-900/90 backdrop-blur-lg border border-gray-800 shadow-2xl z-10">
+            <div
+                className="w-full max-w-lg relative p-8 rounded-xl bg-gray-900/90 backdrop-blur-lg border border-gray-800 shadow-2xl z-10">
                 <h1 className="text-4xl font-bold mb-2 text-center bg-gradient-to-r from-purple-500 to-green-400 bg-clip-text text-transparent">
                     Create Account
                 </h1>
                 <p className="text-center text-gray-400 mb-6">
-                    Get your unique access ID for stealseek
+                    Get your unique access ID for Clandestine Project.
                 </p>
                 {/* Important Info */}
                 <div className="bg-gray-800 rounded-lg p-4 mb-6 border-l-4 border-yellow-400">
                     <div className="flex items-center mb-2 text-yellow-400">
-                        <FaExclamationTriangle className="mr-2" />
+                        <FaExclamationTriangle className="mr-2"/>
                         <span className="font-semibold">Important Information</span>
                     </div>
                     <ul className="text-sm text-gray-200 space-y-1 pl-6 list-disc">
@@ -129,25 +132,6 @@ export default function RegisterPage() {
                 </div>
                 {/* Referral */}
                 <form onSubmit={handleRegister}>
-                    <div className="mb-3 flex items-center">
-                        <button
-                            type="button"
-                            className="flex items-center gap-2 text-pink-400 hover:text-pink-300 text-sm focus:outline-none"
-                            onClick={() => setShowReferral((v) => !v)}
-                        >
-                            <span className="text-lg">📌</span>
-                            I have a referral code
-                        </button>
-                    </div>
-                    {showReferral && (
-                        <input
-                            type="text"
-                            placeholder="Referral code"
-                            className="w-full mb-4 p-3 rounded-lg bg-gray-800 border border-gray-700 text-gray-200 focus:outline-none"
-                            value={referral}
-                            onChange={e => setReferral(e.target.value)}
-                        />
-                    )}
                     {/* Google reCAPTCHA */}
                     <div className="mb-4 flex justify-center">
                         <ReCAPTCHA
@@ -162,7 +146,7 @@ export default function RegisterPage() {
                         disabled={loading || !recaptchaToken}
                         className={`w-full py-3 mt-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-bold rounded-lg transition-all transform hover:scale-105 active:scale-95 flex items-center justify-center gap-2 ${loading || !recaptchaToken ? "opacity-60 cursor-not-allowed" : ""}`}
                     >
-                        <FaLock className="mr-2" />
+                        <FaLock className="mr-2"/>
                         {loading ? "Registering..." : "Generate Access ID"}
                     </button>
                 </form>
@@ -177,9 +161,11 @@ export default function RegisterPage() {
             {/* MODAL */}
             {modalOpen && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                    <div className="relative bg-gray-900 w-full max-w-md rounded-2xl shadow-2xl p-8 border border-gray-700">
+                    <div
+                        className="relative bg-gray-900 w-full max-w-md rounded-2xl shadow-2xl p-8 border border-gray-700">
                         {/* Modal Header */}
-                        <button onClick={closeModal} className="absolute right-4 top-4 text-gray-500 hover:text-gray-200 text-xl">&times;</button>
+                        <button onClick={closeModal}
+                                className="absolute right-4 top-4 text-gray-500 hover:text-gray-200 text-xl">&times;</button>
                         <h2 className="text-2xl font-bold mb-4 text-center text-white">Your Access ID</h2>
                         {/* Access ID */}
                         <div className="flex items-center bg-black/80 rounded-lg px-4 py-4 mb-4 border border-gray-700">
@@ -189,30 +175,33 @@ export default function RegisterPage() {
                                 className="ml-3 px-2 py-1 bg-gray-700 text-white rounded hover:bg-gray-800 transition"
                                 title="Copy"
                             >
-                                <FaCopy />
+                                <FaCopy/>
                             </button>
                         </div>
                         <button
                             className="w-full flex items-center justify-center gap-2 bg-red-700 hover:bg-red-800 text-white rounded-lg px-4 py-2 font-semibold mb-4 transition"
                             onClick={handleDownload}
                         >
-                            <FaDownload /> Download ID
+                            <FaDownload/> Download ID
                         </button>
                         {/* TOTP QR + Secret */}
                         {provisionUrl && (
                             <div className="mb-4">
-                                <div className="mb-2 font-semibold text-white text-center">Scan this QR in your Authenticator App</div>
-                                <div className="flex justify-center mb-2">
-                                    <QRCodeCanvas value={provisionUrl} size={180} />
+                                <div className="mb-2 font-semibold text-white text-center">Scan this QR in your
+                                    Authenticator App
                                 </div>
-                                <div className="flex items-center justify-center bg-gray-800 rounded px-3 py-2 mx-auto w-fit">
+                                <div className="flex justify-center mb-2">
+                                    <QRCode value={provisionUrl} size={180}/>
+                                </div>
+                                <div
+                                    className="flex items-center justify-center bg-gray-800 rounded px-3 py-2 mx-auto w-fit">
                                     <span className="font-mono text-yellow-300">{secret}</span>
                                     <button
                                         onClick={() => handleCopy(secret)}
                                         className="ml-2 px-1 py-1 bg-gray-700 text-white rounded hover:bg-gray-800 transition text-sm"
                                         title="Copy secret"
                                     >
-                                        <FaCopy />
+                                        <FaCopy/>
                                     </button>
                                 </div>
                                 <div className="text-center text-xs text-gray-400 mt-1">
@@ -221,7 +210,7 @@ export default function RegisterPage() {
                             </div>
                         )}
                         <div className="bg-red-900/80 border border-red-700 rounded-lg p-4 mb-4 flex items-start gap-3">
-                            <FaExclamationTriangle className="mt-1 text-xl text-yellow-400" />
+                            <FaExclamationTriangle className="mt-1 text-xl text-yellow-400"/>
                             <div>
                                 <div className="font-semibold text-red-200">Save this ID immediately!</div>
                                 <div className="text-xs text-red-100 mt-1">
