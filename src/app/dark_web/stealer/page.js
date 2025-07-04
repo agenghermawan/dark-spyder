@@ -351,12 +351,7 @@ function StealerPageContent() {
                         </h2>
                         <div className="overflow-x-auto" ref={tableRef}>
                             {/* Action Bar */}
-                            <div className="flex justify-between items-center mb-4">
-                                <button
-                                    className="bg-gradient-to-r from-yellow-500 to-yellow-700 hover:from-yellow-400 hover:to-yellow-600 text-white px-5 py-2 rounded-lg text-sm font-semibold shadow-lg transition-all"
-                                >
-                                    Extract Logs
-                                </button>
+                            <div className="flex justify-end items-center mb-4">
                                 <button
                                     className="bg-gradient-to-r from-blue-600 to-purple-600 px-5 py-2 rounded-lg text-white font-semibold shadow-lg transition-all hover:scale-105"
                                     onClick={() => setShowAdvanced(true)}

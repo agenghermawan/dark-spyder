@@ -14,7 +14,7 @@ export default function Footer() {
                             <Image
                                 src="/image/logo.png"
                                 alt="Clandestine"
-                                width={120}
+                                width={240}
                                 height={48}
                                 className="invert"
                             />
