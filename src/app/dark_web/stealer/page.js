@@ -62,7 +62,7 @@ function StealerPageContent() {
         checkLoginStatus();
     }, []);
 
-    const fetchStealerData = async ({ params = {}, page = 1, size = 10 }) => {
+    const fetchStealerData = async ({params = {}, page = 1, size = 10}) => {
         setIsLoading(true);
         setShowEmptyAlert(false);
         searchParamsRef.current = params;
@@ -112,7 +112,7 @@ function StealerPageContent() {
             setIsLoading(false);
             setTimeout(() => {
                 if (resultsRef.current) {
-                    resultsRef.current.scrollIntoView({ behavior: "smooth" });
+                    resultsRef.current.scrollIntoView({behavior: "smooth"});
                 }
             }, 100);
         }
@@ -126,8 +126,8 @@ function StealerPageContent() {
             router.push("/login");
             return;
         }
-        setPagination((prev) => ({ ...prev, page: 1 }));
-        await fetchStealerData({ params: { q: domain }, page: 1, size: pagination.size });
+        setPagination((prev) => ({...prev, page: 1}));
+        await fetchStealerData({params: {q: domain}, page: 1, size: pagination.size});
 
         setLastAdvancedParams((prev) => ({
             ...prev,
@@ -149,8 +149,8 @@ function StealerPageContent() {
         setIsLoading(true);
         setShowEmptyAlert(false);
         setStealerData([]);
-        await fetchStealerData({ params, page: 1, size: pagination.size });
-        setPagination((prev) => ({ ...prev, page: 1 }));
+        await fetchStealerData({params, page: 1, size: pagination.size});
+        setPagination((prev) => ({...prev, page: 1}));
         setShowAdvanced(false);
     };
 
@@ -223,7 +223,7 @@ function StealerPageContent() {
         const query = searchParams.get("q");
         if (query) {
             setDomain(query);
-            setPagination((prev) => ({ ...prev, page: 1 }));
+            setPagination((prev) => ({...prev, page: 1}));
             if (authState === "authenticated") {
                 setTimeout(() => handleSearch(), 100);
             }
@@ -258,6 +258,23 @@ function StealerPageContent() {
         if (e.key === "Enter") {
             handlePageInputBlur(e);
         }
+    };
+
+    const handleExtractLogs = () => {
+        // Bangun query string sesuai pencarian aktif
+        const params = searchParamsRef.current || {};
+        const page = pagination.page;
+        const size = pagination.size;
+        const paramEntries = Object.entries(params)
+            .filter(([k, v]) => v && v.trim())
+            .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`);
+
+        paramEntries.push(`type=stealer`);
+        paramEntries.push(`page=${page}`);
+        paramEntries.push(`size=${size}`);
+
+        const queryString = paramEntries.join("&");
+        window.open(`/extract_logs?${queryString}`, "_blank");
     };
 
     // --- RENDER ---
@@ -351,7 +368,27 @@ function StealerPageContent() {
                         </h2>
                         <div className="overflow-x-auto" ref={tableRef}>
                             {/* Action Bar */}
-                            <div className="flex justify-end items-center mb-4">
+                            <div className="flex justify-between items-center mb-4">
+                                <button
+                                    className="bg-gradient-to-r from-blue-600 to-purple-600 px-5 py-2 rounded-lg text-white font-semibold shadow-lg transition-all hover:scale-105 flex items-center gap-2"
+                                    onClick={handleExtractLogs}
+                                >
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        className="h-5 w-5"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                        stroke="currentColor"
+                                        strokeWidth={2}
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4"
+                                        />
+                                    </svg>
+                                    Extract Logs
+                                </button>
                                 <button
                                     className="bg-gradient-to-r from-blue-600 to-purple-600 px-5 py-2 rounded-lg text-white font-semibold shadow-lg transition-all hover:scale-105"
                                     onClick={() => setShowAdvanced(true)}
@@ -540,11 +577,13 @@ function StealerPageContent() {
                             )}
                             {/* Pagination */}
                             {hasSubscription && (
-                                <div className="mt-6 flex flex-col md:flex-row md:justify-between md:items-center gap-3">
+                                <div
+                                    className="mt-6 flex flex-col md:flex-row md:justify-between md:items-center gap-3">
                                     {/* Left: Showing info */}
                                     <div className="flex items-center gap-2">
                                         <p className="text-gray-500 text-sm">
-                                            Showing {hasSubscription ? stealerData.length : 1} of {pagination.total} entries (Page {pagination.page})
+                                            Showing {hasSubscription ? stealerData.length : 1} of {pagination.total} entries
+                                            (Page {pagination.page})
                                         </p>
                                     </div>
                                     {/* Right: Pagination & Limit Controls */}
