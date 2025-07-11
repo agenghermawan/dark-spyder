@@ -2,19 +2,20 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import {useState, useEffect, useRef} from "react";
-import {useRouter} from "next/navigation";
+import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import gsap from "gsap";
 
 export default function Navbar() {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [authState, setAuthState] = useState('loading');
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const router = useRouter();
     const logoRef = useRef(null);
     const mobileMenuRef = useRef(null);
+    const dropdownRef = useRef(null);
 
     useEffect(() => {
-        // Logo animation on mount
         gsap.from(logoRef.current, {
             opacity: 0,
             y: -20,
@@ -23,7 +24,6 @@ export default function Navbar() {
             delay: 0.3
         });
 
-        // Mobile menu animation
         if (isMobileMenuOpen) {
             gsap.from(mobileMenuRef.current, {
                 opacity: 0,
@@ -32,6 +32,23 @@ export default function Navbar() {
                 ease: "power3.out"
             });
         }
+
+        function handleClickOutside(event) {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                setIsDropdownOpen(false);
+            }
+        }
+        if (isDropdownOpen) {
+            document.addEventListener("mousedown", handleClickOutside);
+        }
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+
+    }, [isMobileMenuOpen, isDropdownOpen]);
+
+
+    useEffect(() => {
 
         const checkLoginStatus = async () => {
             try {
@@ -93,7 +110,19 @@ export default function Navbar() {
         { href: "/dark_web/stealer", label: "Darkweb Stealer Monitoring" },
         { href: "/dark_web/leaks", label: "Darkweb Leaks Monitoring" },
         { href: "/vulnerabilities", label: "Vulnerability Scanning" },
-        { href: "/pricing", label: "Pricing" }
+        { href: "/pricing", label: "Pricing" },
+    ];
+
+    // Dropdown menu for authenticated user
+    const dropdownItems = [
+        { href: "/my-payments", label: "My Payments" },
+        { href: "/my-plan", label: "My Plan" },
+    ];
+
+    // Mobile merged menu
+    const mobileMenuItems = [
+        ...menuItems,
+        ...(isLoggedIn ? dropdownItems : [])
     ];
 
     return (
@@ -118,18 +147,18 @@ export default function Navbar() {
                     {isMobileMenuOpen ? (
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                             <path d="M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                  strokeLinejoin="round"/>
+                                  strokeLinejoin="round" />
                             <path d="M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                  strokeLinejoin="round"/>
+                                  strokeLinejoin="round" />
                         </svg>
                     ) : (
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                             <path d="M3 12H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                  strokeLinejoin="round"/>
+                                  strokeLinejoin="round" />
                             <path d="M3 6H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                  strokeLinejoin="round"/>
+                                  strokeLinejoin="round" />
                             <path d="M3 18H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                  strokeLinejoin="round"/>
+                                  strokeLinejoin="round" />
                         </svg>
                     )}
                 </button>
@@ -142,7 +171,7 @@ export default function Navbar() {
                     className="md:hidden mt-4 text-white bg-[#14141f] rounded-lg p-4 shadow-xl"
                 >
                     <div className="space-y-4">
-                        {menuItems.map((item) => (
+                        {mobileMenuItems.map((item) => (
                             <Link
                                 key={item.href}
                                 href={item.href}
@@ -206,12 +235,41 @@ export default function Navbar() {
 
                 <div className="flex items-center justify-end space-x-4">
                     {isLoggedIn ? (
-                        <button
-                            onClick={handleLogout}
-                            className="text-white hover:bg-[#f53d6b] px-4 py-2 rounded-lg transition-all duration-300 border border-[#1c1f26] hover:scale-105"
-                        >
-                            Logout
-                        </button>
+                        <div className="relative" ref={dropdownRef}>
+                            <button
+                                onClick={() => setIsDropdownOpen((open) => !open)}
+                                className="flex items-center gap-2 text-white px-4 py-2 rounded-lg hover:bg-[#232339] transition-all duration-200 border border-[#29293b] font-semibold"
+                            >
+                                <svg className="w-5 h-5 text-[#f33d74]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
+                                    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" fill="currentColor" />
+                                </svg>
+                                My Account
+                                <svg className="w-4 h-4 ml-1 transition-transform" style={{ transform: isDropdownOpen ? "rotate(180deg)" : "rotate(0)" }} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                    <path d="M6 9l6 6 6-6" />
+                                </svg>
+                            </button>
+                            {isDropdownOpen && (
+                                <div className="absolute right-0 mt-2 w-56 bg-[#232339] rounded-lg shadow-lg border border-[#2a2a3a] ring-1 ring-black ring-opacity-5 z-50 divide-y divide-[#29293b]">
+                                    {dropdownItems.map((item) => (
+                                        <Link
+                                            key={item.href}
+                                            href={item.href}
+                                            className="block px-5 py-3 text-sm text-white hover:bg-[#22223a] transition-colors duration-200"
+                                            onClick={() => setIsDropdownOpen(false)}
+                                        >
+                                            {item.label}
+                                        </Link>
+                                    ))}
+                                    <button
+                                        onClick={handleLogout}
+                                        className="w-full text-left px-5 py-3 text-sm text-[#f33d74] hover:bg-[#22223a] hover:text-red-400 transition-colors duration-200 rounded-b-lg"
+                                    >
+                                        Logout
+                                    </button>
+                                </div>
+                            )}
+                        </div>
                     ) : (
                         <Link href="/login">
                             <button
