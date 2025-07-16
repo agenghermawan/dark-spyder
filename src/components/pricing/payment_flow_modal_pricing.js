@@ -10,13 +10,15 @@ function formatAmount(amount, decimals = 6) {
     return fracPart.length ? `${intPart}.${fracPart}` : intPart;
 }
 
-export default function PaymentSelectionModal({
-                                                  show,
-                                                  invoiceId,
-                                                  idPricing,
-                                                  plan,
-                                                  onClose
-                                              }) {
+export default function PaymentFlowModalPricing({
+                                                    show,
+                                                    invoiceId,
+                                                    idPricing,
+                                                    plan,
+                                                    domainLimit = 1, // <= PASS THIS FROM PARENT
+                                                    onClose,
+                                                }) {
+    // asset selection state
     const [assets, setAssets] = useState([]);
     const [loadingAssets, setLoadingAssets] = useState(false);
     const [assetsError, setAssetsError] = useState(null);
@@ -24,24 +26,29 @@ export default function PaymentSelectionModal({
     const [selectedAsset, setSelectedAsset] = useState(null);
     const [selectedBlockchain, setSelectedBlockchain] = useState(null);
 
+    // payment creation state
     const [creatingPayment, setCreatingPayment] = useState(false);
     const [createError, setCreateError] = useState(null);
 
-    // Payment data (instructions)
+    // payment data (instructions)
     const [paymentData, setPaymentData] = useState(null);
 
-    // Status check
+    // status check
     const [checkingStatus, setCheckingStatus] = useState(false);
     const [paymentStatus, setPaymentStatus] = useState(null);
     const [statusError, setStatusError] = useState(null);
     const [notPaidError, setNotPaidError] = useState(false);
 
-    // Register domains
+    // register domains
     const [domains, setDomains] = useState([""]);
     const [registering, setRegistering] = useState(false);
     const [registerSuccess, setRegisterSuccess] = useState("");
     const [registerError, setRegisterError] = useState(null);
 
+    // Show register form if paid
+    const [showRegisterForm, setShowRegisterForm] = useState(false);
+
+    // Fetch asset list
     useEffect(() => {
         if (!show || !invoiceId || !idPricing || !plan) return;
         setLoadingAssets(true);
@@ -55,6 +62,7 @@ export default function PaymentSelectionModal({
         setRegisterError(null);
         setRegisterSuccess("");
         setNotPaidError(false);
+        setShowRegisterForm(false);
         fetch("/api/asset-list", {
             method: "POST",
             credentials: "include",
@@ -78,7 +86,17 @@ export default function PaymentSelectionModal({
         setRegisterError(null);
         setRegisterSuccess("");
         setNotPaidError(false);
+        setShowRegisterForm(false);
     }, [show, assets.length]);
+
+    // Show register form if paymentStatus.Status === 100
+    useEffect(() => {
+        if (paymentStatus && paymentStatus.Status === 100) {
+            setShowRegisterForm(true);
+        } else {
+            setShowRegisterForm(false);
+        }
+    }, [paymentStatus]);
 
     // Create Payment
     const handleCreatePayment = async () => {
@@ -111,6 +129,7 @@ export default function PaymentSelectionModal({
     const decimals =
         selectedBlockchain?.Decimals ||
         selectedAsset?.Decimals ||
+        paymentData?.Decimals ||
         6;
 
     // Check Payment Status (use /api/process-payment)
@@ -136,11 +155,18 @@ export default function PaymentSelectionModal({
                 }
                 throw new Error(result.message || "Failed to check payment status");
             }
-            setPaymentStatus(result.data || result); // adjust if needed
+            setPaymentStatus(result.data || result);
         } catch (e) {
             setStatusError(e.message || "Failed to check payment status.");
         } finally {
             setCheckingStatus(false);
+        }
+    };
+
+    // Add domain (with limit)
+    const handleAddDomain = () => {
+        if (domains.length < domainLimit) {
+            setDomains([...domains, ""]);
         }
     };
 
@@ -152,7 +178,8 @@ export default function PaymentSelectionModal({
         try {
             const filteredDomains = domains.map(d => d.trim()).filter(Boolean);
             if (!filteredDomains.length) throw new Error("Please enter at least one domain.");
-            const res = await fetch("/api/register-domain", {
+            if (filteredDomains.length > domainLimit) throw new Error(`Maximum ${domainLimit} domains allowed.`);
+            const res = await fetch(`/api/register-domain?invoiceId=${invoiceId}`, {
                 method: "POST",
                 credentials: "include",
                 headers: { "Content-Type": "application/json" },
@@ -169,8 +196,9 @@ export default function PaymentSelectionModal({
         }
     };
 
-    // UI
-    return !show ? null : (
+    if (!show) return null;
+
+    return (
         <div className="fixed inset-0 z-50 bg-black bg-opacity-60 flex items-center justify-center px-4">
             <div className="relative w-full max-w-md bg-[#232339] rounded-2xl shadow-xl p-6 animate-fade-in">
                 <button
@@ -184,9 +212,55 @@ export default function PaymentSelectionModal({
                 {assetsError && (
                     <div className="bg-red-900 text-red-200 p-2 rounded mb-4 text-center">{assetsError}</div>
                 )}
-                {!paymentData ? (
+
+                {showRegisterForm ? (
+                    <div className="mt-6 border-t border-gray-700 pt-4">
+                        <h3 className="text-lg font-bold text-white mb-3">Register Domains to Monitor</h3>
+                        <div className="space-y-2">
+                            {domains.map((domain, idx) => (
+                                <div key={idx} className="flex gap-2">
+                                    <input
+                                        className="w-full p-2 rounded bg-gray-700 text-white"
+                                        placeholder="Enter domain (e.g. example.com)"
+                                        value={domain}
+                                        onChange={e => {
+                                            const newDomains = [...domains];
+                                            newDomains[idx] = e.target.value;
+                                            setDomains(newDomains);
+                                        }}
+                                    />
+                                    {domains.length > 1 && (
+                                        <button
+                                            className="bg-red-600 hover:bg-red-700 px-2 rounded text-white text-sm font-bold"
+                                            onClick={() => setDomains(domains.filter((_, i) => i !== idx))}
+                                            title="Remove"
+                                        >-</button>
+                                    )}
+                                </div>
+                            ))}
+                            <button
+                                className="bg-green-600 hover:bg-green-700 px-3 py-1 rounded text-white text-sm font-bold mt-1"
+                                onClick={handleAddDomain}
+                                disabled={domains.length >= domainLimit}
+                            >+ Add Domain</button>
+                            {domains.length >= domainLimit && (
+                                <div className="text-xs text-yellow-400 mt-1">
+                                    Maximum {domainLimit} domains allowed for this plan.
+                                </div>
+                            )}
+                        </div>
+                        <button
+                            className="w-full py-2 rounded bg-[#f33d74] hover:bg-[#e63368] text-white font-bold mt-4"
+                            onClick={handleRegisterDomain}
+                            disabled={registering}
+                        >
+                            {registering ? "Registering..." : "Register Domains"}
+                        </button>
+                        {registerError && <div className="text-red-400 mt-2">{registerError}</div>}
+                        {registerSuccess && <div className="text-green-400 mt-2">{registerSuccess}</div>}
+                    </div>
+                ) : !paymentData ? (
                     <>
-                        {/* Asset selection */}
                         <div className="space-y-4">
                             <div>
                                 <label className="block text-gray-400 mb-1">Select Coin:</label>
@@ -245,26 +319,26 @@ export default function PaymentSelectionModal({
                             <div className="text-white mb-2">
                                 <b>Recipient Address:</b> <br />
                                 <span className="break-all text-green-300 font-mono">
-                  {paymentData.RecipientAddress || "-"}
-                </span>
+                                    {paymentData?.RecipientAddress || "-"}
+                                </span>
                             </div>
                             <div className="text-white mb-2">
                                 <b>Amount:</b> <br />
                                 <span className="font-mono text-yellow-300">
-                  {formatAmount(paymentData.Amount, decimals)} {paymentData.AssetCode?.toUpperCase()}
-                </span>
+                                    {formatAmount(paymentData?.Amount, decimals)} {paymentData?.AssetCode?.toUpperCase()}
+                                </span>
                             </div>
                             <div className="text-white mb-2">
                                 <b>Blockchain:</b> <br />
-                                <span>{paymentData.BlockchainCode?.toUpperCase()}</span>
+                                <span>{paymentData?.BlockchainCode?.toUpperCase()}</span>
                             </div>
                             <div className="text-white mb-2">
                                 <b>Fee:</b> <br />
-                                <span>{paymentData.Fee || "0"}</span>
+                                <span>{paymentData?.Fee || "0"}</span>
                             </div>
                             <div className="text-white mb-2">
                                 <b>Payment ID:</b> <br />
-                                <span>{paymentData.Id || "-"}</span>
+                                <span>{paymentData?.Id || "-"}</span>
                             </div>
                             <div className="bg-yellow-900 text-yellow-300 rounded p-2 text-xs mt-4">
                                 <b>Important:</b> The amount you transfer must <u>exactly</u> match the value shown above (including all decimals).<br />
@@ -285,69 +359,9 @@ export default function PaymentSelectionModal({
                             {notPaidError && (
                                 <div className="text-yellow-400 mt-4">
                                     Your payment has not been received yet. Please try again in a few moments.<br />
-                                    <a
-                                        href="/my-payment"
-                                        className="inline-block mt-2 underline text-blue-300 hover:text-blue-400"
-                                    >
-                                        Go to My Payments
-                                    </a>
                                 </div>
                             )}
                         </div>
-
-                        {/* If paid, show register domain form */}
-                        {paymentStatus?.Status === 100 || paymentStatus?.Amount === 200 ? (
-                            <div className="mt-6 border-t border-gray-700 pt-4">
-                                <h3 className="text-lg font-bold text-white mb-3">Register Domains to Monitor</h3>
-                                <div className="space-y-2">
-                                    {domains.map((domain, idx) => (
-                                        <div key={idx} className="flex gap-2">
-                                            <input
-                                                className="w-full p-2 rounded bg-gray-700 text-white"
-                                                placeholder="Enter domain (e.g. example.com)"
-                                                value={domain}
-                                                onChange={e => {
-                                                    const newDomains = [...domains];
-                                                    newDomains[idx] = e.target.value;
-                                                    setDomains(newDomains);
-                                                }}
-                                            />
-                                            {domains.length > 1 && (
-                                                <button
-                                                    className="bg-red-600 hover:bg-red-700 px-2 rounded text-white text-sm font-bold"
-                                                    onClick={() => setDomains(domains.filter((_, i) => i !== idx))}
-                                                    title="Remove"
-                                                >-</button>
-                                            )}
-                                        </div>
-                                    ))}
-                                    <button
-                                        className="bg-green-600 hover:bg-green-700 px-3 py-1 rounded text-white text-sm font-bold mt-1"
-                                        onClick={() => setDomains([...domains, ""])}
-                                    >+ Add Domain</button>
-                                </div>
-                                <button
-                                    className="w-full py-2 rounded bg-[#f33d74] hover:bg-[#e63368] text-white font-bold mt-4"
-                                    onClick={handleRegisterDomain}
-                                    disabled={registering}
-                                >
-                                    {registering ? "Registering..." : "Register Domains"}
-                                </button>
-                                {registerError && <div className="text-red-400 mt-2">{registerError}</div>}
-                                {registerSuccess && <div className="text-green-400 mt-2">{registerSuccess}</div>}
-                            </div>
-                        ) : paymentStatus?.Status === undefined ? null : (
-                            <div className="mt-4 text-yellow-400 text-center">
-                                Payment has not been received yet. Please try again in a few moments.
-                                <br />
-                                <a
-                                    href="/my-payment"
-                                    className="inline-block mt-2 underline text-blue-300 hover:text-blue-400"
-                                >
-                                    Go to My Payments
-                                </a>
-                            </div>
-                        )}
                     </>
                 )}
             </div>

@@ -21,22 +21,22 @@ function ExposedData({entry}) {
                   <span className="text-xs bg-gradient-to-r from-green-600 to-green-800 px-2 py-1 rounded mr-2">
                     📧 identity
                   </span>
-                            <span className="group-hover:text-green-300 transition-colors">
+                    <span className="group-hover:text-green-300 transition-colors">
                     {entry.email}
                   </span>
-                            {copied === "identity" && (
-                                <span
-                                    className="absolute left-full ml-2 px-2 py-1 text-xs bg-black/80 text-white rounded shadow-lg z-10 animate-fade-in-up">
+                    {copied === "identity" && (
+                        <span
+                            className="absolute left-full ml-2 px-2 py-1 text-xs bg-black/80 text-white rounded shadow-lg z-10 animate-fade-in-up">
                       Copied!
                     </span>
-                            )}
-                        </div>
-                        {/* Password */}
-                        <div
-                            className="flex items-center cursor-pointer group relative"
-                            title="Click to copy password"
-                            onClick={() => handleCopy(entry.password, "password")}
-                        >
+                    )}
+                </div>
+                {/* Password */}
+                <div
+                    className="flex items-center cursor-pointer group relative"
+                    title="Click to copy password"
+                    onClick={() => handleCopy(entry.password, "password")}
+                >
                   <span className="text-xs bg-gradient-to-r from-purple-600 to-purple-800 px-2 py-1 rounded mr-2">
                     🗝️ pass
                   </span>
@@ -56,7 +56,11 @@ function ExposedData({entry}) {
                     title="Go to origin"
                     onClick={() => {
                         if (entry.origin) {
-                            window.open(entry.origin, "_blank");
+                            let url = entry.origin;
+                            if (!/^https?:\/\//i.test(url)) {
+                                url = "https://" + url;
+                            }
+                            window.open(url, "_blank");
                         }
                     }}
                 >

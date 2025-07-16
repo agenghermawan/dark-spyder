@@ -1,9 +1,9 @@
 "use client";
-import {useState, useEffect} from "react";
+import { useState, useEffect } from "react";
 import Script from "next/script";
 import Navbar from "../../components/navbar";
 import Footer from "../../components/footer";
-import PaymentSelectionModal from "../../components/pricing/payment_selection_modal";
+import PaymentFlowModalPricing from "../../components/pricing/payment_flow_modal_pricing";
 
 export default function PricingPage() {
     // Auth & usage
@@ -23,15 +23,13 @@ export default function PricingPage() {
 
     // Payment Modal State
     const [showPaymentModal, setShowPaymentModal] = useState(false);
-    const [paymentInvoiceId, setPaymentInvoiceId] = useState(null);
-    const [paymentIdPricing, setPaymentIdPricing] = useState(null);
-    const [paymentPlan, setPaymentPlan] = useState(null);
+    const [modalProps, setModalProps] = useState({});
 
     // Fetch user info
     useEffect(() => {
         const checkLoginStatus = async () => {
             try {
-                const res = await fetch("/api/me", {credentials: "include"});
+                const res = await fetch("/api/me", { credentials: "include" });
                 if (res.ok) {
                     setAuthState("authenticated");
                     const [planRes, usageRes] = await Promise.all([
@@ -60,7 +58,7 @@ export default function PricingPage() {
     useEffect(() => {
         setPlansLoading(true);
         setPlansError(null);
-        fetch("/api/pricing", {credentials: "include"})
+        fetch("/api/pricing", { credentials: "include" })
             .then(async (res) => {
                 if (!res.ok) throw new Error("");
                 const data = await res.json();
@@ -94,7 +92,7 @@ export default function PricingPage() {
             const res = await fetch("/api/create-invoice", {
                 method: "POST",
                 credentials: "include",
-                headers: {"Content-Type": "application/json"},
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     idPricing: selectedPlan._id,
                     plan: billingCycle,
@@ -105,9 +103,15 @@ export default function PricingPage() {
             setShowSubscriptionModal(false);
 
             if (data.data.Id) {
-                setPaymentInvoiceId(data.data.Id);
-                setPaymentIdPricing(selectedPlan._id);
-                setPaymentPlan(billingCycle);
+                // Show payment modal (flow modal, not selection modal)
+                setModalProps({
+                    show: true,
+                    invoiceId: data.data.Id,
+                    idPricing: selectedPlan._id,
+                    plan: billingCycle,
+                    domainLimit: selectedPlan.domain ? Number(selectedPlan.domain) : 1,
+                    onClose: () => setShowPaymentModal(false),
+                });
                 setShowPaymentModal(true);
             } else {
                 throw new Error("Invoice ID not found in response");
@@ -157,15 +161,8 @@ export default function PricingPage() {
             <Script src="https://atlos.io/packages/app/atlos.js" strategy="afterInteractive"/>
             <Navbar/>
 
-
             {/* Payment Modal */}
-            <PaymentSelectionModal
-                show={showPaymentModal}
-                invoiceId={paymentInvoiceId}
-                idPricing={paymentIdPricing}
-                plan={paymentPlan}
-                onClose={() => setShowPaymentModal(false)}
-            />
+            <PaymentFlowModalPricing {...modalProps} show={showPaymentModal} />
 
             {/* Subscription Modal */}
             {showSubscriptionModal && selectedPlan && !selectedPlan.isContact && (

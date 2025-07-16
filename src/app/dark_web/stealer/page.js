@@ -1,81 +1,124 @@
 "use client";
-import {Suspense, useState, useEffect, useRef} from "react";
-import {gsap} from "gsap";
-import {ScrollToPlugin} from "gsap/ScrollToPlugin";
-import {MotionPathPlugin} from "gsap/MotionPathPlugin";
+import { Suspense, useState, useEffect, useRef } from "react";
+import { gsap } from "gsap";
+import { ScrollToPlugin } from "gsap/ScrollToPlugin";
+import { MotionPathPlugin } from "gsap/MotionPathPlugin";
 import Navbar from "../../../components/navbar";
 import LoadingSpinner from "../../../components/ui/loading-spinner";
-import {useSearchParams} from "next/navigation";
-import {useRouter} from "next/navigation";
+import { useRouter } from "next/navigation";
 import ExposedData from "../../../components/stealer/exposed_data";
-import StealerAdvancedSearchModal from "../../../components/stealer/advance_search";
 import CyberParticles from "../../../components/stealer/stealer_particles";
 
 gsap.registerPlugin(ScrollToPlugin, MotionPathPlugin);
 
+// Modal alert component
+function ErrorModal({ show, message, onClose }) {
+    if (!show) return null;
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
+            <div className="bg-[#232339] rounded-2xl shadow-xl p-6 max-w-md w-full relative">
+                <button
+                    className="absolute top-2 right-3 text-gray-400 hover:text-white text-2xl"
+                    onClick={onClose}
+                    aria-label="Close"
+                >×</button>
+                <h2 className="text-lg font-bold text-red-400 mb-4 text-center">Domain not allowed</h2>
+                <div className="text-white text-center whitespace-pre-line">{message}</div>
+            </div>
+        </div>
+    );
+}
+
 export default function Page() {
     return (
-        <Suspense fallback={<LoadingSpinner/>}>
-            <StealerPageContent/>
+        <Suspense fallback={<LoadingSpinner />}>
+            <StealerPageContent />
         </Suspense>
     );
 }
 
 function StealerPageContent() {
     const router = useRouter();
-    const searchParams = useSearchParams();
 
     const [stealerData, setStealerData] = useState([]);
     const [domain, setDomain] = useState("");
     const [isLoading, setIsLoading] = useState(false);
-    const [pagination, setPagination] = useState({page: 1, size: 10, total: 0});
-    const [pageInput, setPageInput] = useState(1); // for direct page jump
-    const [sizeInput, setSizeInput] = useState(10); // for page size/limit
+    const [pagination, setPagination] = useState({ page: 1, size: 10, total: 0 });
+    const [pageInput, setPageInput] = useState(1);
+    const [sizeInput, setSizeInput] = useState(10);
     const [hasSubscription, setHasSubscription] = useState(true);
     const [authState, setAuthState] = useState("loading");
     const [showEmptyAlert, setShowEmptyAlert] = useState(false);
-    const [showAdvanced, setShowAdvanced] = useState(false);
+
+    const [userDomains, setUserDomains] = useState([]);
+    const [domainLoaded, setDomainLoaded] = useState(false);
+
     const [markingId, setMarkingId] = useState(null);
     const [updatedIds, setUpdatedIds] = useState({});
+
+    // For error modal
+    const [errorModal, setErrorModal] = useState({ show: false, message: "" });
 
     const resultsRef = useRef(null);
     const rowsRef = useRef([]);
     const tableRef = useRef(null);
-    const searchParamsRef = useRef({domain: ""});
-
-    const [lastAdvancedParams, setLastAdvancedParams] = useState({
-        q: "",
-        domain: "",
-        username: "",
-        password: "",
-    });
 
     useEffect(() => {
         const checkLoginStatus = async () => {
             try {
-                const res = await fetch("/api/me", {credentials: "include"});
+                const res = await fetch("/api/me", { credentials: "include" });
                 setAuthState(res.ok ? "authenticated" : "unauthenticated");
+                if (res.ok) {
+                    const planRes = await fetch("/api/my-plan", { credentials: "include" });
+                    if (planRes.ok) {
+                        const planData = await planRes.json();
+                        setUserDomains(Array.isArray(planData.data?.registered_domain) ? planData.data.registered_domain : []);
+                    }
+                }
             } catch {
                 setAuthState("unauthenticated");
+            } finally {
+                setDomainLoaded(true);
             }
         };
         checkLoginStatus();
     }, []);
 
-    const fetchStealerData = async ({params = {}, page = 1, size = 10}) => {
+    // Hanya param domain
+    const fetchStealerData = async ({ domain: domainParam, page = 1, size = 10 }) => {
         setIsLoading(true);
         setShowEmptyAlert(false);
-        searchParamsRef.current = params;
 
-        const query =
-            Object.entries(params)
-                .filter(([k, v]) => v && v.trim())
-                .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
-                .join("&") +
-            `&type=stealer&page=${page}&size=${size}`;
+        let searchDomain = domainParam && domainParam.trim();
+        if (!searchDomain && userDomains.length > 0) {
+            searchDomain = userDomains[0];
+            setDomain(searchDomain);
+        }
 
+        if (!searchDomain) {
+            setShowEmptyAlert(true);
+            setStealerData([]);
+            setIsLoading(false);
+            return;
+        }
+
+        const query = `domain=${encodeURIComponent(searchDomain)}&type=stealer&page=${page}&size=${size}`;
+        let errorHappened = false;
         try {
             const res = await fetch(`/api/proxy?${query}`);
+            if (res.status === 403) {
+                // Show modal error
+                const data = await res.json();
+                setErrorModal({
+                    show: true,
+                    message: data.error || "Domain is not allowed for search.",
+                });
+                setStealerData([]);
+                setShowEmptyAlert(true);
+                setIsLoading(false);
+                errorHappened = true;
+                return;
+            }
             if (!res.ok) throw new Error("API not OK");
             const data = await res.json();
 
@@ -105,69 +148,49 @@ function StealerPageContent() {
             }));
             setPageInput(page);
             setSizeInput(size);
-        } catch {
+        } catch (err) {
             setShowEmptyAlert(true);
             setStealerData([]);
+            setErrorModal({
+                show: true,
+                message: err.message || "Failed to fetch data.",
+            });
+            errorHappened = true;
         } finally {
             setIsLoading(false);
-            setTimeout(() => {
-                if (resultsRef.current) {
-                    resultsRef.current.scrollIntoView({behavior: "smooth"});
-                }
-            }, 100);
+            // scroll hanya jika tidak error/modal
+            if (!errorHappened) {
+                setTimeout(() => {
+                    if (resultsRef.current) {
+                        resultsRef.current.scrollIntoView({ behavior: "smooth" });
+                    }
+                }, 100);
+            }
         }
     };
 
-
-    // --- BASIC SEARCH ---
     const handleSearch = async () => {
         if (authState === "loading") return;
         if (authState !== "authenticated") {
             router.push("/login");
             return;
         }
-        setPagination((prev) => ({...prev, page: 1}));
-        await fetchStealerData({params: {q: domain}, page: 1, size: pagination.size});
-
-        setLastAdvancedParams((prev) => ({
-            ...prev,
-            q: domain,
-            domain: "",
-            username: "",
-            password: "",
-        }));
+        setPagination((prev) => ({ ...prev, page: 1 }));
+        await fetchStealerData({ domain: domain, page: 1, size: pagination.size });
     };
 
-    // --- ADVANCED SEARCH ---
-    const handleAdvancedSearch = async (params) => {
-        setLastAdvancedParams({
-            q: params.q || "",
-            domain: params.domain || "",
-            username: params.username || "",
-            password: params.password || "",
-        });
-        setIsLoading(true);
-        setShowEmptyAlert(false);
-        setStealerData([]);
-        await fetchStealerData({params, page: 1, size: pagination.size});
-        setPagination((prev) => ({...prev, page: 1}));
-        setShowAdvanced(false);
-    };
-
-    // --- PAGINATION ---
     const handlePagination = async (direction) => {
         let newPage = pagination.page;
         if (direction === "prev" && newPage > 1) newPage--;
         else if (direction === "next" && newPage * pagination.size < pagination.total) newPage++;
-        setPagination((prev) => ({...prev, page: newPage}));
+        setPagination((prev) => ({ ...prev, page: newPage }));
         await fetchStealerData({
-            params: searchParamsRef.current,
+            domain: domain,
             page: newPage,
             size: pagination.size,
         });
     };
 
-    // --- HANDLE PAGE JUMP ---
     const handlePageInputChange = (e) => {
         const value = e.target.value;
         setPageInput(value);
@@ -178,15 +201,14 @@ function StealerPageContent() {
         const maxPage = Math.ceil(pagination.total / pagination.size) || 1;
         if (value > maxPage) value = maxPage;
         setPageInput(value);
-        setPagination((prev) => ({...prev, page: value}));
+        setPagination((prev) => ({ ...prev, page: value }));
         await fetchStealerData({
-            params: searchParamsRef.current,
+            domain: domain,
             page: value,
             size: pagination.size,
         });
     };
 
-    // --- HANDLE LIMIT (SIZE) ---
     const handleSizeInputChange = (e) => {
         let value = parseInt(e.target.value, 10);
         if (isNaN(value) || value < 1) value = 10;
@@ -198,38 +220,14 @@ function StealerPageContent() {
         if (isNaN(value) || value < 1) value = 10;
         if (value > 1000) value = 1000;
         setSizeInput(value);
-        setPagination((prev) => ({...prev, size: value, page: 1}));
+        setPagination((prev) => ({ ...prev, size: value, page: 1 }));
         await fetchStealerData({
-            params: searchParamsRef.current,
+            domain: domain,
             page: 1,
             size: value,
         });
     };
 
-    // --- PAGINATION EFFECT ---
-    useEffect(() => {
-        if (pagination.page !== 1) {
-            fetchStealerData({
-                params: searchParamsRef.current,
-                page: pagination.page,
-                size: pagination.size,
-            });
-        }
-        // eslint-disable-next-line
-    }, [pagination.page]);
-
-    // --- SEARCH ON URL PARAM ---
-    useEffect(() => {
-        const query = searchParams.get("q");
-        if (query) {
-            setDomain(query);
-            setPagination((prev) => ({...prev, page: 1}));
-            if (authState === "authenticated") {
-                setTimeout(() => handleSearch(), 100);
-            }
-        }
-        // eslint-disable-next-line
-    }, [searchParams, authState]);
 
     // --- MARK VALID/NOT VALID ---
     const markAsValid = async (id, isValid = true) => {
@@ -237,58 +235,28 @@ function StealerPageContent() {
         try {
             const res = await fetch(`/api/mark-as-valid/${id}`, {
                 method: "PUT",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({valid: isValid}),
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ valid: isValid }),
             });
             if (res.ok) {
-                setUpdatedIds((prev) => ({...prev, [id]: isValid}));
+                setUpdatedIds((prev) => ({ ...prev, [id]: isValid }));
             }
         } finally {
             setMarkingId(null);
         }
     };
 
-    const handleSizeInputKeyDown = (e) => {
-        if (e.key === "Enter") {
-            handleSizeInputBlur(e);
-        }
-    };
-
-    const handlePageInputKeyDown = (e) => {
-        if (e.key === "Enter") {
-            handlePageInputBlur(e);
-        }
-    };
-
-    const handleExtractLogs = () => {
-        // Bangun query string sesuai pencarian aktif
-        const params = searchParamsRef.current || {};
-        const page = pagination.page;
-        const size = pagination.size;
-        const paramEntries = Object.entries(params)
-            .filter(([k, v]) => v && v.trim())
-            .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`);
-
-        paramEntries.push(`type=stealer`);
-        paramEntries.push(`page=${page}`);
-        paramEntries.push(`size=${size}`);
-
-        const queryString = paramEntries.join("&");
-        window.open(`/extract_logs?${queryString}`, "_blank");
-    };
-
-    // --- RENDER ---
     return (
         <div>
-            <Navbar/>
-
-            {/* Background */}
+            <Navbar />
+            <ErrorModal
+                show={errorModal.show}
+                message={errorModal.message}
+                onClose={() => setErrorModal({ show: false, message: "" })}
+            />
             <div className="relative h-screen w-full">
-                <CyberParticles/>
-
-                {/* Floating text on top of Globe */}
-                <section
-                    className="absolute inset-0 flex items-center justify-center px-4 sm:px-6 lg:px-8 text-white z-10">
+                <CyberParticles />
+                <section className="absolute inset-0 flex items-center justify-center px-4 sm:px-6 lg:px-8 text-white z-10">
                     <div className="max-w-3xl mx-auto text-center">
                         <h2 className="text-4xl font-bold mb-4">Uncover Hidden Credentials</h2>
                         <p className="text-xl mb-8 text-gray-300">
@@ -296,13 +264,15 @@ function StealerPageContent() {
                                 ? "Full access to all compromised credentials"
                                 : "Subscribe to unlock full access to breach data"}
                         </p>
-                        <div
-                            className="flex flex-row gap-2 max-w-xl mx-auto shadow-lg rounded-lg overflow-hidden w-full">
+                        <div className="flex flex-row gap-2 max-w-xl mx-auto shadow-lg rounded-lg overflow-hidden w-full">
                             <input
                                 type="text"
                                 value={domain}
                                 onChange={(e) => setDomain(e.target.value)}
-                                placeholder="Uncover Credential Leaks"
+                                onBlur={() => {
+                                    if (!domain && userDomains.length > 0) setDomain(userDomains[0]);
+                                }}
+                                placeholder={`Search by Domain (${userDomains[0] || "your domain"})`}
                                 onKeyDown={(e) => {
                                     if (e.key === "Enter" && authState === "authenticated") {
                                         handleSearch();
@@ -346,15 +316,16 @@ function StealerPageContent() {
                                         Scanning
                                     </>
                                 ) : (
-                                    "Uncover"
+                                    "Search"
                                 )}
                             </button>
+                        </div>
+                        <div className="mt-2 text-sm text-gray-400">
+                            {userDomains.length > 0 ? `Allowed domains: ${userDomains.join(", ")}` : "No registered domain. Please add domain in your plan."}
                         </div>
                     </div>
                 </section>
             </div>
-
-            {/* Table and Advanced Search */}
             {(stealerData.length > 0 || showEmptyAlert) && (
                 <section className="py-16 px-4 sm:px-6 lg:px-8 " ref={resultsRef}>
                     <div className="w-10/12 mx-auto">
@@ -367,55 +338,14 @@ function StealerPageContent() {
                                 : "🔒 Subscription Required"}
                         </h2>
                         <div className="overflow-x-auto" ref={tableRef}>
-                            {/* Action Bar */}
-                            <div className="flex justify-between items-center mb-4">
-                                <button
-                                    className="bg-gradient-to-r from-blue-600 to-purple-600 px-5 py-2 rounded-lg text-white font-semibold shadow-lg transition-all hover:scale-105 flex items-center gap-2"
-                                    onClick={handleExtractLogs}
-                                >
-                                    <svg
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        className="h-5 w-5"
-                                        fill="none"
-                                        viewBox="0 0 24 24"
-                                        stroke="currentColor"
-                                        strokeWidth={2}
-                                    >
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4"
-                                        />
-                                    </svg>
-                                    Extract Logs
-                                </button>
-                                <button
-                                    className="bg-gradient-to-r from-blue-600 to-purple-600 px-5 py-2 rounded-lg text-white font-semibold shadow-lg transition-all hover:scale-105"
-                                    onClick={() => setShowAdvanced(true)}
-                                >
-                                    Advanced Search
-                                </button>
-                            </div>
-                            {/* Modal */}
-                            <StealerAdvancedSearchModal
-                                open={showAdvanced}
-                                onClose={() => setShowAdvanced(false)}
-                                onSearch={handleAdvancedSearch}
-                                defaultQ={lastAdvancedParams.q}
-                                defaultDomain={lastAdvancedParams.domain}
-                                defaultUsername={lastAdvancedParams.username}
-                                defaultPassword={lastAdvancedParams.password}
-                                isLoading={isLoading}
-                            />
-                            {/* Domain search bar (optional, can be moved to modal if you prefer) */}
                             <div className="mb-4 flex items-center gap-3 flex-wrap">
                                 <input
                                     type="text"
                                     value={domain}
                                     onChange={e => setDomain(e.target.value)}
-                                    placeholder="Search by Domain"
+                                    placeholder={`Search by Domain (${userDomains[0] || "your domain"})`}
                                     className="px-4 py-2 rounded-lg bg-black/30 border border-gray-700 text-white placeholder-gray-400 focus:ring-2 focus:ring-[#f03262] focus:border-transparent"
-                                    style={{minWidth: 170}}
+                                    style={{ minWidth: 170 }}
                                 />
                                 <button
                                     onClick={handleSearch}
@@ -424,8 +354,6 @@ function StealerPageContent() {
                                 >
                                     {isLoading ? "Searching..." : "Search"}
                                 </button>
-                                {/* LIMIT/Size input */}
-
                             </div>
                             {stealerData.length > 0 ? (
                                 <table
@@ -443,64 +371,39 @@ function StealerPageContent() {
                                         <tr
                                             key={index}
                                             ref={(el) => (rowsRef.current[index] = el)}
-                                            className={`border-b border-gray-800 ${
-                                                !entry.isTeaser
-                                                    ? "hover:bg-gradient-to-r from-[#1a1a20] to-[#25252d]"
-                                                    : "bg-gradient-to-r from-[#1a1a20]/50 to-[#25252d]/50"
-                                            } transition-all duration-300 group`}
+                                            className={`border-b border-gray-800 hover:bg-gradient-to-r from-[#1a1a20] to-[#25252d] transition-all duration-300 group`}
                                         >
-                                            <ExposedData entry={entry}/>
+                                            <ExposedData entry={entry} />
                                             <td className="py-4 px-6">
-                          <span
-                              className={`inline-flex items-center px-3 py-1 rounded-full bg-gradient-to-r from-gray-700 to-gray-800 text-gray-300 text-sm`}
-                          >
-                            {entry.source}
-                          </span>
+                                                    <span className="inline-flex items-center px-3 py-1 rounded-full bg-gradient-to-r from-gray-700 to-gray-800 text-gray-300 text-sm">
+                                                        {entry.source}
+                                                    </span>
                                             </td>
                                             <td className="py-4 px-6">
-                          <span
-                              className={`inline-flex items-center px-3 py-1 rounded-full text-sm ${
-                                  entry.lastBreach === "N/A"
-                                      ? "bg-gradient-to-r from-gray-700 to-gray-800 text-gray-400"
-                                      : "bg-gradient-to-r from-red-700 to-red-800 text-red-100"
-                              }`}
-                          >
-                            {entry.lastBreach}
-                          </span>
+                                                    <span className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-gradient-to-r from-gray-700 to-gray-800 text-gray-400">
+                                                        {entry.lastBreach}
+                                                    </span>
                                             </td>
                                             <td className="py-4 px-6 text-center">
-                                                {entry.isTeaser ? (
-                                                    <button
-                                                        onClick={() => router.push("/pricing")}
-                                                        className="bg-gradient-to-r from-[#f03262] to-[#c91d4e] hover:from-[#e63368] hover:to-[#d11a4f] text-white px-4 py-2 rounded-lg text-sm transition-all transform hover:scale-105 shadow-lg hover:shadow-[#f03262]/20 flex items-center justify-center gap-1"
-                                                    >
-                                                        <svg
-                                                            xmlns="http://www.w3.org/2000/svg"
-                                                            className="h-4 w-4"
-                                                            fill="none"
-                                                            viewBox="0 0 24 24"
-                                                            stroke="currentColor"
+                                                <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
+                                                    {updatedIds[entry.id] === true ? (
+                                                        <button
+                                                            onClick={() => markAsValid(entry.id, false)}
+                                                            disabled={markingId === entry.id}
+                                                            className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white px-4 py-2 rounded-lg text-sm transition-all transform hover:scale-105 shadow-lg hover:shadow-red-500/20 flex items-center justify-center gap-1"
                                                         >
-                                                            <path
-                                                                strokeLinecap="round"
-                                                                strokeLinejoin="round"
-                                                                strokeWidth={2}
-                                                                d="M13 10V3L4 14h7v7l9-11h-7z"
-                                                            />
-                                                        </svg>
-                                                        Upgrade Now
-                                                    </button>
-                                                ) : (
-                                                    <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
-                                                        {updatedIds[entry.id] === true ? (
-                                                            <button
-                                                                onClick={() => markAsValid(entry.id, false)}
-                                                                disabled={markingId === entry.id}
-                                                                className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white px-4 py-2 rounded-lg text-sm transition-all transform hover:scale-105 shadow-lg hover:shadow-red-500/20 flex items-center justify-center gap-1"
-                                                            >
-                                                                Mark as Not Valid
-                                                            </button>
-                                                        ) : updatedIds[entry.id] === false ? (
+                                                            Mark as Not Valid
+                                                        </button>
+                                                    ) : updatedIds[entry.id] === false ? (
+                                                        <button
+                                                            onClick={() => markAsValid(entry.id, true)}
+                                                            disabled={markingId === entry.id}
+                                                            className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white px-4 py-2 rounded-lg text-sm transition-all transform hover:scale-105 shadow-lg hover:shadow-green-500/20 flex items-center justify-center gap-1"
+                                                        >
+                                                            Mark as Valid
+                                                        </button>
+                                                    ) : (
+                                                        <>
                                                             <button
                                                                 onClick={() => markAsValid(entry.id, true)}
                                                                 disabled={markingId === entry.id}
@@ -508,26 +411,16 @@ function StealerPageContent() {
                                                             >
                                                                 Mark as Valid
                                                             </button>
-                                                        ) : (
-                                                            <>
-                                                                <button
-                                                                    onClick={() => markAsValid(entry.id, true)}
-                                                                    disabled={markingId === entry.id}
-                                                                    className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white px-4 py-2 rounded-lg text-sm transition-all transform hover:scale-105 shadow-lg hover:shadow-green-500/20 flex items-center justify-center gap-1"
-                                                                >
-                                                                    Mark as Valid
-                                                                </button>
-                                                                <button
-                                                                    onClick={() => markAsValid(entry.id, false)}
-                                                                    disabled={markingId === entry.id}
-                                                                    className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white px-4 py-2 rounded-lg text-sm transition-all transform hover:scale-105 shadow-lg hover:shadow-red-500/20 flex items-center justify-center gap-1"
-                                                                >
-                                                                    Mark as Not Valid
-                                                                </button>
-                                                            </>
-                                                        )}
-                                                    </div>
-                                                )}
+                                                            <button
+                                                                onClick={() => markAsValid(entry.id, false)}
+                                                                disabled={markingId === entry.id}
+                                                                className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white px-4 py-2 rounded-lg text-sm transition-all transform hover:scale-105 shadow-lg hover:shadow-red-500/20 flex items-center justify-center gap-1"
+                                                            >
+                                                                Mark as Not Valid
+                                                            </button>
+                                                        </>
+                                                    )}
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}
@@ -566,7 +459,7 @@ function StealerPageContent() {
                                                         No compromised credentials found
                                                     </p>
                                                     <p className="text-sm mt-1">
-                                                        Try searching with different keyword
+                                                        Try searching with different domain
                                                     </p>
                                                 </div>
                                             </td>
@@ -575,18 +468,14 @@ function StealerPageContent() {
                                     </table>
                                 )
                             )}
-                            {/* Pagination */}
                             {hasSubscription && (
-                                <div
-                                    className="mt-6 flex flex-col md:flex-row md:justify-between md:items-center gap-3">
-                                    {/* Left: Showing info */}
+                                <div className="mt-6 flex flex-col md:flex-row md:justify-between md:items-center gap-3">
                                     <div className="flex items-center gap-2">
                                         <p className="text-gray-500 text-sm">
-                                            Showing {hasSubscription ? stealerData.length : 1} of {pagination.total} entries
+                                            Showing {stealerData.length} of {pagination.total} entries
                                             (Page {pagination.page})
                                         </p>
                                     </div>
-                                    {/* Right: Pagination & Limit Controls */}
                                     <div className="flex flex-wrap items-center gap-3">
                                         <button
                                             onClick={() => handlePagination("prev")}
@@ -618,7 +507,6 @@ function StealerPageContent() {
                                             value={sizeInput}
                                             onChange={handleSizeInputChange}
                                             onBlur={handleSizeInputBlur}
-                                            onKeyDown={handleSizeInputKeyDown}
                                             className="w-20 px-2 py-2 rounded-md border border-gray-700 bg-black/30 text-white text-center focus:ring-2 focus:ring-[#f03262] focus:border-transparent"
                                             title="Entries per page (max 1000)"
                                         />
@@ -630,7 +518,6 @@ function StealerPageContent() {
                                             value={pageInput}
                                             onChange={handlePageInputChange}
                                             onBlur={handlePageInputBlur}
-                                            onKeyDown={handlePageInputKeyDown}
                                             className="w-16 px-2 py-2 rounded-md border border-gray-700 bg-black/30 text-white text-center focus:ring-2 focus:ring-[#f03262] focus:border-transparent"
                                             title="Go to page"
                                         />
@@ -644,5 +531,3 @@ function StealerPageContent() {
         </div>
     );
 }
-
-
