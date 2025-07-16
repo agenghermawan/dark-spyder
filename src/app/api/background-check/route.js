@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 export async function POST(req) {
+    // Ambil token dari cookie
     const token = req.cookies.get("token")?.value;
     if (!token) {
         return new Response(
@@ -9,36 +10,33 @@ export async function POST(req) {
         );
     }
 
-    // Get invoiceId from query param
-    const { searchParams } = new URL(req.url);
-    const invoiceId = searchParams.get("invoiceId");
-
-    if (!invoiceId) {
-        return new Response(
-            JSON.stringify({ message: "Missing invoiceId in query params" }),
-            { status: 400, headers: { 'Content-Type': 'application/json' } }
-        );
-    }
-
-    // Ambil body dari req
-    let body = {};
+    // Ambil paymentId dari body
+    let body;
     try {
         body = await req.json();
     } catch (e) {
         return new Response(
-            JSON.stringify({ message: "Invalid JSON body" }),
+            JSON.stringify({ message: "Invalid JSON in request body" }),
             { status: 400, headers: { 'Content-Type': 'application/json' } }
         );
     }
 
-    // Kirim ke backend beserta body
-    const res = await fetch(`http://103.245.181.5:5001/register-domain?invoiceId=${encodeURIComponent(invoiceId)}`, {
+    const paymentId = body?.paymentId;
+    if (!paymentId || typeof paymentId !== "string") {
+        return new Response(
+            JSON.stringify({ message: "Missing or invalid paymentId in request body" }),
+            { status: 400, headers: { 'Content-Type': 'application/json' } }
+        );
+    }
+
+    // Panggil backend background-check
+    const res = await fetch(`http://103.245.181.5:5001/background-check`, {
         method: "POST",
         headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify(body)
+        body: JSON.stringify({ paymentId }),
     });
 
     const contentType = res.headers.get('content-type') || '';

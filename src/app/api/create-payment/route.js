@@ -9,36 +9,42 @@ export async function POST(req) {
         );
     }
 
-    // Get invoiceId from query param
-    const { searchParams } = new URL(req.url);
-    const invoiceId = searchParams.get("invoiceId");
-
-    if (!invoiceId) {
-        return new Response(
-            JSON.stringify({ message: "Missing invoiceId in query params" }),
-            { status: 400, headers: { 'Content-Type': 'application/json' } }
-        );
-    }
-
-    // Ambil body dari req
-    let body = {};
+    let body;
     try {
         body = await req.json();
-    } catch (e) {
+    } catch {
         return new Response(
-            JSON.stringify({ message: "Invalid JSON body" }),
+            JSON.stringify({ message: "Invalid JSON in request body" }),
             { status: 400, headers: { 'Content-Type': 'application/json' } }
         );
     }
 
-    // Kirim ke backend beserta body
-    const res = await fetch(`http://103.245.181.5:5001/register-domain?invoiceId=${encodeURIComponent(invoiceId)}`, {
+    // Validasi field wajib
+    const { invoiceId, assetCode, blockchainCode, isEvm } = body;
+    if (
+        !invoiceId || typeof invoiceId !== "string" ||
+        !assetCode || typeof assetCode !== "string" ||
+        !blockchainCode || typeof blockchainCode !== "string" ||
+        typeof isEvm !== "boolean"
+    ) {
+        return new Response(
+            JSON.stringify({
+                message: "Missing or invalid fields. Required: invoiceId (string), assetCode (string), blockchainCode (string), isEvm (boolean)"
+            }),
+            { status: 400, headers: { 'Content-Type': 'application/json' } }
+        );
+    }
+
+    // Hanya kirim field yang dibutuhkan ke backend
+    const payload = { invoiceId, assetCode, blockchainCode, isEvm };
+
+    const res = await fetch(`http://103.245.181.5:5001/create-payment`, {
         method: "POST",
         headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify(body)
+        body: JSON.stringify(payload)
     });
 
     const contentType = res.headers.get('content-type') || '';
