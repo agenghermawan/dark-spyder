@@ -49,7 +49,6 @@ export default function Navbar() {
 
 
     useEffect(() => {
-
         const checkLoginStatus = async () => {
             try {
                 const res = await fetch("/api/me", {
@@ -214,7 +213,7 @@ export default function Navbar() {
                     <Image
                         src="/image/logo.png"
                         alt="logo"
-                        width={200}
+                        width={150}
                         height={50}
                         className="invert hover:cursor-pointer"
                         priority
@@ -226,7 +225,7 @@ export default function Navbar() {
                         <Link
                             key={item.href}
                             href={item.href}
-                            className="font-medium flex items-center hover:text-[#f53d6b] transition-colors duration-300"
+                            className="font-medium flex items-center hover:text-[#f53d6b] transition-colors duration-300 text-[16px]"
                         >
                             {item.label}
                         </Link>

@@ -5,7 +5,7 @@ export async function GET(req) {
 
     // Retrieve search parameters from the URL
     const {searchParams} = new URL(req.url);
-    const q = searchParams.get('q');
+    const domain = searchParams.get('domain');
     const type = searchParams.get('type');
     const page = searchParams.get('page');
     const size = searchParams.get('size');
@@ -21,7 +21,7 @@ export async function GET(req) {
 
     // Forward token asli ke backend (jangan decode/jangan ambil .user)
     const res = await fetch(
-        `http://103.245.181.5:5001/search?q=${encodeURIComponent(q)}&type=${encodeURIComponent(type)}&page=${encodeURIComponent(page)}&size=${encodeURIComponent(size)}`,
+        `http://103.245.181.5:5001/do-search?domain=${encodeURIComponent(domain)}&type=${encodeURIComponent(type)}&page=${encodeURIComponent(page)}&size=${encodeURIComponent(size)}`,
         {
             headers: {
                 'Content-Type': 'application/json',

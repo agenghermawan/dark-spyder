@@ -16,7 +16,7 @@ export default function LeaksPage() {
     const [searchInput, setSearchInput] = useState("");
     const [searchQuery, setSearchQuery] = useState(""); // show all by default
     const [isLoading, setIsLoading] = useState(false);
-    const [pagination, setPagination] = useState({ page: 1, size: DEFAULT_SIZE, total: 0 });
+    const [pagination, setPagination] = useState({page: 1, size: DEFAULT_SIZE, total: 0});
     const [sizeInput, setSizeInput] = useState(DEFAULT_SIZE);
     const [pageInput, setPageInput] = useState(1);
     const resultsRef = useRef(null);
@@ -25,6 +25,12 @@ export default function LeaksPage() {
     const [showEmptyAlert, setShowEmptyAlert] = useState(false);
     const [hasSubscription, setHasSubscription] = useState(false);
     const [hasSearched, setHasSearched] = useState(false); // <- supaya tidak auto-fetch di awal
+
+    const [userDomains, setUserDomains] = useState([]);
+    const [domainLoaded, setDomainLoaded] = useState(false);
+
+    const [errorModal, setErrorModal] = useState({ show: false, message: "" });
+
 
     // Transform API data to card format (jangan sampai flatten lebih dari yang diterima)
     const transformBreachData = (apiData) => {
@@ -127,12 +133,30 @@ export default function LeaksPage() {
 
     // Fetch data from API
     const loadNewData = async () => {
+        let errorHappened = false;
+
         try {
             setIsLoading(true);
-            const { page, size } = pagination;
+            const {page, size} = pagination;
             const response = await fetch(
-                `/api/leaks?q=${searchQuery}&type=breach&page=${page}&size=${size}`
+                `/api/leaks?domain=${searchQuery}&type=breach&page=${page}&size=${size}`
             );
+            if (response.status === 403) {
+                const data = await response.json();
+                setErrorModal({
+                    show: true,
+                    message: data.error || "Domain is not allowed for search.",
+                });
+                setBreachData([]);
+                setShowEmptyAlert(true);
+                setPagination((prev) => ({
+                    ...prev,
+                    total: 0,
+                }));
+                setIsLoading(false);
+                errorHappened = true;
+                return;
+            }
             if (!response.ok) {
                 throw new Error(
                     `Network response was not ok: ${response.status} ${response.statusText}`
@@ -142,13 +166,11 @@ export default function LeaksPage() {
             if (!data.current_page_data || data.current_page_data.length === 0) {
                 setBreachData([]);
                 setShowEmptyAlert(true);
-                await callUpdateEndpoint(); // tidak pakai await!
+                await callUpdateEndpoint();
                 setPagination((prev) => ({
                     ...prev,
-                    total: 0
+                    total: 0,
                 }));
-
-
                 return;
             } else {
                 setShowEmptyAlert(false);
@@ -163,17 +185,20 @@ export default function LeaksPage() {
             console.error("Error fetching data:", error.message);
         } finally {
             setIsLoading(false);
-            setTimeout(() => {
-                if (resultsRef.current) {
-                    import("gsap").then(({ default: gsap }) => {
-                        gsap.to(window, {
-                            duration: 1,
-                            scrollTo: { y: resultsRef.current, offsetY: 50 },
-                            ease: "power3.out",
+            // scroll hanya jika TIDAK error/modal
+            if (!errorHappened) {
+                setTimeout(() => {
+                    if (resultsRef.current) {
+                        import("gsap").then(({default: gsap}) => {
+                            gsap.to(window, {
+                                duration: 1,
+                                scrollTo: {y: resultsRef.current, offsetY: 50},
+                                ease: "power3.out",
+                            });
                         });
-                    });
-                }
-            }, 100);
+                    }
+                }, 100);
+            }
         }
     };
 
@@ -195,10 +220,8 @@ export default function LeaksPage() {
         setHasSearched(true);
 
         if (searchInput === searchQuery) {
-            // Query tidak berubah, trigger manual
             loadNewData();
         } else {
-            // Query berubah, biarkan useEffect yang tangani
             setSearchQuery(searchInput);
         }
     };
@@ -207,12 +230,12 @@ export default function LeaksPage() {
     const handlePagination = (direction) => {
         if (isLoading) return;
         if (direction === "prev" && pagination.page > 1) {
-            setPagination((prev) => ({ ...prev, page: prev.page - 1 }));
+            setPagination((prev) => ({...prev, page: prev.page - 1}));
         } else if (
             direction === "next" &&
             pagination.page * pagination.size < pagination.total
         ) {
-            setPagination((prev) => ({ ...prev, page: prev.page + 1 }));
+            setPagination((prev) => ({...prev, page: prev.page + 1}));
         }
     };
 
@@ -242,7 +265,9 @@ export default function LeaksPage() {
         }));
     };
 
-    useEffect(() => { setPageInput(pagination.page); }, [pagination.page]);
+    useEffect(() => {
+        setPageInput(pagination.page);
+    }, [pagination.page]);
 
     const handlePageInputKeyDown = (e) => {
         if (e.key === "Enter") {
@@ -280,26 +305,35 @@ export default function LeaksPage() {
     useEffect(() => {
         const checkLoginStatus = async () => {
             try {
-                const res = await fetch("/api/me", { credentials: "include" });
+                const res = await fetch("/api/me", {credentials: "include"});
+                setAuthState(res.ok ? "authenticated" : "unauthenticated");
                 if (res.ok) {
-                    const data = await res.json();
-                    setAuthState("authenticated");
-                    setHasSubscription(data.user?.subscription?.status === "active");
-                } else {
-                    setAuthState("unauthenticated");
+                    const planRes = await fetch("/api/my-plan", {credentials: "include"});
+                    if (planRes.ok) {
+                        const planData = await planRes.json();
+                        setUserDomains(Array.isArray(planData.data?.registered_domain) ? planData.data.registered_domain : []);
+                    }
                 }
             } catch {
                 setAuthState("unauthenticated");
+            } finally {
+                setDomainLoaded(true);
             }
         };
         checkLoginStatus();
     }, []);
 
+
     return (
         <div className="relative">
-            <Navbar />
+            <Navbar/>
+            <ErrorModal
+                show={errorModal.show}
+                message={errorModal.message}
+                onClose={() => setErrorModal({ show: false, message: "" })}
+            />
             <div className="relative h-screen w-full">
-                <LeaksParticles />
+                <LeaksParticles/>
                 <section
                     className="absolute inset-0 flex items-center justify-center px-4 sm:px-6 lg:px-8 text-white z-10">
                     <div className="max-w-3xl mx-auto text-center">
@@ -307,7 +341,7 @@ export default function LeaksPage() {
                             Discover Exposed Credentials Instantly
                         </h2>
                         <p className="text-xl mb-8 text-gray-300">
-                            Monitor the dark web for compromised emails, domains, and accounts.<br />
+                            Monitor the dark web for compromised emails, domains, and accounts.<br/>
                             Protect your organization by searching global breach intelligence in seconds.
                         </p>
                         <div
@@ -362,6 +396,9 @@ export default function LeaksPage() {
                                 )}
                             </button>
                         </div>
+                        <div className="mt-2 text-sm text-gray-400">
+                            {userDomains.length > 0 ? `Allowed domains: ${userDomains.join(", ")}` : "No registered domain. Please add domain in your plan."}
+                        </div>
                     </div>
                 </section>
             </div>
@@ -384,9 +421,9 @@ export default function LeaksPage() {
                                     <div className="col-span-full flex justify-center items-center py-16">
                                         <svg className="animate-spin h-12 w-12 text-cyan-400" viewBox="0 0 24 24">
                                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
-                                                    strokeWidth="4" />
+                                                    strokeWidth="4"/>
                                             <path className="opacity-75" fill="currentColor"
-                                                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
                                         </svg>
                                     </div>
                                 ) : breachData.length === 0 && showEmptyAlert ? (
@@ -396,7 +433,7 @@ export default function LeaksPage() {
                                     </div>
                                 ) : (
                                     breachData.map((entry, idx) => (
-                                        <LeakCardDynamic key={entry.id || idx} entry={entry} />
+                                        <LeakCardDynamic key={entry.id || idx} entry={entry}/>
                                     ))
                                 )}
                             </div>
@@ -460,6 +497,23 @@ export default function LeaksPage() {
                     </div>
                 </section>
             )}
+        </div>
+    );
+}
+
+function ErrorModal({ show, message, onClose }) {
+    if (!show) return null;
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
+            <div className="bg-[#232339] rounded-2xl shadow-xl p-6 max-w-md w-full relative">
+                <button
+                    className="absolute top-2 right-3 text-gray-400 hover:text-white text-2xl"
+                    onClick={onClose}
+                    aria-label="Close"
+                >×</button>
+                <h2 className="text-lg font-bold text-red-400 mb-4 text-center">Domain not allowed</h2>
+                <div className="text-white text-center whitespace-pre-line">{message}</div>
+            </div>
         </div>
     );
 }

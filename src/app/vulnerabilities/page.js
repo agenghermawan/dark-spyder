@@ -1,316 +1,508 @@
 'use client';
 
-import React, {useState, useEffect} from "react";
-import {useRouter} from "next/navigation";
-import Image from "next/image";
+import React, { useState, useEffect } from "react";
 import Navbar from "../../components/navbar";
+import AssetDetailModal from "../../components/va/va_detail_modal";
 
-// Utility: Format date to "x days/hours/mins ago"
-const formatTimeAgo = (dateString) => {
-    if (!dateString) return "-";
-    const createdDate = new Date(dateString);
-    const now = new Date();
-    const diffMs = now - createdDate;
-    if (isNaN(diffMs)) return "-";
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    if (diffDays < 1) {
-        const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-        if (diffHours < 1) {
-            const diffMins = Math.floor(diffMs / (1000 * 60));
-            return `${diffMins} min ago`;
-        }
-        return `${diffHours} hour ago`;
-    }
-    return `${diffDays} days ago`;
+// Utility
+const API_KEY = "cf9452c4-7a79-4352-a1d3-9de3ba517347";
+const severityColor = {
+    critical: "bg-red-900 text-red-200",
+    high: "bg-orange-900 text-orange-200",
+    medium: "bg-yellow-900 text-yellow-200",
+    low: "bg-green-900 text-green-200",
+    info: "bg-gray-900 text-gray-200",
+    unknown: "bg-gray-800 text-gray-300"
 };
+function formatAgo(dateString) {
+    if (!dateString) return "-";
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now - date;
+    if (isNaN(diffMs)) return "-";
+    const diffMin = Math.floor(diffMs / (1000 * 60));
+    if (diffMin < 60) return `${diffMin}m ago`;
+    const diffHr = Math.floor(diffMin / 60);
+    if (diffHr < 24) return `${diffHr}h ago`;
+    const diffDay = Math.floor(diffHr / 24);
+    if (diffDay < 30) return `${diffDay}d ago`;
+    const diffMo = Math.floor(diffDay / 30);
+    return `${diffMo}mo ago`;
+}
+const tableHeadClasses = "py-3 px-5 text-xs font-semibold uppercase tracking-wide border-b border-gray-700 bg-gradient-to-r from-[#17171b] to-[#22222a] text-gray-400";
+const tableBodyClasses = "py-4 px-6 border-b border-gray-800 group hover:bg-gradient-to-r from-[#15151b] to-[#23232b] transition";
 
-const API_KEY = "cf9452c4-7a79-4352-a1d3-9de3ba517347"; // TODO: Move to env variable if possible!
+// ReadMore component for URL
+function ReadMoreUrl({ url }) {
+    const [showFull, setShowFull] = useState(false);
+    if (!url) return null;
+    const isLong = url.length > 60;
+    if (!isLong) return <span>{url}</span>;
+    return (
+        <span>
+            {showFull ? url : url.slice(0, 60) + "..."}
+            <button
+                onClick={e => {
+                    e.preventDefault();
+                    setShowFull(!showFull);
+                }}
+                className="ml-2 text-blue-400 underline cursor-pointer text-xs"
+            >{showFull ? "Show less" : "Show more"}</button>
+        </span>
+    );
+}
 
-const VulnerabilityPage = () => {
-    const [authState, setAuthState] = useState("loading"); // 'loading' | 'authenticated' | 'unauthenticated'
-    const [scanInput, setScanInput] = useState("");
-    const [scanResult, setScanResult] = useState(null);
-    const [loadingScan, setLoadingScan] = useState(false);
-    const [scanError, setScanError] = useState(null);
+const Vulnerabilities = () => {
+    // Table/filter state
+    const [searchInput, setSearchInput] = useState("");
+    const [searchQuery, setSearchQuery] = useState("");
+    const [selectedDomain, setSelectedDomain] = useState(""); // for dropdown
+    const [registeredDomains, setRegisteredDomains] = useState([]);
+    const [domainLimit, setDomainLimit] = useState(0);
+    const [showDomainDropdown, setShowDomainDropdown] = useState(false);
+    const [searchReady, setSearchReady] = useState(false);
 
-    const router = useRouter();
+    const [data, setData] = useState([]);
+    const [isLoading, setIsLoading] = useState(false);
+    const [page, setPage] = useState(1);
+    const [size, setSize] = useState(10);
+    const [total, setTotal] = useState(0);
+    const [totalPages, setTotalPages] = useState(1);
 
-    // Check login status on mount
+    // Modal state
+    const [modalOpen, setModalOpen] = useState(false);
+    const [modalTitle, setModalTitle] = useState("");
+    const [modalTemplate, setModalTemplate] = useState("");
+    const [rowAssets, setRowAssets] = useState([]);
+    const [rowLoading, setRowLoading] = useState(false);
+
+    const [detailOpen, setDetailOpen] = useState(false);
+    const [detailItem, setDetailItem] = useState(null);
+
+    // Login validation state
+    const [needLogin, setNeedLogin] = useState(false);
+
+    // Get plan info for dropdown
     useEffect(() => {
-        const checkLoginStatus = async () => {
-            try {
-                const res = await fetch("/api/me", {credentials: "include"});
-                setAuthState(res.ok ? "authenticated" : "unauthenticated");
-            } catch {
-                setAuthState("unauthenticated");
-            }
-        };
-        checkLoginStatus();
+        fetch("/api/my-plan", { credentials: "include" })
+            .then(async (res) => {
+                if (!res.ok) throw new Error("Failed to fetch plan");
+                return res.json();
+            })
+            .then((data) => {
+                if (data && data.data) {
+                    const plan = data.data;
+                    const domains = Array.isArray(plan.registered_domain) ? plan.registered_domain : [];
+                    setRegisteredDomains(domains);
+                    setDomainLimit(Number(plan.domain) || 0);
+                    // Show dropdown only if limit > 0 and domains.length > 0
+                    if ((Number(plan.domain) || 0) > 0 && domains.length > 0) {
+                        setShowDomainDropdown(true);
+                        setSelectedDomain(domains[0]);
+                    } else {
+                        setShowDomainDropdown(false);
+                        setSelectedDomain("");
+                        setSearchInput("");
+                    }
+                    setSearchReady(true);
+                } else {
+                    setRegisteredDomains([]);
+                    setDomainLimit(0);
+                    setShowDomainDropdown(false);
+                    setSearchReady(true);
+                }
+            })
+            .catch(() => {
+                setRegisteredDomains([]);
+                setDomainLimit(0);
+                setShowDomainDropdown(false);
+                setSearchReady(true);
+            });
     }, []);
 
-    // Scan handler
-    const handleScan = async () => {
-        if (authState !== "authenticated") {
-            router.push("/login");
-            return;
-        }
-        setLoadingScan(true);
-        setScanError(null);
-        setScanResult(null);
-
+    // --- Fetch vulnerabilities summary (filters) ---
+    const fetchData = async (search = false) => {
+        setIsLoading(true);
+        setModalOpen(false);
         try {
             const params = new URLSearchParams();
-            if (scanInput.trim()) params.append("search", scanInput.trim());
-            params.append("offset", 0);
-            params.append("limit", 100);
+            params.append("type", "template");
+            params.append("limit", size);
+            params.append("offset", (page - 1) * size);
+            params.append("vuln_status", "open,triaged,fix_in_progress");
+            params.append("severity", "critical,high,medium,low,unknown");
+
+            // Search by domain: use dropdown if available, else searchQuery
+            if (search) {
+                if (showDomainDropdown && selectedDomain) {
+                    params.append("search", selectedDomain);
+                } else if (searchQuery.trim()) {
+                    params.append("search", searchQuery.trim());
+                }
+            }
 
             const options = {
                 method: "GET",
                 headers: {"X-API-Key": API_KEY},
             };
 
-            const url = `https://api.projectdiscovery.io/v1/asset/enumerate/contents?${params.toString()}`;
+            const url = `https://api.projectdiscovery.io/v1/scans/results/filters?${params.toString()}`;
             const res = await fetch(url, options);
             if (!res.ok) throw new Error(`HTTP error! Status: ${res.status}`);
-            const data = await res.json();
-            setScanResult(data);
-        } catch (err) {
-            setScanError(err.message || "Scanning failed.");
+            const result = await res.json();
+
+            setData(Array.isArray(result.data) ? result.data : []);
+            setTotal(result.total_results || result.result_count || 0);
+            setTotalPages(result.total_pages || 1);
+        } catch {
+            setData([]);
+            setTotal(0);
+            setTotalPages(1);
         } finally {
-            setLoadingScan(false);
+            setIsLoading(false);
         }
     };
 
-    // Render scan result table
-    const renderScanTable = () => {
-        if (!scanResult?.data || Object.keys(scanResult.data).length === 0) {
-            return (
-                <table className="min-w-full text-white font-mono border border-[#2e2e2e]">
-                    <thead>
-                    <tr className="text-left border-b border-gray-700 text-gray-400 bg-gradient-to-r from-[#1e1e24] to-[#2a2a32]">
-                        <th className="py-4 px-6 text-center">Asset</th>
-                        <th className="py-4 px-6 text-center">Status</th>
-                        <th className="py-4 px-6 text-center">IP(s)</th>
-                        <th className="py-4 px-6 text-center">ASN</th>
-                        <th className="py-4 px-6 text-center">Tech</th>
-                        <th className="py-4 px-6 text-center">Server</th>
-                        <th className="py-4 px-6 text-center">Redirect</th>
-                        <th className="py-4 px-6 text-center">Last Update</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    <tr className="border-b border-gray-800">
-                        <td colSpan="8" className="py-8 px-6 text-center text-gray-400">
-                            <div className="flex flex-col items-center justify-center">
-                                <svg className="w-12 h-12 mb-4 text-gray-600" fill="none" stroke="currentColor"
-                                     viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5"
-                                          d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                </svg>
-                                <p className="text-lg font-medium">No vulnerability data found</p>
-                                <p className="text-sm mt-1">
-                                    {scanInput
-                                        ? <>Try searching with different keyword.<br/><span
-                                            className="text-gray-500">Keyword: <span
-                                            className="font-mono">{scanInput}</span></span></>
-                                        : "Try scanning a specific asset or with a different filter."
-                                    }
-                                </p>
-                            </div>
-                        </td>
-                    </tr>
-                    </tbody>
-                </table>
+    // Initial load: don't fetch data, wait for search
+    useEffect(() => {}, []);
+
+    // Only fetch data if page/size changes after a search has been done
+    useEffect(() => {
+        if (showDomainDropdown && selectedDomain) {
+            fetchData(true);
+        } else if (searchQuery.trim() !== "") {
+            fetchData(true);
+        }
+        // eslint-disable-next-line
+    }, [page, size]);
+
+    // --- Search handler with login validation ---
+    const handleSearch = async (e) => {
+        e.preventDefault();
+        setNeedLogin(false); // Reset login info before check
+
+        // Validate login before search
+        try {
+            const res = await fetch('/api/me', { credentials: "include" });
+            if (res.status === 401 || res.status === 403) {
+                setNeedLogin(true);
+                return;
+            }
+        } catch (err) {
+            setNeedLogin(true);
+            return;
+        }
+
+        setPage(1);
+        if (showDomainDropdown) {
+            if (selectedDomain) fetchData(true);
+        } else if (searchInput.trim() !== "") {
+            setSearchQuery(searchInput);
+            fetchData(true);
+        }
+    };
+
+    // --- Fetch assets of a template (on row click) ---
+    const fetchRowAssets = async (template, title) => {
+        setModalOpen(true);
+        setModalTitle(title);
+        setModalTemplate(template);
+        setRowLoading(true);
+        try {
+            const params = new URLSearchParams();
+            params.append("limit", 30);
+            params.append("offset", 0);
+            params.append("asset_metadata", "true");
+            params.append("vuln_status", "open,triaged,fix_in_progress");
+            params.append("severity", "critical,high,medium,low,unknown");
+            params.append("templates", template);
+            // Pass domain filter
+            if (showDomainDropdown && selectedDomain) {
+                params.append("search", selectedDomain);
+            } else if (searchQuery.trim()) {
+                params.append("search", searchQuery.trim());
+            }
+
+            const options = {
+                method: "GET",
+                headers: {"X-API-Key": API_KEY},
+            };
+
+            const url = `https://api.projectdiscovery.io/v1/scans/results?${params.toString()}`;
+            const res = await fetch(url, options);
+            if (!res.ok) throw new Error("Failed to fetch assets");
+            const result = await res.json();
+
+            setRowAssets(
+                (result.data || []).map((item) => {
+                    const asset = item.asset_metadata || {};
+                    const event = Array.isArray(item.event) ? item.event[0] : {};
+                    return {
+                        asset: asset.host || asset.domain_name || asset.name || "-",
+                        foundAt: event["matched-at"] || asset.name || "-",
+                        firstSeen: asset.created_at || item.created_at || "-",
+                        lastSeen: asset.updated_at || item.updated_at || "-",
+                        fullItem: item,
+                    };
+                })
             );
+        } catch {
+            setRowAssets([]);
+        } finally {
+            setRowLoading(false);
         }
-
-        return (
-            <div className="overflow-x-auto rounded-xl shadow-xl" style={{background: "rgba(20,20,25,0.95)"}}>
-                <table className="min-w-full text-white font-mono border border-[#2e2e2e]">
-                    <thead>
-                    <tr className="text-left border-b border-gray-700 text-gray-400 bg-gradient-to-r from-[#1e1e24] to-[#2a2a32]">
-                        <th className="py-4 px-6">Asset</th>
-                        <th className="py-4 px-6">Status</th>
-                        <th className="py-4 px-6">IP(s)</th>
-                        <th className="py-4 px-6">ASN</th>
-                        <th className="py-4 px-6">Tech</th>
-                        <th className="py-4 px-6">Server</th>
-                        <th className="py-4 px-6">Redirect</th>
-                        <th className="py-4 px-6">Last Update</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    {Object.values(scanResult.data).map((item, idx) => {
-                        const techName = item.technologies?.[0];
-                        const techDetail = techName && item.technology_details && item.technology_details[techName];
-                        const techIcon = techDetail?.icon;
-                        return (
-                            <tr key={item.id || idx}
-                                className="border-b border-gray-800 transition-all group hover:bg-gradient-to-r from-[#1a1a20] to-[#25252d]">
-                                <td className="py-4 px-6">
-                                    <div className="flex flex-col gap-0.5">
-                                        <span className="font-bold text-white">{item.host || item.domain_name}</span>
-                                        <span className="text-xs text-gray-400">{item.name}</span>
-                                        <span
-                                            className="inline-flex items-center text-xs bg-blue-950 px-2 py-0.5 rounded mt-1 text-indigo-300 font-semibold">
-                        {item.status_code} {item.title && <span className="ml-1 text-gray-500">{item.title}</span>}
-                      </span>
-                                    </div>
-                                </td>
-                                <td className="py-4 px-6">
-                                    {item.body && item.body.toLowerCase().includes("moved permanently") ? (
-                                        <span
-                                            className="bg-gradient-to-r from-yellow-700 to-yellow-800 text-yellow-100 px-3 py-1 rounded text-xs">
-                        Redirected
-                      </span>
-                                    ) : (
-                                        <span
-                                            className="bg-gradient-to-r from-green-700 to-green-800 text-green-100 px-3 py-1 rounded text-xs">
-                        OK
-                      </span>
-                                    )}
-                                </td>
-                                <td className="py-4 px-6">
-                                    <div className="flex flex-col gap-1">
-                                        {item.ip?.map(ip =>
-                                            <span key={ip}
-                                                  className="bg-[#222] px-2 py-0.5 rounded text-xs mb-0.5 font-mono text-gray-100 border border-gray-700">{ip}</span>
-                                        )}
-                                    </div>
-                                </td>
-                                <td className="py-4 px-6">
-                                    {item.asn ? (
-                                        <span className="bg-[#23232b] rounded px-2 py-0.5 text-xs text-gray-300">
-                        <strong>{item.asn.as_number}</strong>
-                        <span className="text-gray-400"> | </span>
-                                            {item.asn.as_name?.toLowerCase()}
-                                            <span className="text-gray-400"> | </span>
-                                            {item.asn.as_country}
-                      </span>
-                                    ) : "-"}
-                                </td>
-                                <td className="py-4 px-6">
-                                    <div className="flex items-center gap-1">
-                                        {techIcon && (
-                                            <Image src={techIcon} alt={techName} width={18} height={18}
-                                                   className="inline rounded bg-white p-0.5"/>
-                                        )}
-                                        <span
-                                            className="bg-[#23232b] rounded px-2 py-0.5 text-xs text-orange-300">{techName}</span>
-                                    </div>
-                                </td>
-                                <td className="py-4 px-6">
-                                    {item.webserver && (
-                                        <span
-                                            className="bg-[#23232b] rounded px-2 py-0.5 text-xs text-cyan-300">{item.webserver}</span>
-                                    )}
-                                </td>
-                                <td className="py-4 px-6">
-                                    {item.redirect_location ? (
-                                        <a href={item.redirect_location} target="_blank" rel="noopener noreferrer"
-                                           className="text-xs text-yellow-300 underline break-all">{item.redirect_location}</a>
-                                    ) : "-"}
-                                </td>
-                                <td className="py-4 px-6">
-                    <span
-                        className="inline-flex items-center px-3 py-1 rounded-full text-xs bg-gradient-to-r from-gray-700 to-gray-800 text-gray-300">
-                      {formatTimeAgo(item.updated_at || item.created_at)}
-                    </span>
-                                </td>
-                            </tr>
-                        )
-                    })}
-                    </tbody>
-                </table>
-            </div>
-        );
     };
+
+    // --- Table row expand handler ---
+    const handleRowClick = (template, title) => {
+        fetchRowAssets(template, title);
+    };
+
+    // --- Full Screen Modal for extended row ---
+    const AssetModal = () => (
+        <div className="fixed inset-0 z-50 bg-black bg-opacity-80 flex items-center justify-center">
+            <div className="relative bg-[#19191d] rounded-xl shadow-2xl max-w-5xl w-full mx-4 overflow-auto max-h-[90vh] p-0">
+                <button
+                    className="absolute top-5 right-7 text-gray-300 hover:text-white text-2xl font-bold z-10"
+                    onClick={() => setModalOpen(false)}
+                    aria-label="Close"
+                >×</button>
+                <div className="px-8 pt-8 pb-6">
+                    <div className="flex items-center justify-between mb-6">
+                        <div>
+                            <span className={`px-4 py-1 rounded-full font-semibold ${severityColor['critical']}`}>Critical</span>
+                            <span className="ml-4 text-xl font-bold text-white">{modalTitle}</span>
+                        </div>
+                        <div>
+                            <span className="bg-[#18181c] px-3 py-1 rounded text-xs font-mono text-gray-200 mr-1">TEMPLATE</span>
+                            <span className="bg-[#23232b] px-2 py-1 rounded text-xs text-gray-300">{modalTemplate}</span>
+                        </div>
+                    </div>
+                    <div className="w-full overflow-auto rounded-lg border border-gray-800 bg-[#19191d] mt-4">
+                        <table className="min-w-full font-mono text-xs">
+                            <thead>
+                            <tr className="bg-gradient-to-r from-[#17171b] to-[#22222a] text-gray-400 border-b border-gray-700">
+                                <th className="py-3 px-4 font-semibold text-left w-2"></th>
+                                <th className="py-3 px-4 font-semibold text-left">Asset</th>
+                                <th className="py-3 px-4 font-semibold text-left">Found at</th>
+                                <th className="py-3 px-4 font-semibold text-left">First seen</th>
+                                <th className="py-3 px-4 font-semibold text-left">Last seen</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            {rowLoading ? (
+                                <tr>
+                                    <td colSpan={5} className="py-6 text-center text-pink-400 font-semibold">Loading assets...</td>
+                                </tr>
+                            ) : rowAssets.length === 0 ? (
+                                <tr>
+                                    <td colSpan={5} className="py-6 text-center text-gray-400 font-semibold">
+                                        No assets found for template <span className="font-mono">{modalTemplate}</span>.
+                                    </td>
+                                </tr>
+                            ) : (
+                                rowAssets.map((asset, aidx) => (
+                                    <tr key={asset.asset + aidx}
+                                        className="border-b border-gray-800 hover:bg-[#22222b]/80 transition hover:cursor-pointer"
+                                        onClick={() => {
+                                            setDetailItem(asset.fullItem);
+                                            setDetailOpen(true);
+                                        }}
+                                    >
+                                        <td className="py-2 px-4">
+                                            <input type="checkbox" disabled className="form-checkbox h-4 w-4" />
+                                        </td>
+                                        <td className="py-2 px-4 font-mono text-base text-gray-100">{asset.asset}</td>
+                                        <td className="py-2 px-4">
+                                            <a className="bg-black/10 px-2 py-1 rounded text-blue-300 flex items-center gap-1 hover:underline"
+                                               href={asset.foundAt} target="_blank" rel="noopener">
+                                                <svg width="14" height="14" fill="none" stroke="currentColor"
+                                                     strokeWidth="2" viewBox="0 0 24 24">
+                                                    <path d="M13.828 10.172a4 4 0 1 1-5.656 5.656" />
+                                                    <path d="M12 8v4h4" />
+                                                </svg>
+                                                <ReadMoreUrl url={asset.foundAt} />
+                                            </a>
+                                        </td>
+                                        <td className="py-2 px-4 text-gray-400 min-w-[70px]">{formatAgo(asset.firstSeen)}</td>
+                                        <td className="py-2 px-4 text-gray-400 min-w-[70px]">{formatAgo(asset.lastSeen)}</td>
+                                    </tr>
+                                ))
+                            )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+
+    const renderSearchBar = () => (
+        <form onSubmit={handleSearch} className="flex flex-col items-center gap-2 mb-8">
+            <div className="w-full max-w-2xl mx-auto flex flex-col items-start gap-2">
+                <label className="text-lg font-semibold text-gray-100 mb-1">
+                    {showDomainDropdown
+                        ? "Select domain to view vulnerabilities"
+                        : "Search vulnerabilities by domain"}
+                </label>
+                {showDomainDropdown ? (
+                    <select
+                        className="px-5 py-3 rounded-lg border border-gray-700 bg-gray-900 text-white w-full focus:outline-none focus:border-pink-500 text-base"
+                        value={selectedDomain}
+                        onChange={e => setSelectedDomain(e.target.value)}
+                        disabled={isLoading}
+                    >
+                        {registeredDomains.map((domain, idx) =>
+                            <option key={domain + idx} value={domain}>{domain}</option>
+                        )}
+                    </select>
+                ) : (
+                    <input
+                        type="text"
+                        placeholder="Type domain here (e.g. example.com)"
+                        className="px-5 py-3 rounded-lg border border-gray-700 bg-gray-900 text-white w-full focus:outline-none focus:border-pink-500 text-base"
+                        value={searchInput}
+                        onChange={e => setSearchInput(e.target.value)}
+                        disabled={isLoading}
+                    />
+                )}
+            </div>
+            <button
+                type="submit"
+                className="w-full max-w-2xl py-3 rounded-lg bg-pink-600 hover:bg-pink-700 text-white font-bold text-base transition shadow"
+                disabled={isLoading}
+            >
+                <span className="flex items-center justify-center gap-2">
+                    <svg width="22" height="22" fill="none" viewBox="0 0 24 24">
+                        <path d="M21 21l-4.35-4.35M10.5 18a7.5 7.5 0 100-15 7.5 7.5 0 000 15z"
+                              stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                    {isLoading
+                        ? "Searching..."
+                        : showDomainDropdown
+                            ? `Search `
+                            : "Search "}
+                </span>
+            </button>
+        </form>
+    );
+
+    // Login required UI
+    const renderLoginRequired = () => (
+        <div className="max-w-xl mx-auto bg-[#23232b] rounded-xl p-8 mt-12 text-center shadow-lg border border-pink-800">
+            <svg className="mx-auto mb-4" width="48" height="48" fill="none" stroke="#f33d74" strokeWidth="2" viewBox="0 0 24 24">
+                <path d="M12 15v2m0 4v-4m0-4V9m0-4V5m0 0a9 9 0 1 1 0 18 9 9 0 0 1 0-18z"/>
+            </svg>
+            <h2 className="text-2xl font-bold text-pink-500 mb-2">Login Required</h2>
+            <p className="text-gray-300 mb-4">You must be logged in to search vulnerabilities and view your plan domains.</p>
+            <a href="/login" className="inline-block px-6 py-2 rounded-lg bg-pink-600 hover:bg-pink-700 text-white font-bold transition">Go to Login</a>
+        </div>
+    );
 
     return (
         <div className="bg-black text-white min-h-screen">
-            <Navbar/>
-            {/* Hero Section */}
-            <section className="relative min-h-screen w-full bg-gradient-to-b from-black to-gray-900 overflow-hidden">
-                <div className="absolute inset-0 flex flex-col items-center justify-center px-6 z-10">
-                    <div className="max-w-4xl mx-auto text-center">
-            <span className="text-[#f03262] font-mono text-sm tracking-widest mb-4 inline-block">
-              VULNERABILITY INTELLIGENCE
-            </span>
-                        <h1 className="text-5xl md:text-7xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-white to-[#f03262]">
-                            Zero-Day Protection
-                        </h1>
-                        <p className="text-xl md:text-2xl text-gray-300 mb-10 max-w-3xl mx-auto">
-                            Proactively discover and remediate security flaws before attackers can exploit them
-                        </p>
-                        {/* Scan Input */}
-                        <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center items-center">
-                            <input
-                                type="text"
-                                placeholder="Enter your target (domain, IP, etc)"
-                                className="px-6 py-3 rounded-lg border border-gray-700 bg-gray-900 text-white w-full sm:w-96 mb-2 sm:mb-0"
-                                value={scanInput}
-                                onChange={e => setScanInput(e.target.value)}
-                                disabled={loadingScan || authState !== "authenticated"}
-                            />
-                            <button
-                                onClick={() => {
-                                    if (authState !== "authenticated") {
-                                        router.push("/login");
-                                        return;
-                                    }
-                                    handleScan();
-                                }}
-                                className="bg-[#f03262] hover:bg-[#d82a56] text-white px-8 py-3 rounded-lg font-medium transition-all hover:scale-105 shadow-lg shadow-[#f03262]/30"
-                            >
-                                {authState === "loading"
-                                    ? "Checking..."
-                                    : authState !== "authenticated"
-                                        ? "Login to Scan"
-                                        : loadingScan
-                                            ? "Scanning..."
-                                            : "Start Scanning"}
-                            </button>
-                        </div>
-
-                        {scanError && (
-                            <div className="mt-4 text-red-400 text-center">{scanError}</div>
-                        )}
-                    </div>
-                </div>
-                {/* Animated background elements */}
-                <div className="absolute inset-0 overflow-hidden opacity-20 pointer-events-none select-none">
-                    {[...Array(20)].map((_, i) => (
-                        <div
-                            key={i}
-                            className="absolute rounded-full bg-[#f03262]"
-                            style={{
-                                width: 18 + 'px',
-                                height: 18 + 'px',
-                                top: (i * 5 % 100) + '%',
-                                left: ((i * 13) % 100) + '%',
-                                opacity: 0.2 + (i % 4) * 0.2,
-                                filter: 'blur(2px)'
-                            }}
-                        />
-                    ))}
-                </div>
+            <Navbar />
+            <section className="px-6 py-6 max-w-7xl mx-auto">
+                {needLogin ? renderLoginRequired() : searchReady && renderSearchBar()}
             </section>
-            {/* Scan Result Section */}
-            {scanResult && (
-                <section className="pt-8 pb-20 bg-black px-6">
-                    <div className="max-w-7xl mx-auto">
-                        <p className="text-sm uppercase text-blue-400 mb-2 tracking-widest text-center">
-                            🔎 Security Flaw Findings
-                        </p>
-                        <h2 className="text-4xl font-light text-white mb-8 text-center">
-                            Vulnerability Exposure Report
-                        </h2>
-                        {renderScanTable()}
+            {!needLogin && (
+                <section className="max-w-7xl mx-auto px-6 pb-10">
+                    <div className="rounded-2xl shadow-xl overflow-x-auto" style={{ background: "rgba(20,20,25,0.98)" }}>
+                        <table className="min-w-full text-white font-mono border border-[#22222b] rounded-2xl overflow-hidden">
+                            <thead>
+                            <tr>
+                                <th className={tableHeadClasses}></th>
+                                <th className={tableHeadClasses + " w-36"}>Severity</th>
+                                <th className={tableHeadClasses}>Title</th>
+                                <th className={tableHeadClasses + " w-16"}>Count</th>
+                                <th className={tableHeadClasses + " w-56"}>Template</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            {isLoading && (
+                                <tr>
+                                    <td colSpan={5} className="py-12 px-6 text-center text-pink-400 font-bold">Loading...</td>
+                                </tr>
+                            )}
+                            {!isLoading && data.length === 0 && (
+                                <tr>
+                                    <td colSpan={5} className="py-12 px-6 text-center text-gray-400">
+                                        <div className="flex flex-col items-center justify-center">
+                                            <svg className="w-12 h-12 mb-4 text-gray-600" fill="none" stroke="currentColor"
+                                                 viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5"
+                                                      d="M9.172 16.172a4 4 0 0 1 5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/>
+                                            </svg>
+                                            <p className="text-xl font-bold">No vulnerability data found</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            )}
+                            {!isLoading && data.map((item, idx) => {
+                                const severity = item.severity || "critical";
+                                const template = item.value || "-";
+                                return (
+                                    <tr
+                                        key={template + idx}
+                                        className={tableBodyClasses + " cursor-pointer"}
+                                        onClick={() => handleRowClick(template, item.name)}
+                                        style={{
+                                            borderTopLeftRadius: idx === 0 ? '16px' : undefined,
+                                            borderTopRightRadius: idx === 0 ? '16px' : undefined
+                                        }}
+                                    >
+                                        <td className="py-4 px-6"><input type="checkbox" disabled className="form-checkbox h-4 w-4"/></td>
+                                        <td className="py-4 px-6">
+                                            <span className={`px-4 py-1 rounded-full font-semibold ${severityColor[severity.toLowerCase()] || severityColor["critical"]}`}>{severity.charAt(0).toUpperCase() + severity.slice(1)}</span>
+                                        </td>
+                                        <td className="py-4 px-6 font-bold text-white">{item.name}</td>
+                                        <td className="py-4 px-6">
+                                            <span className="ml-2 px-2 py-0.5 rounded-full bg-gray-800 text-gray-300 text-xs font-mono">{item.count}</span>
+                                        </td>
+                                        <td className="py-4 px-6">
+                                            <span className="bg-[#18181c] px-3 py-1 rounded text-xs font-mono text-gray-200 mr-1">TEMPLATE</span>
+                                            <span className="bg-[#23232b] px-2 py-1 rounded text-xs text-gray-300">{template}</span>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                            </tbody>
+                        </table>
+                        <div className="flex items-center justify-between mt-4 px-4 py-4 text-gray-400 text-xs">
+                            <div>
+                                <span>Showing {(page - 1) * size + 1} - {Math.min(page * size, total)} of {total || "many"}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    className="px-3 py-1 rounded bg-[#19191d] border border-gray-700 hover:bg-[#23232b] font-semibold"
+                                    disabled={page === 1}
+                                    onClick={() => setPage(page - 1)}
+                                >Previous</button>
+                                <button
+                                    className="px-3 py-1 rounded bg-[#19191d] border border-gray-700 hover:bg-[#23232b] font-semibold"
+                                    disabled={page >= totalPages}
+                                    onClick={() => setPage(page + 1)}
+                                >Next</button>
+                                <select
+                                    className="ml-2 px-2 py-1 rounded border border-gray-700 bg-[#19191d] text-gray-200"
+                                    value={size}
+                                    onChange={e => {
+                                        setSize(Number(e.target.value));
+                                        setPage(1);
+                                    }}
+                                >
+                                    {[10, 20, 50, 100].map(s => <option key={s} value={s}>{s} per page</option>)}
+                                </select>
+                            </div>
+                        </div>
                     </div>
                 </section>
             )}
+            {/* Full Screen Modal */}
+            {modalOpen && <AssetModal />}
+            {detailOpen && <AssetDetailModal open={detailOpen} onClose={() => setDetailOpen(false)} item={detailItem} />}
         </div>
     );
 };
 
-export default VulnerabilityPage;
+export default Vulnerabilities;
