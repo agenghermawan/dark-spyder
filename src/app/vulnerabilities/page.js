@@ -3,6 +3,9 @@
 import React, { useState, useEffect } from "react";
 import Navbar from "../../components/navbar";
 import AssetDetailModal from "../../components/va/va_detail_modal";
+import { FaServer } from "react-icons/fa"; // Make sure to install react-icons if not yet: npm install react-icons
+import { useRouter } from "next/navigation";
+
 
 // Utility
 const API_KEY = "cf9452c4-7a79-4352-a1d3-9de3ba517347";
@@ -53,6 +56,8 @@ function ReadMoreUrl({ url }) {
 }
 
 const Vulnerabilities = () => {
+    const router = useRouter();
+
     // Table/filter state
     const [searchInput, setSearchInput] = useState("");
     const [searchQuery, setSearchQuery] = useState("");
@@ -95,7 +100,6 @@ const Vulnerabilities = () => {
                     const domains = Array.isArray(plan.registered_domain) ? plan.registered_domain : [];
                     setRegisteredDomains(domains);
                     setDomainLimit(Number(plan.domain) || 0);
-                    // Show dropdown only if limit > 0 and domains.length > 0
                     if ((Number(plan.domain) || 0) > 0 && domains.length > 0) {
                         setShowDomainDropdown(true);
                         setSelectedDomain(domains[0]);
@@ -132,7 +136,6 @@ const Vulnerabilities = () => {
             params.append("vuln_status", "open,triaged,fix_in_progress");
             params.append("severity", "critical,high,medium,low,unknown");
 
-            // Search by domain: use dropdown if available, else searchQuery
             if (search) {
                 if (showDomainDropdown && selectedDomain) {
                     params.append("search", selectedDomain);
@@ -163,23 +166,19 @@ const Vulnerabilities = () => {
         }
     };
 
-    // Initial load: don't fetch data, wait for search
     useEffect(() => {}, []);
 
-    // Only fetch data if page/size changes after a search has been done
     useEffect(() => {
         if (showDomainDropdown && selectedDomain) {
             fetchData(true);
         } else if (searchQuery.trim() !== "") {
             fetchData(true);
         }
-        // eslint-disable-next-line
     }, [page, size]);
 
-    // --- Search handler with login validation ---
     const handleSearch = async (e) => {
         e.preventDefault();
-        setNeedLogin(false); // Reset login info before check
+        setNeedLogin(false);
 
         // Validate login before search
         try {
@@ -202,7 +201,6 @@ const Vulnerabilities = () => {
         }
     };
 
-    // --- Fetch assets of a template (on row click) ---
     const fetchRowAssets = async (template, title) => {
         setModalOpen(true);
         setModalTitle(title);
@@ -216,7 +214,7 @@ const Vulnerabilities = () => {
             params.append("vuln_status", "open,triaged,fix_in_progress");
             params.append("severity", "critical,high,medium,low,unknown");
             params.append("templates", template);
-            // Pass domain filter
+
             if (showDomainDropdown && selectedDomain) {
                 params.append("search", selectedDomain);
             } else if (searchQuery.trim()) {
@@ -253,12 +251,10 @@ const Vulnerabilities = () => {
         }
     };
 
-    // --- Table row expand handler ---
     const handleRowClick = (template, title) => {
         fetchRowAssets(template, title);
     };
 
-    // --- Full Screen Modal for extended row ---
     const AssetModal = () => (
         <div className="fixed inset-0 z-50 bg-black bg-opacity-80 flex items-center justify-center">
             <div className="relative bg-[#19191d] rounded-xl shadow-2xl max-w-5xl w-full mx-4 overflow-auto max-h-[90vh] p-0">
@@ -337,30 +333,38 @@ const Vulnerabilities = () => {
         </div>
     );
 
+    // Modern Search Bar
     const renderSearchBar = () => (
-        <form onSubmit={handleSearch} className="flex flex-col items-center gap-2 mb-8">
-            <div className="w-full max-w-2xl mx-auto flex flex-col items-start gap-2">
+        <form onSubmit={handleSearch} className="flex flex-col items-center gap-4 mb-10 w-full max-w-3xl mx-auto">
+            <div className="w-full flex flex-col gap-2">
                 <label className="text-lg font-semibold text-gray-100 mb-1">
                     {showDomainDropdown
-                        ? "Select domain to view vulnerabilities"
+                        ? "Select your registered domain to view vulnerability assessment"
                         : "Search vulnerabilities by domain"}
                 </label>
                 {showDomainDropdown ? (
-                    <select
-                        className="px-5 py-3 rounded-lg border border-gray-700 bg-gray-900 text-white w-full focus:outline-none focus:border-pink-500 text-base"
-                        value={selectedDomain}
-                        onChange={e => setSelectedDomain(e.target.value)}
-                        disabled={isLoading}
-                    >
-                        {registeredDomains.map((domain, idx) =>
-                            <option key={domain + idx} value={domain}>{domain}</option>
-                        )}
-                    </select>
+                    <div className="relative w-full">
+                        <select
+                            className="px-5 py-3 rounded-lg border border-gray-700 bg-gray-900 text-white w-full focus:outline-none focus:border-pink-500 text-base appearance-none transition"
+                            value={selectedDomain}
+                            onChange={e => setSelectedDomain(e.target.value)}
+                            disabled={isLoading}
+                        >
+                            {registeredDomains.map((domain, idx) =>
+                                <option key={domain + idx} value={domain}>{domain}</option>
+                            )}
+                        </select>
+                        <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">
+                            <svg width="22" height="22" fill="none" viewBox="0 0 24 24">
+                                <path d="M7 10l5 5 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                        </span>
+                    </div>
                 ) : (
                     <input
                         type="text"
-                        placeholder="Type domain here (e.g. example.com)"
-                        className="px-5 py-3 rounded-lg border border-gray-700 bg-gray-900 text-white w-full focus:outline-none focus:border-pink-500 text-base"
+                        placeholder="Type domain here (e.g. mandayahospitalgroup.com)"
+                        className="px-5 py-3 rounded-lg border border-gray-700 bg-gray-900 text-white w-full focus:outline-none focus:border-pink-500 text-base transition"
                         value={searchInput}
                         onChange={e => setSearchInput(e.target.value)}
                         disabled={isLoading}
@@ -369,7 +373,7 @@ const Vulnerabilities = () => {
             </div>
             <button
                 type="submit"
-                className="w-full max-w-2xl py-3 rounded-lg bg-pink-600 hover:bg-pink-700 text-white font-bold text-base transition shadow"
+                className="w-full py-3 rounded-lg bg-gradient-to-r from-pink-600 to-pink-500 hover:from-pink-700 hover:to-pink-600 text-white font-bold text-lg shadow transition disabled:opacity-60"
                 disabled={isLoading}
             >
                 <span className="flex items-center justify-center gap-2">
@@ -380,10 +384,15 @@ const Vulnerabilities = () => {
                     {isLoading
                         ? "Searching..."
                         : showDomainDropdown
-                            ? `Search `
-                            : "Search "}
+                            ? `Show VA for "${selectedDomain}"`
+                            : "Search"}
                 </span>
             </button>
+            {showDomainDropdown && (
+                <div className="w-full text-xs text-gray-400 text-right mt-1">
+                    <span>Registered domains: <span className="text-pink-400">{registeredDomains.length}</span> / <span className="text-yellow-400">{domainLimit}</span></span>
+                </div>
+            )}
         </form>
     );
 
@@ -399,16 +408,30 @@ const Vulnerabilities = () => {
         </div>
     );
 
+    const renderExtractLogsButton = () => (
+        <div className="flex justify-end items-center mb-6">
+            <button
+                className="flex items-center gap-2 px-5 py-2 rounded-lg bg-gradient-to-r from-gray-800 to-gray-700 hover:from-pink-700 hover:to-pink-600 text-white font-semibold shadow transition"
+                onClick={() => router.push('/vulnerabilities/assets')}
+            >
+                <FaServer className="text-base" />
+                <span>Assets Group</span>
+            </button>
+        </div>
+    );
+
     return (
-        <div className="bg-black text-white min-h-screen">
+        <div className="bg-gradient-to-br from-[#161622] to-[#232339] text-white min-h-screen">
             <Navbar />
-            <section className="px-6 py-6 max-w-7xl mx-auto">
+            <section className="px-6 py-10 max-w-7xl mx-auto">
                 {needLogin ? renderLoginRequired() : searchReady && renderSearchBar()}
             </section>
             {!needLogin && (
                 <section className="max-w-7xl mx-auto px-6 pb-10">
-                    <div className="rounded-2xl shadow-xl overflow-x-auto" style={{ background: "rgba(20,20,25,0.98)" }}>
-                        <table className="min-w-full text-white font-mono border border-[#22222b] rounded-2xl overflow-hidden">
+                    {renderExtractLogsButton()}
+
+                    <div className="rounded-2xl shadow-2xl overflow-x-auto border border-[#22222b]" style={{ background: "rgba(20,20,25,0.98)" }}>
+                        <table className="min-w-full text-white font-mono rounded-2xl overflow-hidden">
                             <thead>
                             <tr>
                                 <th className={tableHeadClasses}></th>
@@ -468,7 +491,7 @@ const Vulnerabilities = () => {
                             })}
                             </tbody>
                         </table>
-                        <div className="flex items-center justify-between mt-4 px-4 py-4 text-gray-400 text-xs">
+                        <div className="flex flex-col sm:flex-row items-center justify-between mt-4 px-4 py-4 text-gray-400 text-xs gap-2">
                             <div>
                                 <span>Showing {(page - 1) * size + 1} - {Math.min(page * size, total)} of {total || "many"}</span>
                             </div>
@@ -498,7 +521,6 @@ const Vulnerabilities = () => {
                     </div>
                 </section>
             )}
-            {/* Full Screen Modal */}
             {modalOpen && <AssetModal />}
             {detailOpen && <AssetDetailModal open={detailOpen} onClose={() => setDetailOpen(false)} item={detailItem} />}
         </div>

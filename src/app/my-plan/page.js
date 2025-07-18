@@ -9,16 +9,16 @@ function RegisterDomainModal({ show, onClose, invoiceId, domainLimit, registered
     const [registerError, setRegisterError] = useState(null);
     const [registerSuccess, setRegisterSuccess] = useState("");
 
-    const maxToAdd = domainLimit - registeredDomains.length;
+    const maxToAdd = domainLimit;
 
     useEffect(() => {
         if (show) {
-            setDomains([""]);
+            setDomains(registeredDomains.length > 0 ? [...registeredDomains] : [""]);
             setRegisterError(null);
             setRegisterSuccess("");
             setRegistering(false);
         }
-    }, [show]);
+    }, [show, registeredDomains]);
 
     const handleAddDomain = () => {
         if (domains.length < maxToAdd) {
@@ -33,7 +33,7 @@ function RegisterDomainModal({ show, onClose, invoiceId, domainLimit, registered
         try {
             const filteredDomains = domains.map(d => d.trim()).filter(Boolean);
             if (!filteredDomains.length) throw new Error("Please enter at least one domain.");
-            if (filteredDomains.length > maxToAdd) throw new Error(`Maximum ${maxToAdd} domains can be added.`);
+            if (filteredDomains.length > maxToAdd) throw new Error(`Maximum ${maxToAdd} domains allowed.`);
             if (!invoiceId) throw new Error("Invoice ID is missing.");
             const res = await fetch(`/api/register-domain?invoiceId=${invoiceId}`, {
                 method: "POST",
@@ -44,8 +44,9 @@ function RegisterDomainModal({ show, onClose, invoiceId, domainLimit, registered
             const result = await res.json();
             if (!res.ok) throw new Error(result.message || "Failed to register domains");
             setRegisterSuccess("Domains registered successfully!");
-            setDomains([""]);
+            setDomains(filteredDomains);
             if (onSuccess) onSuccess();
+            onClose();
         } catch (e) {
             setRegisterError(e.message || "Failed to register domains.");
         } finally {
@@ -64,10 +65,10 @@ function RegisterDomainModal({ show, onClose, invoiceId, domainLimit, registered
                     aria-label="Close"
                 >×</button>
                 <h2 className="text-2xl font-bold text-white mb-4 text-center">
-                    Register More Domains
+                    Register Domains
                 </h2>
                 <div className="mb-2 text-center text-gray-300 text-sm">
-                    You can add up to <span className="font-bold text-yellow-400">{maxToAdd}</span> more domain{maxToAdd > 1 ? "s" : ""} for this plan.
+                    You can register up to <span className="font-bold text-yellow-400">{maxToAdd}</span> domains for this plan.
                 </div>
                 <div className="space-y-2">
                     {domains.map((domain, idx) => (
@@ -98,7 +99,7 @@ function RegisterDomainModal({ show, onClose, invoiceId, domainLimit, registered
                     >+ Add Domain</button>
                     {domains.length >= maxToAdd && (
                         <div className="text-xs text-yellow-400 mt-1">
-                            Maximum {maxToAdd} domains allowed to add now.
+                            Maximum {maxToAdd} domains allowed.
                         </div>
                     )}
                 </div>
