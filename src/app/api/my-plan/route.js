@@ -16,12 +16,31 @@ export async function GET(req) {
         }
     });
 
+    // Jika backend kamu balikin 404/no plan, tangani di sini:
+    if (res.status === 404) {
+        return new Response(JSON.stringify({
+            data: null,
+            message: "No active plan."
+        }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+        });
+    }
+
+    // Jika backend balikin data kosong/null:
     const data = await res.json();
+    if (!data || !data.data) {
+        return new Response(JSON.stringify({
+            data: null,
+            message: "No active plan."
+        }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+        });
+    }
 
     return new Response(JSON.stringify(data), {
         status: res.status,
-        headers: {
-            'Content-Type': 'application/json'
-        }
+        headers: { 'Content-Type': 'application/json' }
     });
 }

@@ -142,14 +142,14 @@ export default function MyPlanPage() {
         setLoading(true);
         fetch("/api/my-plan", { credentials: "include" })
             .then(async (res) => {
-                if (!res.ok) throw new Error("Failed to fetch plan");
-                return res.json();
-            })
-            .then((data) => {
+                // Jangan anggap error kalau status 200 meskipun plan-nya kosong
+                const data = await res.json();
                 if (data && data.data) {
                     setPlan(data.data);
+                    setError(null);
                 } else {
                     setPlan(null);
+                    setError(null); // <-- pastikan error null, supaya render "No active plan found"
                 }
             })
             .catch((err) => {

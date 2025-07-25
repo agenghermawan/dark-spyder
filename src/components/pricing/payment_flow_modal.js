@@ -1,4 +1,5 @@
 import {useEffect, useState} from "react";
+import QRCode from "react-qr-code";
 
 // Helper to format amount with decimals
 function formatAmount(amount, decimals = 6) {
@@ -340,6 +341,16 @@ export default function PaymentFlowModal({
                                 <span className="break-all text-green-300 font-mono">
                                     {paymentData?.RecipientAddress || "-"}
                                 </span>
+                                {paymentData?.RecipientAddress && (
+                                    <div className="mt-2 flex justify-center">
+                                        <QRCode
+                                            value={paymentData.RecipientAddress}
+                                            bgColor="#232339"
+                                            fgColor="#00ff99"
+                                            size={128}
+                                        />
+                                    </div>
+                                )}
                             </div>
                             <div className="text-white mb-2">
                                 <b>Amount:</b> <br/>
@@ -362,7 +373,7 @@ export default function PaymentFlowModal({
                             <div className="bg-yellow-900 text-yellow-300 rounded p-2 text-xs mt-4">
                                 <b>Important:</b> The amount you transfer must <u>exactly</u> match the value shown
                                 above (including all decimals).<br/>
-                                If you use an exchange (e.g. TokoCrypto) that charges a withdrawal fee, <u>add the fee
+                                If you use an exchange (e.g. Binance) that charges a withdrawal fee, <u>add the fee
                                 to your transfer amount</u> so that we receive the exact required amount.<br/>
                                 <b>No refund</b> will be issued if the amount received is incorrect.
                             </div>
