@@ -100,12 +100,6 @@ const AssetGroups = () => {
         fetchAssetGroups(true);
     };
 
-    // Start Discovery handler
-    const handleStartDiscovery = () => {
-        // TODO: replace with actual logic/route
-        alert("Start discovery clicked!");
-    };
-
 
     return (
         <div className="bg-gradient-to-br from-[#161622] to-[#232339] text-white min-h-screen">
@@ -117,13 +111,7 @@ const AssetGroups = () => {
                         <p className="text-gray-400 text-base">View and manage internet exposure using multiple
                             discovery tools.</p>
                     </div>
-                    <button
-                        className="flex items-center gap-2 px-6 py-2 rounded-lg bg-white hover:bg-pink-600 text-pink-700 hover:text-white font-semibold shadow transition"
-                        onClick={handleStartDiscovery}
-                    >
-                        <FaBinoculars className="text-xl"/>
-                        <span>Start Discovery</span>
-                    </button>
+
                 </div>
                 <div className="bg-[#18181c] rounded-2xl px-6 py-6 shadow-lg">
                     <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mb-4">
@@ -141,16 +129,16 @@ const AssetGroups = () => {
                             />
                         </form>
                         <div className="flex items-center gap-2 mt-2 sm:mt-0">
-                            <button
-                                className="flex items-center gap-1 px-4 py-2 rounded-lg bg-[#23232b] hover:bg-[#28283a] text-gray-200 font-semibold shadow transition text-sm">
-                                <FaFilter/>
-                                <span>Filter by</span>
-                            </button>
-                            <button
-                                className="p-3 rounded-lg bg-[#23232b] hover:bg-[#28283a] text-gray-400 shadow transition text-sm"
-                                title="Delete selected">
-                                <FaTrash/>
-                            </button>
+                            {/*<button*/}
+                            {/*    className="flex items-center gap-1 px-4 py-2 rounded-lg bg-[#23232b] hover:bg-[#28283a] text-gray-200 font-semibold shadow transition text-sm">*/}
+                            {/*    <FaFilter/>*/}
+                            {/*    <span>Filter by</span>*/}
+                            {/*</button>*/}
+                            {/*<button*/}
+                            {/*    className="p-3 rounded-lg bg-[#23232b] hover:bg-[#28283a] text-gray-400 shadow transition text-sm"*/}
+                            {/*    title="Delete selected">*/}
+                            {/*    <FaTrash/>*/}
+                            {/*</button>*/}
                             <button
                                 className="p-3 rounded-lg bg-[#23232b] hover:bg-[#28283a] text-gray-400 shadow transition text-sm"
                                 title="Refresh" onClick={() => fetchAssetGroups(true)}>

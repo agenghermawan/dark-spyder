@@ -412,7 +412,12 @@ const Vulnerabilities = () => {
         <div className="flex justify-end items-center mb-6">
             <button
                 className="flex items-center gap-2 px-5 py-2 rounded-lg bg-gradient-to-r from-gray-800 to-gray-700 hover:from-pink-700 hover:to-pink-600 text-white font-semibold shadow transition"
-                onClick={() => router.push('/vulnerabilities/assets')}
+                onClick={() => {
+                    if (!needLogin) {
+                        router.push('/vulnerabilities/assets');
+                    }
+                }}
+                disabled={needLogin}
             >
                 <FaServer className="text-base" />
                 <span>Assets Group</span>
