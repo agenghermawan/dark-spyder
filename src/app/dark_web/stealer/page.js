@@ -40,31 +40,40 @@ export default function Page() {
 function StealerPageContent() {
     const router = useRouter();
 
-    const [stealerData, setStealerData] = useState([]);
-    const [domain, setDomain] = useState("");
-    const [isLoading, setIsLoading] = useState(false);
-    const [pagination, setPagination] = useState({ page: 1, size: 10, total: 0 });
-    const [pageInput, setPageInput] = useState(1);
-    const [sizeInput, setSizeInput] = useState(10);
-    const [hasSubscription, setHasSubscription] = useState(true);
+1    // Auth & Plan
     const [authState, setAuthState] = useState("loading");
-    const [showEmptyAlert, setShowEmptyAlert] = useState(false);
-
     const [userDomains, setUserDomains] = useState([]);
     const [domainLoaded, setDomainLoaded] = useState(false);
 
+    // Data & Fetching
+    const [stealerData, setStealerData] = useState([]);
+    const [isLoading, setIsLoading] = useState(false);
+    const [hasSubscription, setHasSubscription] = useState(true); // Assume always true (customize for your use-case)
+    const [errorModal, setErrorModal] = useState({ show: false, message: "" });
+
+    // Pagination
+    const [pagination, setPagination] = useState({ page: 1, size: 10, total: 0 });
+    const [pageInput, setPageInput] = useState(1);
+    const [sizeInput, setSizeInput] = useState(10);
+
+    // Domain Search (API)
+    const [domain, setDomain] = useState("");
+    const [showEmptyAlert, setShowEmptyAlert] = useState(false);
+
+    // Local filter (search in table data, not API)
+    const [localSearch, setLocalSearch] = useState("");
+
+    // Marking
     const [markingId, setMarkingId] = useState(null);
     const [updatedIds, setUpdatedIds] = useState({});
 
-    // For error modal
-    const [errorModal, setErrorModal] = useState({ show: false, message: "" });
-
     const resultsRef = useRef(null);
-    const rowsRef = useRef([]);
     const tableRef = useRef(null);
 
+    // Check authentication & fetch domains
     useEffect(() => {
-        const checkLoginStatus = async () => {
+        let ignore = false;
+        (async () => {
             try {
                 const res = await fetch("/api/me", { credentials: "include" });
                 setAuthState(res.ok ? "authenticated" : "unauthenticated");
@@ -72,42 +81,40 @@ function StealerPageContent() {
                     const planRes = await fetch("/api/my-plan", { credentials: "include" });
                     if (planRes.ok) {
                         const planData = await planRes.json();
-                        setUserDomains(Array.isArray(planData.data?.registered_domain) ? planData.data.registered_domain : []);
+                        const domains = Array.isArray(planData.data?.registered_domain) ? planData.data.registered_domain : [];
+                        setUserDomains(domains);
+                        if (!domain && domains.length > 0) setDomain(domains[0]);
                     }
                 }
             } catch {
                 setAuthState("unauthenticated");
             } finally {
-                setDomainLoaded(true);
+                if (!ignore) setDomainLoaded(true);
             }
-        };
-        checkLoginStatus();
+        })();
+        return () => { ignore = true; };
+        // eslint-disable-next-line
     }, []);
 
-    // Hanya param domain
+    // Fetch stealer data from API (domain, page, size)
     const fetchStealerData = async ({ domain: domainParam, page = 1, size = 10 }) => {
         setIsLoading(true);
         setShowEmptyAlert(false);
 
-        let searchDomain = domainParam && domainParam.trim();
-        if (!searchDomain && userDomains.length > 0) {
-            searchDomain = userDomains[0];
-            setDomain(searchDomain);
-        }
-
+        let searchDomain = (domainParam && domainParam.trim()) || (userDomains.length > 0 ? userDomains[0] : "");
         if (!searchDomain) {
             setShowEmptyAlert(true);
             setStealerData([]);
             setIsLoading(false);
             return;
         }
+        setDomain(searchDomain);
 
         const query = `domain=${encodeURIComponent(searchDomain)}&type=stealer&page=${page}&size=${size}`;
         let errorHappened = false;
         try {
             const res = await fetch(`/api/proxy?${query}`);
             if (res.status === 403) {
-                // Show modal error
                 const data = await res.json();
                 setErrorModal({
                     show: true,
@@ -158,7 +165,6 @@ function StealerPageContent() {
             errorHappened = true;
         } finally {
             setIsLoading(false);
-            // scroll hanya jika tidak error/modal
             if (!errorHappened) {
                 setTimeout(() => {
                     if (resultsRef.current) {
@@ -169,6 +175,7 @@ function StealerPageContent() {
         }
     };
 
+    // Handler: Search domain (API)
     const handleSearch = async () => {
         if (authState === "loading") return;
         if (authState !== "authenticated") {
@@ -179,6 +186,7 @@ function StealerPageContent() {
         await fetchStealerData({ domain: domain, page: 1, size: pagination.size });
     };
 
+    // Handler: Pagination (API)
     const handlePagination = async (direction) => {
         let newPage = pagination.page;
         if (direction === "prev" && newPage > 1) newPage--;
@@ -191,10 +199,8 @@ function StealerPageContent() {
         });
     };
 
-    const handlePageInputChange = (e) => {
-        const value = e.target.value;
-        setPageInput(value);
-    };
+    // Handler: Page input (API)
+    const handlePageInputChange = (e) => setPageInput(e.target.value);
     const handlePageInputBlur = async () => {
         let value = parseInt(pageInput, 10);
         if (isNaN(value) || value < 1) value = 1;
@@ -209,12 +215,8 @@ function StealerPageContent() {
         });
     };
 
-    const handleSizeInputChange = (e) => {
-        let value = parseInt(e.target.value, 10);
-        if (isNaN(value) || value < 1) value = 10;
-        if (value > 1000) value = 1000;
-        setSizeInput(value);
-    };
+    // Handler: Size input (API)
+    const handleSizeInputChange = (e) => setSizeInput(e.target.value);
     const handleSizeInputBlur = async () => {
         let value = parseInt(sizeInput, 10);
         if (isNaN(value) || value < 1) value = 10;
@@ -228,8 +230,7 @@ function StealerPageContent() {
         });
     };
 
-
-    // --- MARK VALID/NOT VALID ---
+    // Handler: Mark valid/not valid (API)
     const markAsValid = async (id, isValid = true) => {
         setMarkingId(id);
         try {
@@ -246,6 +247,17 @@ function StealerPageContent() {
         }
     };
 
+    // Local filter for displayed data in table (not API search)
+    const filteredStealerData = localSearch
+        ? stealerData.filter(item =>
+            Object.values(item)
+                .join(" ")
+                .toLowerCase()
+                .includes(localSearch.toLowerCase())
+        )
+        : stealerData;
+
+    // UI
     return (
         <div>
             <Navbar />
@@ -337,25 +349,18 @@ function StealerPageContent() {
                                 ? "Compromised Credentials"
                                 : "🔒 Subscription Required"}
                         </h2>
+                        <div className="mb-4 flex items-center gap-3 flex-wrap">
+                            <input
+                                type="text"
+                                value={localSearch}
+                                onChange={e => setLocalSearch(e.target.value)}
+                                placeholder="Filter data in current results (e.g. email, password, etc)"
+                                className="px-4 py-2 rounded-lg bg-black/30 border border-gray-700 text-white placeholder-gray-400 focus:ring-2 focus:ring-[#f03262] focus:border-transparent"
+                                style={{ minWidth: 170 }}
+                            />
+                        </div>
                         <div className="overflow-x-auto" ref={tableRef}>
-                            <div className="mb-4 flex items-center gap-3 flex-wrap">
-                                <input
-                                    type="text"
-                                    value={domain}
-                                    onChange={e => setDomain(e.target.value)}
-                                    placeholder={`Search by Domain (${userDomains[0] || "your domain"})`}
-                                    className="px-4 py-2 rounded-lg bg-black/30 border border-gray-700 text-white placeholder-gray-400 focus:ring-2 focus:ring-[#f03262] focus:border-transparent"
-                                    style={{ minWidth: 170 }}
-                                />
-                                <button
-                                    onClick={handleSearch}
-                                    className="bg-[#f03262] hover:bg-[#c91d4e] text-white px-5 py-2 rounded-lg font-semibold transition-all"
-                                    disabled={isLoading}
-                                >
-                                    {isLoading ? "Searching..." : "Search"}
-                                </button>
-                            </div>
-                            {stealerData.length > 0 ? (
+                            {filteredStealerData.length > 0 ? (
                                 <table
                                     className="min-w-full bg-gradient-to-br from-[#111215]/90 via-[#1a1b20]/90 to-[#111215]/90 backdrop-blur-lg text-white rounded-xl shadow-2xl font-mono border border-[#2e2e2e] overflow-hidden">
                                     <thead>
@@ -367,22 +372,21 @@ function StealerPageContent() {
                                     </tr>
                                     </thead>
                                     <tbody>
-                                    {stealerData.map((entry, index) => (
+                                    {filteredStealerData.map((entry, index) => (
                                         <tr
-                                            key={index}
-                                            ref={(el) => (rowsRef.current[index] = el)}
+                                            key={entry.id}
                                             className={`border-b border-gray-800 hover:bg-gradient-to-r from-[#1a1a20] to-[#25252d] transition-all duration-300 group`}
                                         >
                                             <ExposedData entry={entry} />
                                             <td className="py-4 px-6">
-                                                    <span className="inline-flex items-center px-3 py-1 rounded-full bg-gradient-to-r from-gray-700 to-gray-800 text-gray-300 text-sm">
-                                                        {entry.source}
-                                                    </span>
+                                                <span className="inline-flex items-center px-3 py-1 rounded-full bg-gradient-to-r from-gray-700 to-gray-800 text-gray-300 text-sm">
+                                                    {entry.source}
+                                                </span>
                                             </td>
                                             <td className="py-4 px-6">
-                                                    <span className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-gradient-to-r from-gray-700 to-gray-800 text-gray-400">
-                                                        {entry.lastBreach}
-                                                    </span>
+                                                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-gradient-to-r from-gray-700 to-gray-800 text-gray-400">
+                                                    {entry.lastBreach}
+                                                </span>
                                             </td>
                                             <td className="py-4 px-6 text-center">
                                                 <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
@@ -472,7 +476,7 @@ function StealerPageContent() {
                                 <div className="mt-6 flex flex-col md:flex-row md:justify-between md:items-center gap-3">
                                     <div className="flex items-center gap-2">
                                         <p className="text-gray-500 text-sm">
-                                            Showing {stealerData.length} of {pagination.total} entries
+                                            Showing {filteredStealerData.length} of {pagination.total} entries
                                             (Page {pagination.page})
                                         </p>
                                     </div>

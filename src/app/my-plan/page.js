@@ -212,7 +212,7 @@ export default function MyPlanPage() {
                         <div>
                             <div className="flex items-center justify-between mb-3">
                                 <div className="text-lg font-semibold text-white">Registered Domains</div>
-                                {(domainsUsed < domainsMax) && (
+                                {(domainsUsed ) && (
                                     <button
                                         onClick={() => setShowRegisterModal(true)}
                                         className="bg-green-600 hover:bg-green-700 px-4 py-1 rounded text-xs font-semibold text-white transition"
