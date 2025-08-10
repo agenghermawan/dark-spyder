@@ -3,6 +3,28 @@
 import { useEffect, useState } from "react";
 import Navbar from "../../components/navbar";
 
+// Animated Dark Web SVG (for empty state)
+function NoPlanSVG() {
+    return (
+        <svg
+            className="w-20 h-20 mb-6 animate-bounce"
+            viewBox="0 0 64 64"
+            fill="none"
+        >
+            <ellipse cx="32" cy="36" rx="18" ry="14" fill="#232339" />
+            <ellipse cx="32" cy="32" rx="22" ry="18" stroke="#f03262" strokeWidth="2" />
+            <path
+                d="M32 20v10"
+                stroke="#f03262"
+                strokeWidth="2"
+                strokeLinecap="round"
+            />
+            <circle cx="32" cy="44" r="2.5" fill="#f03262" />
+            <rect x="24" y="26" width="16" height="6" rx="3" fill="#18181c" stroke="#f03262" strokeWidth="1" />
+        </svg>
+    );
+}
+
 function RegisterDomainModal({ show, onClose, invoiceId, domainLimit, registeredDomains, onSuccess }) {
     const [domains, setDomains] = useState([""]);
     const [registering, setRegistering] = useState(false);
@@ -142,14 +164,13 @@ export default function MyPlanPage() {
         setLoading(true);
         fetch("/api/my-plan", { credentials: "include" })
             .then(async (res) => {
-                // Jangan anggap error kalau status 200 meskipun plan-nya kosong
                 const data = await res.json();
                 if (data && data.data) {
                     setPlan(data.data);
                     setError(null);
                 } else {
                     setPlan(null);
-                    setError(null); // <-- pastikan error null, supaya render "No active plan found"
+                    setError(null);
                 }
             })
             .catch((err) => {
@@ -180,7 +201,14 @@ export default function MyPlanPage() {
                 ) : error ? (
                     <div className="text-center text-red-400">{error}</div>
                 ) : !plan ? (
-                    <div className="text-center text-gray-400">No active plan found.</div>
+                    <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+                        <NoPlanSVG />
+                        <h2 className="text-xl font-bold mb-2">No Active Plan Found</h2>
+                        <p className="text-center text-gray-400 max-w-sm">
+                            You don't have an active subscription plan yet.<br />
+                            Please purchase a plan to start monitoring your domains.
+                        </p>
+                    </div>
                 ) : (
                     <div>
                         <div className="mb-8">
@@ -212,7 +240,7 @@ export default function MyPlanPage() {
                         <div>
                             <div className="flex items-center justify-between mb-3">
                                 <div className="text-lg font-semibold text-white">Registered Domains</div>
-                                {(domainsUsed ) && (
+                                {(domainsUsed < domainsMax) && (
                                     <button
                                         onClick={() => setShowRegisterModal(true)}
                                         className="bg-green-600 hover:bg-green-700 px-4 py-1 rounded text-xs font-semibold text-white transition"

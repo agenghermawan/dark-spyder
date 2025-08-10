@@ -291,11 +291,7 @@ export default function Home() {
                                 <ShieldCheckIcon className="w-5 h-5 mr-2"/>
                                 Request Access
                             </a>
-                            <a href="/login"
-                               className="border border-[#f03262] text-[#f03262] hover:bg-[#f03262]/10 px-6 py-3 rounded-lg font-medium transition-all flex items-center justify-center">
-                                <ArrowRightIcon className="w-5 h-5 mr-2"/>
-                                View Sample Reports
-                            </a>
+                    
                         </div>
                     </div>
                 </div>

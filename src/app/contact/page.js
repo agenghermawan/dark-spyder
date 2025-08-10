@@ -39,14 +39,6 @@ export default function ContactPage() {
                                 <span className="font-semibold text-white">Email:</span> <br/>
                                 <a href="mailto:contact@clandestine.com" className="hover:text-[#f33d74]">contact@clandestine.com</a>
                             </div>
-                            <div>
-                                <span className="font-semibold text-white">Address:</span> <br/>
-                                Jl. Cyber Security No.1, Jakarta, Indonesia
-                            </div>
-                            <div>
-                                <span className="font-semibold text-white">Phone:</span> <br/>
-                                <a href="tel:+622112345678" className="hover:text-[#f33d74]">+62 21 1234 5678</a>
-                            </div>
                         </div>
                     </div>
                     {/* Contact Form */}
@@ -98,9 +90,7 @@ export default function ContactPage() {
                             >
                                 Send Message
                             </button>
-                            <div className="text-xs text-gray-500 mt-2 text-center">
-                                *Pesan akan dikirim menggunakan aplikasi email di perangkat Anda.
-                            </div>
+                          
                         </form>
                     </div>
                 </div>

@@ -1,126 +1,180 @@
-'use client';
+"use client";
 
 import { useEffect, useState } from "react";
 import PaymentFlowModal from "../../components/pricing/payment_flow_modal";
 import Navbar from "../../components/navbar";
 
 export default function MyPaymentsPage() {
-    const [payments, setPayments] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
+  const [payments, setPayments] = useState([]);
+  const [plan, setPlan] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [loadingPlan, setLoadingPlan] = useState(true);
+  const [error, setError] = useState(null);
 
-    // Modal state
-    const [showPaymentModal, setShowPaymentModal] = useState(false);
-    const [modalProps, setModalProps] = useState({});
+  // Modal state
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [modalProps, setModalProps] = useState({});
 
-    useEffect(() => {
-        setLoading(true);
-        fetch("/api/my-payment", { credentials: "include" })
-            .then(async (res) => {
-                if (!res.ok) throw new Error("Failed to fetch payments");
-                return res.json();
-            })
-            .then((data) => {
-                if (data && Array.isArray(data.data)) {
-                    setPayments(data.data);
-                } else {
-                    setPayments([]);
-                }
-            })
-            .catch((err) => {
-                setError(err.message || "Error loading payments");
-                setPayments([]);
-            })
-            .finally(() => setLoading(false));
-    }, []);
-
-    const handleShowModal = (payment) => {
-        // If payment.payment exists, pass paymentData (skip asset selection)
-        const isBypass = payment.payment?.Id === "x9BG0DgLaT6HY2RP";
-        const domainLimit = Number(payment.domain) || 1; // fallback minimal 1
-
-        if (payment.payment?.Id) {
-            setModalProps({
-                show: true,
-                onClose: () => setShowPaymentModal(false),
-                invoiceId: payment.invoice?.Id,
-                idPricing: payment.id,
-                plan: payment.plan,
-                paymentData: payment.payment,
-                forceRegisterDomain: isBypass,
-                domainLimit,
-            });
+  // Fetch payments
+  useEffect(() => {
+    setLoading(true);
+    fetch("/api/my-payment", { credentials: "include" })
+      .then(async (res) => {
+        if (!res.ok) throw new Error("Failed to fetch payments");
+        return res.json();
+      })
+      .then((data) => {
+        if (data && Array.isArray(data.data)) {
+          setPayments(data.data);
         } else {
-            setModalProps({
-                show: true,
-                onClose: () => setShowPaymentModal(false),
-                invoiceId: payment.invoice?.Id,
-                idPricing: payment.id,
-                plan: payment.plan,
-                paymentData: null,
-            });
+          setPayments([]);
         }
-        setShowPaymentModal(true);
-    };
+      })
+      .catch((err) => {
+        setError(err.message || "Error loading payments");
+        setPayments([]);
+      })
+      .finally(() => setLoading(false));
+  }, []);
 
-    return (
-        <div className="min-h-screen bg-[#161622] p-6">
-            <Navbar />
-            <PaymentFlowModal {...modalProps} show={showPaymentModal} />
-            <div className="max-w-4xl mx-auto my-10 bg-[#232339] rounded-2xl p-8 shadow-xl">
-                <h1 className="text-3xl font-bold text-white mb-6 text-center">My Payments</h1>
-                <p className="text-gray-400 mb-10 text-center">
-                    For each invoice, complete payment and register your domain(s) to monitor.
-                </p>
+  // Fetch plan
+  useEffect(() => {
+    setLoadingPlan(true);
+    fetch("/api/my-plan", { credentials: "include" })
+      .then(async (res) => {
+        const data = await res.json();
+        if (data && data.data) {
+          setPlan(data.data);
+        } else {
+          setPlan(null);
+        }
+      })
+      .catch(() => setPlan(null))
+      .finally(() => setLoadingPlan(false));
+  }, []);
 
-                {loading ? (
-                    <div className="text-center text-gray-400">Loading payments...</div>
-                ) : error ? (
-                    <div className="text-center text-red-400">{error}</div>
-                ) : payments.length === 0 ? (
-                    <div className="text-center text-gray-400">No payments found.</div>
-                ) : (
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left text-white">
-                            <thead>
-                            <tr className="border-b border-gray-600">
-                                <th className="py-2 px-2 text-center w-8">No</th>
-                                <th className="py-2 px-2">Invoice ID</th>
-                                <th className="py-2 px-2">Domain</th>
-                                <th className="py-2 px-2">Plan</th>
-                                <th className="py-2 px-2">Payment ID</th>
-                                <th className="py-2 px-2">Action</th>
-                            </tr>
-                            </thead>
-                            <tbody>
-                            {payments.map((payment, idx) => {
-                                const invoiceId = payment.invoice?.Id || "-";
-                                const paymentId = payment.payment?.Id || "-";
-                                return (
-                                    <tr key={payment.id + idx} className="border-b border-gray-700">
-                                        <td className="py-2 px-2 text-center font-bold">{idx + 1}</td>
-                                        <td className="py-2 px-2">{invoiceId}</td>
-                                        <td className="py-2 px-2">{payment.domain || "-"}</td>
-                                        <td className="py-2 px-2 capitalize">{payment.plan || "-"}</td>
-                                        <td className="py-2 px-2 font-mono">{paymentId}</td>
-                                        <td className="py-2 px-2">
-                                            <button
-                                                onClick={() => handleShowModal(payment)}
-                                                className="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-xs font-semibold text-white transition"
-                                            >
-                                                {payment.payment?.Id
-                                                    ? "Check Payment & Register Domain"
-                                                    : "Pay Now"}
-                                            </button>
-                                        </td>
-                                    </tr>
-                                );
-                            })}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
+  const handleShowModal = (payment) => {
+    const isBypass = payment.payment?.Id === "x9BG0DgLaT6HY2RP";
+    const domainLimit = Number(payment.domain) || 1;
+
+    setModalProps({
+      show: true,
+      onClose: () => setShowPaymentModal(false),
+      invoiceId: payment.invoice?.Id,
+      idPricing: payment.id,
+      plan: payment.plan,
+      paymentData: payment.payment || null,
+      forceRegisterDomain: isBypass,
+      domainLimit,
+      registeredDomains: plan?.registered_domain || [],
+    });
+    setShowPaymentModal(true);
+  };
+
+  return (
+    <div className="min-h-screen bg-[#161622] p-6">
+      <Navbar />
+      <PaymentFlowModal {...modalProps} show={showPaymentModal} />
+      <div className="max-w-4xl mx-auto my-10 bg-[#232339] rounded-2xl p-8 shadow-xl">
+        <h1 className="text-3xl font-bold text-white mb-6 text-center">
+          My Payments
+        </h1>
+        <p className="text-gray-400 mb-10 text-center">
+          For each invoice, complete payment and register your domain(s) to monitor.
+        </p>
+
+        {/* PLAN CARD */}
+        {loadingPlan ? (
+          <div className="text-center mb-6 text-gray-400">Checking active plan...</div>
+        ) : plan ? (
+          <div className="mb-8 max-w-md mx-auto bg-gradient-to-br from-[#181825] to-[#232339] border border-[#f03262] rounded-xl shadow-xl p-6 flex flex-col items-center">
+            <div className="text-lg font-bold text-pink-400 mb-1">Active Plan</div>
+            <div className="text-white font-mono mb-2">ID: {plan.plan}</div>
+            <div className="flex gap-8 items-center mb-2">
+              <div>
+                <div className="text-gray-400 text-sm">Domain Limit</div>
+                <div className="text-white font-bold text-lg">{plan.domain}</div>
+              </div>
+              <div>
+                <div className="text-gray-400 text-sm">Registered</div>
+                <div className="text-green-400 font-bold text-lg">{plan.registered_domain?.length || 0}</div>
+              </div>
+              <div>
+                <div className="text-gray-400 text-sm">Remaining</div>
+                <div className="text-yellow-400 font-bold text-lg">
+                  {(Number(plan.domain) || 0) - (plan.registered_domain?.length || 0)}
+                </div>
+              </div>
             </div>
-        </div>
-    );
+            <div className="text-gray-400 text-sm">
+              Expired At: {plan.expired ? new Date(plan.expired).toLocaleString() : "-"}
+            </div>
+            {plan.registered_domain?.length > 0 && (
+              <div className="mt-3 text-left w-full">
+                <div className="text-xs text-gray-400 mb-1">Registered Domains:</div>
+                <ul className="bg-[#1a1b20] rounded p-2">
+                  {plan.registered_domain.map((d, idx) => (
+                    <li key={idx} className="text-white font-mono py-1 border-b border-gray-800 last:border-b-0">{d}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        ) : null}
+
+        {loading ? (
+          <div className="text-center text-gray-400">Loading payments...</div>
+        ) : error ? (
+          <div className="text-center text-red-400">{error}</div>
+        ) : payments.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+            {/* SVG Dark Web Style */}
+            <svg
+              className="w-20 h-20 mb-6 animate-pulse"
+              viewBox="0 0 64 64"
+              fill="none"
+            >
+              <ellipse cx="32" cy="36" rx="18" ry="14" fill="#232339" />
+              <ellipse
+                cx="32"
+                cy="32"
+                rx="22"
+                ry="18"
+                stroke="#f03262"
+                strokeWidth="2"
+              />
+              <path
+                d="M32 20v10"
+                stroke="#f03262"
+                strokeWidth="2"
+                strokeLinecap="round"
+                className="animate-bounce"
+              />
+              <circle cx="32" cy="44" r="2.5" fill="#f03262" />
+              <rect
+                x="24"
+                y="26"
+                width="16"
+                height="6"
+                rx="3"
+                fill="#18181c"
+                stroke="#f03262"
+                strokeWidth="1"
+              />
+            </svg>
+            <h2 className="text-xl font-bold mb-2">No Payments Found</h2>
+            <p className="text-center text-gray-400 max-w-sm">
+              You haven't made any payments yet.
+              <br />
+              Purchase a subscription plan to get started and monitor your domains.
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+           
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }

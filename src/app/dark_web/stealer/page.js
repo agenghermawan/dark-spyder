@@ -16,18 +16,34 @@ function ErrorModal({ show, message, onClose }) {
     if (!show) return null;
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
-            <div className="bg-[#232339] rounded-2xl shadow-xl p-6 max-w-md w-full relative">
+            <div className="bg-[#232339] rounded-2xl shadow-xl p-6 max-w-md w-full relative flex flex-col items-center">
                 <button
                     className="absolute top-2 right-3 text-gray-400 hover:text-white text-2xl"
                     onClick={onClose}
                     aria-label="Close"
                 >×</button>
-                <h2 className="text-lg font-bold text-red-400 mb-4 text-center">Domain not allowed</h2>
-                <div className="text-white text-center whitespace-pre-line">{message}</div>
+                {/* SVG ICON */}
+                <div className="mb-2 mt-2 flex justify-center">
+                    {/* Dark web shield lock */}
+                    <svg width="56" height="56" viewBox="0 0 56 56" fill="none" className="drop-shadow-xl">
+                        <circle cx="28" cy="28" r="26" fill="#18181c" stroke="#f03262" strokeWidth="2" />
+                        <rect x="18" y="24" width="20" height="14" rx="4" fill="#232339" stroke="#f03262" strokeWidth="1.5" />
+                        <path d="M28 31v-3" stroke="#f03262" strokeWidth="2" strokeLinecap="round" />
+                        <circle cx="28" cy="31" r="2" fill="#f03262" />
+                        <rect x="23" y="22" width="10" height="6" rx="3" fill="#101014" stroke="#f03262" strokeWidth="1" />
+                    </svg>
+                </div>
+                <h2 className="text-lg font-bold text-pink-400 mb-4 text-center">
+                    Subscription Required
+                </h2>
+                <div className="text-white text-center whitespace-pre-line">
+                    {"To access this feature, please purchase a subscription plan and register your domain." }
+                </div>
             </div>
         </div>
     );
 }
+
 
 export default function Page() {
     return (
@@ -333,7 +349,7 @@ function StealerPageContent() {
                             </button>
                         </div>
                         <div className="mt-2 text-sm text-gray-400">
-                            {userDomains.length > 0 ? `Allowed domains: ${userDomains.join(", ")}` : "No registered domain. Please add domain in your plan."}
+                            {userDomains.length > 0 ? `Allowed domains: ${userDomains.join(", ")}` : "No domain available in your account. Please select a plan and register your domain to enable this feature."}
                         </div>
                     </div>
                 </section>

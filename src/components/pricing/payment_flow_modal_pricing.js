@@ -11,15 +11,42 @@ function formatAmount(amount, decimals = 6) {
     return fracPart.length ? `${intPart}.${fracPart}` : intPart;
 }
 
+// Animated SVG Header for modal (dark web style)
+function ModalHeaderSVG() {
+    return (
+        <div className="flex justify-center mb-4">
+            <svg
+                className="w-28 h-28 animate-fade-in-up"
+                viewBox="0 0 80 80"
+                fill="none"
+            >
+                <ellipse cx="40" cy="44" rx="28" ry="18" fill="#232339" />
+                <ellipse cx="40" cy="40" rx="32" ry="22" stroke="#f03262" strokeWidth="2" />
+                <path
+                    d="M40 22v14"
+                    stroke="#f03262"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    className="animate-bounce"
+                />
+                <circle cx="40" cy="58" r="3.5" fill="#f03262" />
+                <rect x="28" y="32" width="24" height="10" rx="5" fill="#18181c" stroke="#f03262" strokeWidth="2" />
+                <path d="M32 52c8 6 8 6 16 0" stroke="#f03262" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+        </div>
+    );
+}
+
 export default function PaymentFlowModalPricing({
-                                                    show,
-                                                    invoiceId,
-                                                    idPricing,
-                                                    plan,
-                                                    domainLimit = 1, // <= PASS THIS FROM PARENT
-                                                    onClose,
-                                                }) {
-    // asset selection state
+    show,
+    invoiceId,
+    idPricing,
+    plan,
+    domainLimit = 1,
+    onClose,
+}) {
+    // ...state hooks remain the same...
+
     const [assets, setAssets] = useState([]);
     const [loadingAssets, setLoadingAssets] = useState(false);
     const [assetsError, setAssetsError] = useState(null);
@@ -27,29 +54,24 @@ export default function PaymentFlowModalPricing({
     const [selectedAsset, setSelectedAsset] = useState(null);
     const [selectedBlockchain, setSelectedBlockchain] = useState(null);
 
-    // payment creation state
     const [creatingPayment, setCreatingPayment] = useState(false);
     const [createError, setCreateError] = useState(null);
 
-    // payment data (instructions)
     const [paymentData, setPaymentData] = useState(null);
 
-    // status check
     const [checkingStatus, setCheckingStatus] = useState(false);
     const [paymentStatus, setPaymentStatus] = useState(null);
     const [statusError, setStatusError] = useState(null);
     const [notPaidError, setNotPaidError] = useState(false);
 
-    // register domains
     const [domains, setDomains] = useState([""]);
     const [registering, setRegistering] = useState(false);
     const [registerSuccess, setRegisterSuccess] = useState("");
     const [registerError, setRegisterError] = useState(null);
 
-    // Show register form if paid
     const [showRegisterForm, setShowRegisterForm] = useState(false);
 
-    // Fetch asset list
+    // Fetch asset list & reset logic (unchanged)
     useEffect(() => {
         if (!show || !invoiceId || !idPricing || !plan) return;
         setLoadingAssets(true);
@@ -90,7 +112,6 @@ export default function PaymentFlowModalPricing({
         setShowRegisterForm(false);
     }, [show, assets.length]);
 
-    // Show register form if paymentStatus.Status === 100
     useEffect(() => {
         if (paymentStatus && paymentStatus.Status === 100) {
             setShowRegisterForm(true);
@@ -99,7 +120,7 @@ export default function PaymentFlowModalPricing({
         }
     }, [paymentStatus]);
 
-    // Create Payment
+    // Payment handlers (unchanged)
     const handleCreatePayment = async () => {
         if (!selectedAsset || !selectedBlockchain) return;
         setCreatingPayment(true);
@@ -126,14 +147,12 @@ export default function PaymentFlowModalPricing({
         }
     };
 
-    // Find decimals for selected blockchain
     const decimals =
         selectedBlockchain?.Decimals ||
         selectedAsset?.Decimals ||
         paymentData?.Decimals ||
         6;
 
-    // Check Payment Status (use /api/process-payment)
     const handleCheckPayment = async () => {
         setCheckingStatus(true);
         setStatusError(null);
@@ -164,14 +183,12 @@ export default function PaymentFlowModalPricing({
         }
     };
 
-    // Add domain (with limit)
     const handleAddDomain = () => {
         if (domains.length < domainLimit) {
             setDomains([...domains, ""]);
         }
     };
 
-    // Register domains
     const handleRegisterDomain = async () => {
         setRegistering(true);
         setRegisterError(null);
@@ -200,28 +217,36 @@ export default function PaymentFlowModalPricing({
     if (!show) return null;
 
     return (
-        <div className="fixed inset-0 z-50 bg-black bg-opacity-60 flex items-center justify-center px-4">
-            <div className="relative w-full max-w-md bg-[#232339] rounded-2xl shadow-xl p-6 animate-fade-in">
+        <div className="fixed inset-0 z-50 bg-black bg-opacity-70 flex items-center justify-center px-4">
+            <div className="relative w-full max-w-3xl bg-gradient-to-br from-[#18181c] via-[#232339] to-[#18181c] rounded-3xl shadow-2xl p-8 animate-fade-in-up border border-[#29293a] flex flex-col"
+                 style={{ maxHeight: "90vh" }}
+            >
                 <button
-                    className="absolute top-3 right-3 text-gray-400 hover:text-white text-2xl"
+                    className="absolute top-4 right-6 text-gray-400 hover:text-white text-3xl"
                     onClick={onClose}
                     aria-label="Close"
                 >×</button>
-                <h2 className="text-2xl font-bold text-white mb-4 text-center">
+                <ModalHeaderSVG />
+                <h2 className="text-3xl font-extrabold text-white mb-2 text-center tracking-wide drop-shadow-lg">
                     Payment & Domain Registration
                 </h2>
+                <p className="mb-6 text-center text-gray-400 font-mono text-md">
+                    Secure your plan and monitor your domains 
+                </p>
                 {assetsError && (
                     <div className="bg-red-900 text-red-200 p-2 rounded mb-4 text-center">{assetsError}</div>
                 )}
 
+                <div className="flex-1 overflow-y-auto custom-scrollbar" style={{ minHeight: 0 }}>
+                {/* Everything inside this div will be scrollable if overflow */}
                 {showRegisterForm ? (
                     <div className="mt-6 border-t border-gray-700 pt-4">
-                        <h3 className="text-lg font-bold text-white mb-3">Register Domains to Monitor</h3>
+                        <h3 className="text-xl font-bold text-white mb-3">Register Domains to Monitor</h3>
                         <div className="space-y-2">
                             {domains.map((domain, idx) => (
                                 <div key={idx} className="flex gap-2">
                                     <input
-                                        className="w-full p-2 rounded bg-gray-700 text-white"
+                                        className="w-full p-3 rounded bg-gray-700 text-white text-lg"
                                         placeholder="Enter domain (e.g. example.com)"
                                         value={domain}
                                         onChange={e => {
@@ -232,7 +257,7 @@ export default function PaymentFlowModalPricing({
                                     />
                                     {domains.length > 1 && (
                                         <button
-                                            className="bg-red-600 hover:bg-red-700 px-2 rounded text-white text-sm font-bold"
+                                            className="bg-red-600 hover:bg-red-700 px-3 rounded text-white text-md font-bold"
                                             onClick={() => setDomains(domains.filter((_, i) => i !== idx))}
                                             title="Remove"
                                         >-</button>
@@ -240,7 +265,7 @@ export default function PaymentFlowModalPricing({
                                 </div>
                             ))}
                             <button
-                                className="bg-green-600 hover:bg-green-700 px-3 py-1 rounded text-white text-sm font-bold mt-1"
+                                className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded text-white text-lg font-bold mt-1"
                                 onClick={handleAddDomain}
                                 disabled={domains.length >= domainLimit}
                             >+ Add Domain</button>
@@ -251,7 +276,7 @@ export default function PaymentFlowModalPricing({
                             )}
                         </div>
                         <button
-                            className="w-full py-2 rounded bg-[#f33d74] hover:bg-[#e63368] text-white font-bold mt-4"
+                            className="w-full py-3 rounded bg-[#f33d74] hover:bg-[#e63368] text-white font-bold mt-4 text-lg"
                             onClick={handleRegisterDomain}
                             disabled={registering}
                         >
@@ -264,9 +289,9 @@ export default function PaymentFlowModalPricing({
                     <>
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-gray-400 mb-1">Select Coin:</label>
+                                <label className="block text-gray-400 mb-1 font-mono">Select Coin:</label>
                                 <select
-                                    className="w-full p-2 rounded bg-gray-700 text-white"
+                                    className="w-full py-3 px-5 rounded bg-gray-800 text-white text-lg"
                                     value={selectedAsset?.Code || ""}
                                     onChange={e => {
                                         const asset = assets.find(a => a.Code === e.target.value);
@@ -284,9 +309,9 @@ export default function PaymentFlowModalPricing({
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-gray-400 mb-1">Select Blockchain:</label>
+                                <label className="block text-gray-400 mb-1 font-mono">Select Blockchain:</label>
                                 <select
-                                    className="w-full p-2 rounded bg-gray-700 text-white"
+                                    className="w-full p-3 rounded bg-gray-800 text-white text-lg"
                                     value={selectedBlockchain?.Code || ""}
                                     onChange={e => {
                                         const bc = selectedAsset?.Blockchains?.find(bc => bc.Code === e.target.value);
@@ -304,7 +329,7 @@ export default function PaymentFlowModalPricing({
                             </div>
                         </div>
                         <button
-                            className="mt-6 w-full py-2 rounded bg-[#f33d74] hover:bg-[#e63368] text-white font-bold transition disabled:opacity-50"
+                            className="mt-8 w-full py-3 rounded bg-[#f33d74] hover:bg-[#e63368] text-white font-bold text-lg transition disabled:opacity-50"
                             onClick={handleCreatePayment}
                             disabled={!selectedAsset || !selectedBlockchain || creatingPayment}
                         >
@@ -314,12 +339,11 @@ export default function PaymentFlowModalPricing({
                     </>
                 ) : (
                     <>
-                        {/* Payment instructions */}
                         <div className="mt-2 border-t border-gray-700 pt-4">
-                            <h3 className="text-lg font-bold text-white mb-2">Payment Instructions</h3>
+                            <h3 className="text-xl font-bold text-white mb-2">Payment Instructions</h3>
                             <div className="text-white mb-2">
                                 <b>Recipient Address:</b> <br/>
-                                <span className="break-all text-green-300 font-mono">
+                                <span className="break-all text-green-300 font-mono text-lg">
                                     {paymentData?.RecipientAddress || "-"}
                                 </span>
                                 {paymentData?.RecipientAddress && (
@@ -328,14 +352,14 @@ export default function PaymentFlowModalPricing({
                                             value={paymentData.RecipientAddress}
                                             bgColor="#232339"
                                             fgColor="#00ff99"
-                                            size={128}
+                                            size={168}
                                         />
                                     </div>
                                 )}
                             </div>
                             <div className="text-white mb-2">
                                 <b>Amount:</b> <br />
-                                <span className="font-mono text-yellow-300">
+                                <span className="font-mono text-yellow-300 text-lg">
                                     {formatAmount(paymentData?.Amount, decimals)} {paymentData?.AssetCode?.toUpperCase()}
                                 </span>
                             </div>
@@ -351,38 +375,53 @@ export default function PaymentFlowModalPricing({
                                 <b>Payment ID:</b> <br />
                                 <span>{paymentData?.Id || "-"}</span>
                             </div>
-                            <div className="bg-yellow-900 text-yellow-300 rounded p-2 text-xs mt-4">
+                            <div className="bg-yellow-900 text-yellow-300 rounded p-2 text-md mt-4 font-mono">
                                 <b>Important:</b> The amount you transfer must <u>exactly</u> match the value shown above (including all decimals).<br />
                                 If you use an exchange (e.g., Binance) that charges a withdrawal fee, <u>add the fee to your transfer amount</u> so that we receive the exact required amount.<br />
                                 <b>No refund</b> will be issued if the amount received is incorrect.
                             </div>
                         </div>
-                        {/* Check Payment Status */}
-                        <div className="mt-6 text-center">
+                        <div className="mt-8 text-center">
+                             {notPaidError && (
+                                <div className="text-yellow-400 mt-4">
+                                    Your payment has not been received yet. Please try again in a few moments.<br /><br />
+                                </div>
+                            )}
                             <button
                                 onClick={handleCheckPayment}
-                                className="py-2 px-6 bg-blue-600 hover:bg-blue-700 rounded text-white font-bold"
+                                className="py-3 px-8 bg-blue-600 hover:bg-blue-700 rounded text-white font-bold text-lg"
                                 disabled={checkingStatus}
                             >
                                 {checkingStatus ? "Checking Payment Status..." : "I've Paid, Check Payment Status"}
                             </button>
                             {statusError && <div className="text-red-400 mt-2">{statusError}</div>}
-                            {notPaidError && (
-                                <div className="text-yellow-400 mt-4">
-                                    Your payment has not been received yet. Please try again in a few moments.<br />
-                                </div>
-                            )}
+                           
                         </div>
                     </>
                 )}
+                </div>
             </div>
             <style jsx>{`
-                .animate-fade-in {
-                    animation: fadeIn .25s;
+                .animate-fade-in-up {
+                    animation: fadeInUp .4s cubic-bezier(.33,1,.68,1);
                 }
-                @keyframes fadeIn {
-                    from { opacity:0; transform:scale(0.97);}
-                    to { opacity:1; transform:scale(1);}
+                @keyframes fadeInUp {
+                    from { opacity:0; transform:translateY(24px) scale(0.96);}
+                    to { opacity:1; transform:translateY(0) scale(1);}
+                }
+                .custom-scrollbar {
+                    scrollbar-width: thin;
+                    scrollbar-color: #f03262 #232339;
+                }
+                .custom-scrollbar::-webkit-scrollbar {
+                    width: 8px;
+                }
+                .custom-scrollbar::-webkit-scrollbar-thumb {
+                    background: #f03262;
+                    border-radius: 8px;
+                }
+                .custom-scrollbar::-webkit-scrollbar-track {
+                    background: #232339;
                 }
             `}</style>
         </div>
