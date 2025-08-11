@@ -5,6 +5,140 @@ import Navbar from "../../components/navbar";
 import Footer from "../../components/footer";
 import PaymentFlowModalPricing from "../../components/pricing/payment_flow_modal_pricing";
 
+// Hardcoded pricing data untuk user yang belum login
+const HARDCODE_PRICING = [
+    {
+        "_id": "6866108da3a6824bb869e488",
+        "description": "For small-scale security monitoring",
+        "domain": "1",
+        "features": [
+            "Unlimited scans",
+            "Unlimited assets per domain",
+            "24/7 vulnerability scanning",
+            "Real-time alerts",
+            "Basic reporting"
+        ],
+        "monthly": "600",
+        "quarterly": "1620",
+        "yearly": "5760"
+    },
+    {
+        "_id": "6866108da3a6824bb869e489",
+        "description": "For growing businesses",
+        "domain": "5",
+        "features": [
+            "Unlimited scans",
+            "Unlimited assets per domain",
+            "Priority scanning queue",
+            "Advanced reporting",
+            "API access",
+            "Email support"
+        ],
+        "isPopular": true,
+        "monthly": "900",
+        "quarterly": "2430",
+        "yearly": "8640"
+    },
+    {
+        "_id": "6866108da3a6824bb869e48a",
+        "description": "For professional security teams",
+        "domain": "10",
+        "features": [
+            "Unlimited scans",
+            "Unlimited assets per domain",
+            "Dedicated scan nodes",
+            "Custom scan profiles",
+            "Scheduled scanning",
+            "Phone & email support"
+        ],
+        "monthly": "1600",
+        "quarterly": "4320",
+        "yearly": "15360"
+    },
+    {
+        "_id": "6866108da3a6824bb869e48b",
+        "description": "For enterprise security operations",
+        "domain": "20",
+        "features": [
+            "Unlimited scans",
+            "Unlimited assets per domain",
+            "Dedicated account manager",
+            "Compliance reporting",
+            "Integration support",
+            "24/7 technical support"
+        ],
+        "monthly": "2700",
+        "quarterly": "7290",
+        "yearly": "25920"
+    },
+    {
+        "_id": "6866108da3a6824bb869e48c",
+        "description": "For large-scale security programs",
+        "domain": "40",
+        "features": [
+            "Unlimited scans",
+            "Unlimited assets per domain",
+            "Custom SLAs",
+            "Executive reports",
+            "Onboarding assistance",
+            "Dedicated support line"
+        ],
+        "monthly": "5000",
+        "quarterly": "13500",
+        "yearly": "48000"
+    },
+    {
+        "_id": "6866108da3a6824bb869e48d",
+        "description": "For large-scale security programs",
+        "domain": "60",
+        "features": [
+            "Unlimited scans",
+            "Unlimited assets per domain",
+            "Custom SLAs",
+            "Executive reports",
+            "Onboarding assistance",
+            "Dedicated support line"
+        ],
+        "monthly": "6000",
+        "quarterly": "16200",
+        "yearly": "57600"
+    },
+    {
+        "_id": "6866108da3a6824bb869e48e",
+        "description": "For global-scale security operations",
+        "domain": "unlimited",
+        "features": [
+            "Unlimited scans",
+            "Unlimited assets per domain",
+            "Unlimited domains",
+            "Dedicated security advisor",
+            "Enterprise integrations",
+            "Highest priority support"
+        ],
+        "monthly": "10000",
+        "quarterly": "27000",
+        "yearly": "96000"
+    },
+    {
+        "_id": "6866108da3a6824bb869e48f",
+        "description": "Lifetime access for organizations with the highest security needs",
+        "domain": "unlimited",
+        "features": [
+            "Unlimited scans",
+            "Unlimited assets per domain",
+            "Unlimited domains",
+            "Dedicated security advisor",
+            "Enterprise integrations",
+            "Highest priority support",
+            "Lifetime access"
+        ],
+        "isContact": true,
+        "monthly": "Contact Sales",
+        "quarterly": "Contact Sales",
+        "yearly": "Contact Sales"
+    },
+];
+
 export default function PricingPage() {
     // Auth & usage
     const [authState, setAuthState] = useState("loading");
@@ -54,8 +188,14 @@ export default function PricingPage() {
         checkLoginStatus();
     }, []);
 
-    // Fetch pricing
+    // Fetch pricing hanya jika sudah login
     useEffect(() => {
+        if (authState !== "authenticated") {
+            setPlans(HARDCODE_PRICING);
+            setPlansLoading(false);
+            setPlansError(null);
+            return;
+        }
         setPlansLoading(true);
         setPlansError(null);
         fetch("/api/pricing", { credentials: "include" })
@@ -69,7 +209,7 @@ export default function PricingPage() {
                 setPlans([]);
             })
             .finally(() => setPlansLoading(false));
-    }, []);
+    }, [authState]);
 
     // Subscription Modal logic
     const handlePlanSelect = (plan) => {

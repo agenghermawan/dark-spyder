@@ -8,6 +8,7 @@ import "react-toastify/dist/ReactToastify.css";
 import QRCode from "react-qr-code";
 import ReCAPTCHA from "react-google-recaptcha";
 import Link from "next/link";
+import Image from "next/image";
 
 export default function RegisterPage() {
     const router = useRouter();
@@ -106,10 +107,21 @@ export default function RegisterPage() {
             {/* Background Glow */}
             <div
                 className="absolute inset-0 bg-gradient-to-br from-purple-900/20 via-blue-900/20 to-green-900/20"></div>
-
             {/* Register Card */}
             <div
                 className="w-full max-w-lg relative p-8 rounded-xl bg-gray-900/90 backdrop-blur-lg border border-gray-800 shadow-2xl z-10">
+                <Link href={"/"} className="flex flex-col items-center">
+                    <Image
+                        src="/image/logo.png"
+                        alt="logo"
+                        width={300}
+                        height={40}
+                        className="invert"
+                        priority
+                    />
+                </Link>
+                <br/>
+                <br/>
                 <h1 className="text-4xl font-bold mb-2 text-center bg-gradient-to-r from-purple-500 to-green-400 bg-clip-text text-transparent">
                     Create Account
                 </h1>
@@ -187,11 +199,19 @@ export default function RegisterPage() {
                         {/* TOTP QR + Secret */}
                         {provisionUrl && (
                             <div className="mb-4">
-                                <div className="mb-2 font-semibold text-white text-center">Scan this QR in your
-                                    Authenticator App
+                                <div className="mb-2 font-semibold text-white text-center">
+                                    Scan this QR in your Authenticator App
                                 </div>
+                                {/* PATCH: QR code dengan background putih dan border-radius */}
                                 <div className="flex justify-center mb-2">
-                                    <QRCode value={provisionUrl} size={180}/>
+                                    <div style={{
+                                        background: "#fff",
+                                        borderRadius: 12,
+                                        padding: 16,
+                                        display: "inline-block",
+                                    }}>
+                                        <QRCode value={provisionUrl} size={180} fgColor="#000" bgColor="#fff" />
+                                    </div>
                                 </div>
                                 <div
                                     className="flex items-center justify-center bg-gray-800 rounded px-3 py-2 mx-auto w-fit">

@@ -3,35 +3,56 @@
 import { useEffect, useState } from "react";
 import Navbar from "../../components/navbar";
 
-// Animated Dark Web SVG (for empty state)
-function NoPlanSVG() {
+// Simple SVG accent for unlimited plan card
+function UnlimitedSVG() {
     return (
-        <svg
-            className="w-20 h-20 mb-6 animate-bounce"
-            viewBox="0 0 64 64"
-            fill="none"
-        >
-            <ellipse cx="32" cy="36" rx="18" ry="14" fill="#232339" />
-            <ellipse cx="32" cy="32" rx="22" ry="18" stroke="#f03262" strokeWidth="2" />
-            <path
-                d="M32 20v10"
-                stroke="#f03262"
-                strokeWidth="2"
-                strokeLinecap="round"
-            />
-            <circle cx="32" cy="44" r="2.5" fill="#f03262" />
-            <rect x="24" y="26" width="16" height="6" rx="3" fill="#18181c" stroke="#f03262" strokeWidth="1" />
+        <svg width="64" height="64" viewBox="0 0 64 64" fill="none"
+             className="mx-auto mb-4 animate-fade-in">
+            <circle cx="32" cy="32" r="28" stroke="#0ff" strokeWidth="3" opacity="0.7" />
+            <path d="M18 32c0-7.732 6.268-14 14-14s14 6.268 14 14-6.268 14-14 14" stroke="#f03262" strokeWidth="2" fill="none"/>
+            <path d="M32 46c-7.732 0-14-6.268-14-14" stroke="#6b21a8" strokeWidth="2" fill="none"/>
+            <text x="32" y="38" textAnchor="middle" fontSize="16" fill="#fff" fontWeight="bold" opacity="0.9">∞</text>
+            <style jsx>{`
+                .animate-fade-in {
+                    animation: fadeIn .8s;
+                }
+                @keyframes fadeIn {
+                    from { opacity:0; transform:scale(.95);}
+                    to { opacity:1; transform:scale(1);}
+                }
+            `}</style>
         </svg>
     );
 }
 
-function RegisterDomainModal({ show, onClose, invoiceId, domainLimit, registeredDomains, onSuccess }) {
+// Gradient animated background
+function AnimatedDarkWebBackground({ children }) {
+    return (
+        <div className="min-h-screen relative z-0 overflow-hidden">
+            <div className="absolute inset-0 -z-10 animate-dark-gradient bg-gradient-to-br from-[#161622] via-[#232339] to-[#101115]" />
+            <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-r from-[#6b21a8]/40 via-[#0ff]/30 to-[#f03262]/40 blur-md opacity-60 pointer-events-none" />
+            <div className="relative z-10">{children}</div>
+            <style jsx>{`
+                .animate-dark-gradient {
+                    background-size: 200% 200%;
+                    animation: darkWebGradient 8s ease-in-out infinite;
+                }
+                @keyframes darkWebGradient {
+                    0% { background-position: 0% 50%; }
+                    50% { background-position: 100% 50%; }
+                    100% { background-position: 0% 50%; }
+                }
+            `}</style>
+        </div>
+    );
+}
+
+// Modal unchanged
+function RegisterDomainModal({ show, onClose, invoiceId, domainLimit, registeredDomains, onSuccess, isUnlimited }) {
     const [domains, setDomains] = useState([""]);
     const [registering, setRegistering] = useState(false);
     const [registerError, setRegisterError] = useState(null);
     const [registerSuccess, setRegisterSuccess] = useState("");
-
-    const maxToAdd = domainLimit;
 
     useEffect(() => {
         if (show) {
@@ -43,9 +64,7 @@ function RegisterDomainModal({ show, onClose, invoiceId, domainLimit, registered
     }, [show, registeredDomains]);
 
     const handleAddDomain = () => {
-        if (domains.length < maxToAdd) {
-            setDomains([...domains, ""]);
-        }
+        setDomains([...domains, ""]);
     };
 
     const handleRegisterDomain = async () => {
@@ -55,7 +74,7 @@ function RegisterDomainModal({ show, onClose, invoiceId, domainLimit, registered
         try {
             const filteredDomains = domains.map(d => d.trim()).filter(Boolean);
             if (!filteredDomains.length) throw new Error("Please enter at least one domain.");
-            if (filteredDomains.length > maxToAdd) throw new Error(`Maximum ${maxToAdd} domains allowed.`);
+            if (!isUnlimited && filteredDomains.length > domainLimit) throw new Error(`Maximum ${domainLimit} domains allowed.`);
             if (!invoiceId) throw new Error("Invoice ID is missing.");
             const res = await fetch(`/api/register-domain?invoiceId=${invoiceId}`, {
                 method: "POST",
@@ -90,7 +109,11 @@ function RegisterDomainModal({ show, onClose, invoiceId, domainLimit, registered
                     Register Domains
                 </h2>
                 <div className="mb-2 text-center text-gray-300 text-sm">
-                    You can register up to <span className="font-bold text-yellow-400">{maxToAdd}</span> domains for this plan.
+                    {isUnlimited ? (
+                        <>You can register <span className="font-bold text-yellow-400">unlimited</span> domains for this plan.</>
+                    ) : (
+                        <>You can register up to <span className="font-bold text-yellow-400">{domainLimit}</span> domains for this plan.</>
+                    )}
                 </div>
                 <div className="space-y-2">
                     {domains.map((domain, idx) => (
@@ -117,11 +140,11 @@ function RegisterDomainModal({ show, onClose, invoiceId, domainLimit, registered
                     <button
                         className="bg-green-600 hover:bg-green-700 px-3 py-1 rounded text-white text-sm font-bold mt-1"
                         onClick={handleAddDomain}
-                        disabled={domains.length >= maxToAdd}
+                        disabled={!isUnlimited && domains.length >= domainLimit}
                     >+ Add Domain</button>
-                    {domains.length >= maxToAdd && (
+                    {!isUnlimited && domains.length >= domainLimit && (
                         <div className="text-xs text-yellow-400 mt-1">
-                            Maximum {maxToAdd} domains allowed.
+                            Maximum {domainLimit} domains allowed.
                         </div>
                     )}
                 </div>
@@ -180,11 +203,12 @@ export default function MyPlanPage() {
             .finally(() => setLoading(false));
     };
 
+    const isUnlimited = plan?.domain === "unlimited";
     const domainsUsed = plan?.registered_domain?.length || 0;
-    const domainsMax = Number(plan?.domain) || 0;
+    const domainsMax = isUnlimited ? Infinity : Number(plan?.domain) || 0;
 
     return (
-        <div className="min-h-screen bg-[#161622] p-6">
+        <AnimatedDarkWebBackground>
             <Navbar />
             <RegisterDomainModal
                 show={showRegisterModal}
@@ -193,8 +217,9 @@ export default function MyPlanPage() {
                 domainLimit={domainsMax}
                 registeredDomains={plan?.registered_domain || []}
                 onSuccess={fetchPlan}
+                isUnlimited={isUnlimited}
             />
-            <div className="max-w-2xl mx-auto my-10 bg-[#232339] rounded-2xl p-8 shadow-xl">
+            <div className="max-w-2xl mx-auto my-10">
                 <h1 className="text-3xl font-bold text-white mb-6 text-center">My Plan</h1>
                 {loading ? (
                     <div className="text-center text-gray-400">Loading plan info...</div>
@@ -202,7 +227,7 @@ export default function MyPlanPage() {
                     <div className="text-center text-red-400">{error}</div>
                 ) : !plan ? (
                     <div className="flex flex-col items-center justify-center py-12 text-gray-400">
-                        <NoPlanSVG />
+                        <UnlimitedSVG />
                         <h2 className="text-xl font-bold mb-2">No Active Plan Found</h2>
                         <p className="text-center text-gray-400 max-w-sm">
                             You don't have an active subscription plan yet.<br />
@@ -210,63 +235,98 @@ export default function MyPlanPage() {
                         </p>
                     </div>
                 ) : (
-                    <div>
-                        <div className="mb-8">
-                            <div className="flex flex-wrap gap-4 justify-between items-center">
-                                <div>
-                                    <div className="text-gray-400 text-sm">Plan ID</div>
-                                    <div className="text-white font-mono">{plan.plan}</div>
+                    <>
+                        {isUnlimited ? (
+                            <div className="bg-[#232339] rounded-2xl p-8 shadow-2xl mb-8 border border-[#0ff] relative overflow-hidden">
+                                <UnlimitedSVG />
+                                <div className="flex flex-wrap gap-4 justify-between items-center mb-6">
+                                    <div>
+                                        <div className="text-gray-400 text-sm">Plan ID</div>
+                                        <div className="text-white font-mono">{plan.plan}</div>
+                                    </div>
+                                    <div>
+                                        <div className="text-gray-400 text-sm">Expired At</div>
+                                        <div className="text-white">{plan.expired ? new Date(plan.expired).toLocaleString() : '-'}</div>
+                                    </div>
                                 </div>
-                                <div>
-                                    <div className="text-gray-400 text-sm">Expired At</div>
-                                    <div className="text-white">{plan.expired ? new Date(plan.expired).toLocaleString() : '-'}</div>
+                                <div className="mt-2 flex gap-12 items-center justify-center">
+                                    <div>
+                                        <div className="text-gray-400 text-sm">Domain Limit</div>
+                                        <div className="text-[#0ff] text-2xl font-extrabold">Unlimited</div>
+                                    </div>
+                                    <div>
+                                        <div className="text-gray-400 text-sm">Remaining</div>
+                                        <div className="text-[#f03262] text-2xl font-extrabold">Unlimited</div>
+                                    </div>
+                                </div>
+                                <div className="mt-8 text-center">
+                                    <span className="inline-block bg-gradient-to-r from-[#0ff] via-[#f03262] to-[#6b21a8] bg-clip-text text-transparent text-lg font-bold">
+                                        Unlimited domain monitoring enabled for this plan!
+                                    </span>
                                 </div>
                             </div>
-                            <div className="mt-6 flex gap-4 items-center">
-                                <div>
-                                    <div className="text-gray-400 text-sm">Domain Limit</div>
-                                    <div className="text-white text-xl font-bold">{domainsMax}</div>
+                        ) : (
+                            <div className="bg-[#232339] rounded-2xl p-8 shadow-2xl mb-8 border border-[#f03262]">
+                                <div className="flex flex-wrap gap-4 justify-between items-center">
+                                    <div>
+                                        <div className="text-gray-400 text-sm">Plan ID</div>
+                                        <div className="text-white font-mono">{plan.plan}</div>
+                                    </div>
+                                    <div>
+                                        <div className="text-gray-400 text-sm">Expired At</div>
+                                        <div className="text-white">{plan.expired ? new Date(plan.expired).toLocaleString() : '-'}</div>
+                                    </div>
                                 </div>
-                                <div>
-                                    <div className="text-gray-400 text-sm">Registered</div>
-                                    <div className="text-green-400 text-xl font-bold">{domainsUsed}</div>
-                                </div>
-                                <div>
-                                    <div className="text-gray-400 text-sm">Remaining</div>
-                                    <div className="text-yellow-400 text-xl font-bold">{domainsMax - domainsUsed}</div>
+                                <div className="mt-6 flex gap-4 items-center">
+                                    <div>
+                                        <div className="text-gray-400 text-sm">Domain Limit</div>
+                                        <div className="text-white text-xl font-bold">{domainsMax}</div>
+                                    </div>
+                                    <div>
+                                        <div className="text-gray-400 text-sm">Registered</div>
+                                        <div className="text-green-400 text-xl font-bold">{domainsUsed}</div>
+                                    </div>
+                                    <div>
+                                        <div className="text-gray-400 text-sm">Remaining</div>
+                                        <div className="text-yellow-400 text-xl font-bold">{domainsMax - domainsUsed}</div>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                        <div>
-                            <div className="flex items-center justify-between mb-3">
-                                <div className="text-lg font-semibold text-white">Registered Domains</div>
-                                {(domainsUsed < domainsMax) && (
-                                    <button
-                                        onClick={() => setShowRegisterModal(true)}
-                                        className="bg-green-600 hover:bg-green-700 px-4 py-1 rounded text-xs font-semibold text-white transition"
-                                    >
-                                        + Register New Domain
-                                    </button>
+                        )}
+
+                        {/* Only show Registered Domains list and button if NOT unlimited */}
+                        {!isUnlimited && (
+                            <div>
+                                <div className="flex items-center justify-between mb-3">
+                                    <div className="text-lg font-semibold text-white">Registered Domains</div>
+                                    {(domainsUsed < domainsMax) && (
+                                        <button
+                                            onClick={() => setShowRegisterModal(true)}
+                                            className="bg-green-600 hover:bg-green-700 px-4 py-1 rounded text-xs font-semibold text-white transition"
+                                        >
+                                            + Register New Domain
+                                        </button>
+                                    )}
+                                </div>
+                                <ul className="bg-[#181825] rounded-lg p-4">
+                                    {plan.registered_domain?.length > 0 ? (
+                                        plan.registered_domain.map((d, idx) => (
+                                            <li key={idx} className="py-1 text-white font-mono border-b border-gray-800 last:border-b-0">{d}</li>
+                                        ))
+                                    ) : (
+                                        <li className="text-gray-400">No domains registered yet.</li>
+                                    )}
+                                </ul>
+                                {(domainsUsed >= domainsMax) && (
+                                    <div className="mt-4 text-yellow-400 text-center">
+                                        Domain limit reached for this plan. Upgrade your plan to register more domains.
+                                    </div>
                                 )}
                             </div>
-                            <ul className="bg-[#181825] rounded-lg p-4">
-                                {plan.registered_domain?.length > 0 ? (
-                                    plan.registered_domain.map((d, idx) => (
-                                        <li key={idx} className="py-1 text-white font-mono border-b border-gray-800 last:border-b-0">{d}</li>
-                                    ))
-                                ) : (
-                                    <li className="text-gray-400">No domains registered yet.</li>
-                                )}
-                            </ul>
-                            {domainsUsed >= domainsMax && (
-                                <div className="mt-4 text-yellow-400 text-center">
-                                    Domain limit reached for this plan. Upgrade your plan to register more domains.
-                                </div>
-                            )}
-                        </div>
-                    </div>
+                        )}
+                    </>
                 )}
             </div>
-        </div>
+        </AnimatedDarkWebBackground>
     );
 }

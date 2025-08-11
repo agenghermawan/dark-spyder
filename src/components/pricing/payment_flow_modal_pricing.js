@@ -348,12 +348,21 @@ export default function PaymentFlowModalPricing({
                                 </span>
                                 {paymentData?.RecipientAddress && (
                                     <div className="mt-2 flex justify-center">
-                                        <QRCode
-                                            value={paymentData.RecipientAddress}
-                                            bgColor="#232339"
-                                            fgColor="#00ff99"
-                                            size={168}
-                                        />
+                                        <div
+                                            style={{
+                                                background: "#fff",
+                                                borderRadius: 12,
+                                                padding: 16,
+                                                display: "inline-block",
+                                            }}
+                                        >
+                                            <QRCode
+                                                value={paymentData.RecipientAddress}
+                                                bgColor="#fff"
+                                                fgColor="#00ff99"
+                                                size={168}
+                                            />
+                                        </div>
                                     </div>
                                 )}
                             </div>
