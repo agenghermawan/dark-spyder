@@ -14,6 +14,13 @@ gsap.registerPlugin(ScrollToPlugin, MotionPathPlugin);
 // Modal alert component
 function ErrorModal({ show, message, onClose }) {
     if (!show) return null;
+    const isExpired = message && message.toLowerCase().includes("expired");
+    const isNotAllowed = message && (
+        message.toLowerCase().includes("not allowed") ||
+        message.toLowerCase().includes("not registered") ||
+        message.toLowerCase().includes("no domain")
+    );
+
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
             <div className="bg-[#232339] rounded-2xl shadow-xl p-6 max-w-md w-full relative flex flex-col items-center">
@@ -22,28 +29,72 @@ function ErrorModal({ show, message, onClose }) {
                     onClick={onClose}
                     aria-label="Close"
                 >×</button>
-                {/* SVG ICON */}
                 <div className="mb-2 mt-2 flex justify-center">
-                    {/* Dark web shield lock */}
-                    <svg width="56" height="56" viewBox="0 0 56 56" fill="none" className="drop-shadow-xl">
-                        <circle cx="28" cy="28" r="26" fill="#18181c" stroke="#f03262" strokeWidth="2" />
-                        <rect x="18" y="24" width="20" height="14" rx="4" fill="#232339" stroke="#f03262" strokeWidth="1.5" />
-                        <path d="M28 31v-3" stroke="#f03262" strokeWidth="2" strokeLinecap="round" />
-                        <circle cx="28" cy="31" r="2" fill="#f03262" />
-                        <rect x="23" y="22" width="10" height="6" rx="3" fill="#101014" stroke="#f03262" strokeWidth="1" />
-                    </svg>
+                    {isExpired ? (
+                        // SVG for expired/timeout/clock
+                        <svg width="60" height="60" fill="none" viewBox="0 0 60 60">
+                            <circle cx="30" cy="30" r="27" stroke="#f03262" strokeWidth="3" fill="#18181c" />
+                            <path d="M30 17v13l9 6" stroke="#f03262" strokeWidth="2.5" strokeLinecap="round" />
+                            <circle cx="30" cy="30" r="23" stroke="#fff" strokeDasharray="2 6" opacity="0.2" />
+                            <g>
+                                <circle cx="30" cy="30" r="10" fill="#f03262" fillOpacity="0.08" />
+                                <path d="M24 38c2.7 2.5 9.3 2.5 12 0" stroke="#f03262" strokeWidth="2" strokeLinecap="round" />
+                                <ellipse cx="30" cy="28" rx="1.8" ry="1.8" fill="#fff" />
+                            </g>
+                            <text x="30" y="54" textAnchor="middle" fontSize="12" fill="#f03262" fontWeight="bold">EXPIRED</text>
+                        </svg>
+                    ) : isNotAllowed ? (
+                        // SVG for domain not allowed
+                        <svg width="56" height="56" viewBox="0 0 56 56" fill="none" className="drop-shadow-xl">
+                            <circle cx="28" cy="28" r="26" fill="#18181c" stroke="#f03262" strokeWidth="2" />
+                            <rect x="18" y="24" width="20" height="14" rx="4" fill="#232339" stroke="#f03262" strokeWidth="1.5" />
+                            <path d="M28 31v-3" stroke="#f03262" strokeWidth="2" strokeLinecap="round" />
+                            <circle cx="28" cy="31" r="2" fill="#f03262" />
+                            <rect x="23" y="22" width="10" height="6" rx="3" fill="#101014" stroke="#f03262" strokeWidth="1" />
+                        </svg>
+                    ) : (
+                        // Default subscription required
+                        <svg width="56" height="56" viewBox="0 0 56 56" fill="none" className="drop-shadow-xl">
+                            <circle cx="28" cy="28" r="26" fill="#18181c" stroke="#f03262" strokeWidth="2" />
+                            <rect x="18" y="24" width="20" height="14" rx="4" fill="#232339" stroke="#f03262" strokeWidth="1.5" />
+                            <path d="M28 31v-3" stroke="#f03262" strokeWidth="2" strokeLinecap="round" />
+                            <circle cx="28" cy="31" r="2" fill="#f03262" />
+                            <rect x="23" y="22" width="10" height="6" rx="3" fill="#101014" stroke="#f03262" strokeWidth="1" />
+                        </svg>
+                    )}
                 </div>
-                <h2 className="text-lg font-bold text-pink-400 mb-4 text-center">
-                    Subscription Required
+                <h2 className={`text-lg font-bold mb-4 text-center ${
+                    isExpired ? "text-yellow-400"
+                        : isNotAllowed ? "text-red-400"
+                            : "text-pink-400"
+                }`}>
+                    {isExpired
+                        ? "Your Plan Has Expired"
+                        : isNotAllowed
+                            ? "Domain Not Allowed"
+                            : "Subscription Required"
+                    }
                 </h2>
-                <div className="text-white text-center whitespace-pre-line">
-                    {"To access this feature, please purchase a subscription plan and register your domain." }
+                <div className="text-white text-center whitespace-pre-line mb-2">
+                    {isExpired
+                        ? "Your subscription plan has expired. Please renew or purchase a new plan to continue accessing this feature."
+                        : isNotAllowed
+                            ? "To access this feature, please purchase a subscription plan and register your domain."
+                            : "To access this feature, please purchase a subscription plan and register your domain."
+                    }
                 </div>
+                {isExpired && (
+                    <a
+                        href="/pricing"
+                        className="mt-3 bg-[#f03262] hover:bg-[#c91d4e] text-white px-5 py-2 rounded-lg font-semibold shadow transition-all"
+                    >
+                        Renew / Choose Plan
+                    </a>
+                )}
             </div>
         </div>
     );
 }
-
 
 export default function Page() {
     return (
@@ -56,8 +107,9 @@ export default function Page() {
 function StealerPageContent() {
     const router = useRouter();
 
-1    // Auth & Plan
+    // Auth & Plan
     const [authState, setAuthState] = useState("loading");
+    const [plan, setPlan] = useState(null);
     const [userDomains, setUserDomains] = useState([]);
     const [domainLoaded, setDomainLoaded] = useState(false);
 
@@ -86,7 +138,7 @@ function StealerPageContent() {
     const resultsRef = useRef(null);
     const tableRef = useRef(null);
 
-    // Check authentication & fetch domains
+    // Check authentication & fetch plan/domains
     useEffect(() => {
         let ignore = false;
         (async () => {
@@ -97,9 +149,12 @@ function StealerPageContent() {
                     const planRes = await fetch("/api/my-plan", { credentials: "include" });
                     if (planRes.ok) {
                         const planData = await planRes.json();
-                        const domains = Array.isArray(planData.data?.registered_domain) ? planData.data.registered_domain : [];
-                        setUserDomains(domains);
-                        if (!domain && domains.length > 0) setDomain(domains[0]);
+                        setPlan(planData.data);
+                        if (planData.data?.domain !== "unlimited") {
+                            const domains = Array.isArray(planData.data?.registered_domain) ? planData.data.registered_domain : [];
+                            setUserDomains(domains);
+                            if (!domain && domains.length > 0) setDomain(domains[0]);
+                        }
                     }
                 }
             } catch {
@@ -117,7 +172,12 @@ function StealerPageContent() {
         setIsLoading(true);
         setShowEmptyAlert(false);
 
-        let searchDomain = (domainParam && domainParam.trim()) || (userDomains.length > 0 ? userDomains[0] : "");
+        let searchDomain = (domainParam && domainParam.trim());
+        if (!searchDomain) {
+            if (plan?.domain !== "unlimited" && userDomains.length > 0) {
+                searchDomain = userDomains[0];
+            }
+        }
         if (!searchDomain) {
             setShowEmptyAlert(true);
             setStealerData([]);
@@ -199,7 +259,7 @@ function StealerPageContent() {
             return;
         }
         setPagination((prev) => ({ ...prev, page: 1 }));
-        await fetchStealerData({ domain: domain, page: 1, size: pagination.size });
+        await fetchStealerData({ domain, page: 1, size: pagination.size });
     };
 
     // Handler: Pagination (API)
@@ -209,7 +269,7 @@ function StealerPageContent() {
         else if (direction === "next" && newPage * pagination.size < pagination.total) newPage++;
         setPagination((prev) => ({ ...prev, page: newPage }));
         await fetchStealerData({
-            domain: domain,
+            domain,
             page: newPage,
             size: pagination.size,
         });
@@ -225,7 +285,7 @@ function StealerPageContent() {
         setPageInput(value);
         setPagination((prev) => ({ ...prev, page: value }));
         await fetchStealerData({
-            domain: domain,
+            domain,
             page: value,
             size: pagination.size,
         });
@@ -240,7 +300,7 @@ function StealerPageContent() {
         setSizeInput(value);
         setPagination((prev) => ({ ...prev, size: value, page: 1 }));
         await fetchStealerData({
-            domain: domain,
+            domain,
             page: 1,
             size: value,
         });
@@ -298,9 +358,18 @@ function StealerPageContent() {
                                 value={domain}
                                 onChange={(e) => setDomain(e.target.value)}
                                 onBlur={() => {
-                                    if (!domain && userDomains.length > 0) setDomain(userDomains[0]);
+                                    if (
+                                        !domain &&
+                                        userDomains.length > 0 &&
+                                        plan?.domain !== "unlimited"
+                                    )
+                                        setDomain(userDomains[0]);
                                 }}
-                                placeholder={`Search by Domain (${userDomains[0] || "your domain"})`}
+                                placeholder={
+                                    plan?.domain === "unlimited"
+                                        ? "Search by Domain"
+                                        : `Search by Domain (${userDomains[0] || "your domain"})`
+                                }
                                 onKeyDown={(e) => {
                                     if (e.key === "Enter" && authState === "authenticated") {
                                         handleSearch();
@@ -348,9 +417,13 @@ function StealerPageContent() {
                                 )}
                             </button>
                         </div>
-                        <div className="mt-2 text-sm text-gray-400">
-                            {userDomains.length > 0 ? `Allowed domains: ${userDomains.join(", ")}` : "No domain available in your account. Please select a plan and register your domain to enable this feature."}
-                        </div>
+                        {plan?.domain === "unlimited" ? null : (
+                            <div className="mt-2 text-sm text-gray-400">
+                                {userDomains.length > 0
+                                    ? `Allowed domains: ${userDomains.join(", ")}`
+                                    : "No domain available in your account. Please select a plan and register your domain to enable this feature."}
+                            </div>
+                        )}
                     </div>
                 </section>
             </div>

@@ -171,12 +171,37 @@ function RegisterDomainModal({ show, onClose, invoiceId, domainLimit, registered
     );
 }
 
+function ExpiredBanner({ expiredDate }) {
+    return (
+        <div className="bg-gradient-to-r from-[#f03262]/90 via-[#6b21a8]/80 to-[#0ff]/80 text-white rounded-xl px-6 py-4 shadow-lg mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-2 border-2 border-[#f03262]">
+            <div className="flex items-center gap-3">
+                <svg className="w-8 h-8 text-yellow-300 animate-pulse" fill="none" viewBox="0 0 32 32">
+                    <circle cx="16" cy="16" r="15" stroke="#f03262" strokeWidth="2" fill="#232339"/>
+                    <path d="M16 9v6m0 4h.01" stroke="#fff" strokeWidth="2" strokeLinecap="round"/>
+                </svg>
+                <div>
+                    <div className="font-bold text-xl">Your plan has expired!</div>
+                    <div className="text-yellow-100 text-sm">
+                        Expired at: <span className="font-mono">{expiredDate}</span>
+                    </div>
+                </div>
+            </div>
+            <div className="mt-2 md:mt-0">
+                <a
+                    href="/pricing"
+                    className="inline-block bg-[#f03262] hover:bg-[#c91d4e] text-white px-5 py-2 rounded-lg font-semibold shadow transition-all duration-150"
+                >
+                    Renew / Choose New Plan
+                </a>
+            </div>
+        </div>
+    );
+}
+
 export default function MyPlanPage() {
     const [plan, setPlan] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-
-    // Modal state
     const [showRegisterModal, setShowRegisterModal] = useState(false);
 
     useEffect(() => {
@@ -207,6 +232,16 @@ export default function MyPlanPage() {
     const domainsUsed = plan?.registered_domain?.length || 0;
     const domainsMax = isUnlimited ? Infinity : Number(plan?.domain) || 0;
 
+    // check expired. Plan is expired if expired date < now (UTC)
+    let isExpired = false;
+    let expiredDateString = "-";
+    if (plan?.expired) {
+        const expiredDate = new Date(plan.expired);
+        expiredDateString = expiredDate.toLocaleString();
+        const nowUTC = new Date();
+        if (expiredDate < nowUTC) isExpired = true;
+    }
+
     return (
         <AnimatedDarkWebBackground>
             <Navbar />
@@ -236,6 +271,9 @@ export default function MyPlanPage() {
                     </div>
                 ) : (
                     <>
+                        {isExpired && (
+                            <ExpiredBanner expiredDate={expiredDateString} />
+                        )}
                         {isUnlimited ? (
                             <div className="bg-[#232339] rounded-2xl p-8 shadow-2xl mb-8 border border-[#0ff] relative overflow-hidden">
                                 <UnlimitedSVG />
@@ -246,7 +284,7 @@ export default function MyPlanPage() {
                                     </div>
                                     <div>
                                         <div className="text-gray-400 text-sm">Expired At</div>
-                                        <div className="text-white">{plan.expired ? new Date(plan.expired).toLocaleString() : '-'}</div>
+                                        <div className="text-white">{expiredDateString}</div>
                                     </div>
                                 </div>
                                 <div className="mt-2 flex gap-12 items-center justify-center">
@@ -274,7 +312,7 @@ export default function MyPlanPage() {
                                     </div>
                                     <div>
                                         <div className="text-gray-400 text-sm">Expired At</div>
-                                        <div className="text-white">{plan.expired ? new Date(plan.expired).toLocaleString() : '-'}</div>
+                                        <div className="text-white">{expiredDateString}</div>
                                     </div>
                                 </div>
                                 <div className="mt-6 flex gap-4 items-center">
@@ -294,12 +332,11 @@ export default function MyPlanPage() {
                             </div>
                         )}
 
-                        {/* Only show Registered Domains list and button if NOT unlimited */}
                         {!isUnlimited && (
                             <div>
                                 <div className="flex items-center justify-between mb-3">
                                     <div className="text-lg font-semibold text-white">Registered Domains</div>
-                                    {(domainsUsed < domainsMax) && (
+                                    {(domainsUsed < domainsMax) && !isExpired && (
                                         <button
                                             onClick={() => setShowRegisterModal(true)}
                                             className="bg-green-600 hover:bg-green-700 px-4 py-1 rounded text-xs font-semibold text-white transition"
@@ -317,7 +354,7 @@ export default function MyPlanPage() {
                                         <li className="text-gray-400">No domains registered yet.</li>
                                     )}
                                 </ul>
-                                {(domainsUsed >= domainsMax) && (
+                                {(domainsUsed >= domainsMax && !isExpired) && (
                                     <div className="mt-4 text-yellow-400 text-center">
                                         Domain limit reached for this plan. Upgrade your plan to register more domains.
                                     </div>

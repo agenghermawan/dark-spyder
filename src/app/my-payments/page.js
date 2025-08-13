@@ -26,6 +26,33 @@ function UnlimitedSVG() {
     );
 }
 
+function ExpiredBanner({ expiredDate }) {
+    return (
+        <div className="bg-gradient-to-r from-[#f03262]/90 via-[#6b21a8]/80 to-[#0ff]/80 text-white rounded-xl px-6 py-4 shadow-lg mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-2 border-2 border-[#f03262]">
+            <div className="flex items-center gap-3">
+                <svg className="w-8 h-8 text-yellow-300 animate-pulse" fill="none" viewBox="0 0 32 32">
+                    <circle cx="16" cy="16" r="15" stroke="#f03262" strokeWidth="2" fill="#232339"/>
+                    <path d="M16 9v6m0 4h.01" stroke="#fff" strokeWidth="2" strokeLinecap="round"/>
+                </svg>
+                <div>
+                    <div className="font-bold text-xl">Your plan has expired!</div>
+                    <div className="text-yellow-100 text-sm">
+                        Expired at: <span className="font-mono">{expiredDate}</span>
+                    </div>
+                </div>
+            </div>
+            <div className="mt-2 md:mt-0">
+                <a
+                    href="/pricing"
+                    className="inline-block bg-[#f03262] hover:bg-[#c91d4e] text-white px-5 py-2 rounded-lg font-semibold shadow transition-all duration-150"
+                >
+                    Renew / Choose New Plan
+                </a>
+            </div>
+        </div>
+    );
+}
+
 export default function MyPaymentsPage() {
     const [payments, setPayments] = useState([]);
     const [plan, setPlan] = useState(null);
@@ -93,7 +120,19 @@ export default function MyPaymentsPage() {
         setShowPaymentModal(true);
     };
 
+    // Detect plan status
     const isUnlimited = plan?.domain === "unlimited";
+    let isExpired = false;
+    let expiredDateString = "-";
+    if (plan?.expired) {
+        const expiredDate = new Date(plan.expired);
+        expiredDateString = expiredDate.toLocaleString();
+        const nowUTC = new Date();
+        if (expiredDate < nowUTC) isExpired = true;
+    }
+
+    // Show payments table if: (no plan) OR (plan expired)
+    const showPaymentsTable = !plan || isExpired;
 
     return (
         <div className="min-h-screen bg-[#161622] p-6">
@@ -104,14 +143,15 @@ export default function MyPaymentsPage() {
                     My Payments
                 </h1>
                 <p className="text-gray-400 mb-10 text-center">
-                    {payments.length > 0
+                    {showPaymentsTable && payments.length > 0
                         ? (
                             <span>
-                              You already have an active plan. See details on the{" "}
-                                <a href="/my-plan" className="text-pink-400 underline hover:text-pink-300">My Plan</a> page.
+                              See your payment history and complete your payment to activate your plan.<br />
+                              For a new subscription, see the{" "}
+                                <a href="/pricing" className="text-pink-400 underline hover:text-pink-300">Pricing</a> page.
                             </span>
                         )
-                        : "For each invoice, complete payment and register your domain(s) to monitor."
+                        : "You already have an active plan. See details on the My Plan page."
                     }
                 </p>
 
@@ -119,74 +159,82 @@ export default function MyPaymentsPage() {
                 {loadingPlan ? (
                     <div className="text-center mb-6 text-gray-400">Checking active plan...</div>
                 ) : plan ? (
-                    isUnlimited ? (
-                        <div className="mb-8 max-w-md mx-auto bg-[#232339] rounded-2xl p-8 shadow-2xl border border-[#0ff] relative overflow-hidden">
-                            <UnlimitedSVG />
-                            <div className="text-lg font-bold text-[#0ff] mb-1">Active Plan (Unlimited)</div>
-                            <div className="text-white font-mono mb-2">ID: {plan.plan}</div>
-                            <div className="mt-2 flex gap-12 items-center justify-center">
-                                <div>
-                                    <div className="text-gray-400 text-sm">Domain Limit</div>
-                                    <div className="text-[#0ff] text-2xl font-extrabold">Unlimited</div>
-                                </div>
-                                <div>
-                                    <div className="text-gray-400 text-sm">Remaining</div>
-                                    <div className="text-[#f03262] text-2xl font-extrabold">Unlimited</div>
-                                </div>
-                            </div>
-                            <div className="text-gray-400 text-sm mt-4">
-                                Expired At: {plan.expired ? new Date(plan.expired).toLocaleString() : "-"}
-                            </div>
-                            <div className="mt-8 text-center">
-                                <span className="inline-block bg-gradient-to-r from-[#0ff] via-[#f03262] to-[#6b21a8] bg-clip-text text-transparent text-lg font-bold">
-                                    Unlimited domain monitoring enabled for this plan!
-                                </span>
-                            </div>
-                        </div>
-                    ) : (
-                        <div
-                            className="mb-8 max-w-md mx-auto bg-gradient-to-br from-[#181825] to-[#232339] border border-[#f03262] rounded-xl shadow-xl p-6 flex flex-col items-center">
-                            <div className="text-lg font-bold text-pink-400 mb-1">Active Plan</div>
-                            <div className="text-white font-mono mb-2">ID: {plan.plan}</div>
-                            <div className="flex gap-8 items-center mb-2">
-                                <div>
-                                    <div className="text-gray-400 text-sm">Domain Limit</div>
-                                    <div className="text-white font-bold text-lg">{plan.domain}</div>
-                                </div>
-                                <div>
-                                    <div className="text-gray-400 text-sm">Registered</div>
-                                    <div
-                                        className="text-green-400 font-bold text-lg">{plan.registered_domain?.length || 0}</div>
-                                </div>
-                                <div>
-                                    <div className="text-gray-400 text-sm">Remaining</div>
-                                    <div className="text-yellow-400 font-bold text-lg">
-                                        {(Number(plan.domain) || 0) - (plan.registered_domain?.length || 0)}
+                    <>
+                        {isExpired && (
+                            <ExpiredBanner expiredDate={expiredDateString} />
+                        )}
+                        {isUnlimited ? (
+                            <div className="mb-8 max-w-md mx-auto bg-[#232339] rounded-2xl p-8 shadow-2xl border border-[#0ff] relative overflow-hidden">
+                                <UnlimitedSVG />
+                                <div className="text-lg font-bold text-[#0ff] mb-1">Active Plan (Unlimited)</div>
+                                <div className="text-white font-mono mb-2">ID: {plan.plan}</div>
+                                <div className="mt-2 flex gap-12 items-center justify-center">
+                                    <div>
+                                        <div className="text-gray-400 text-sm">Domain Limit</div>
+                                        <div className="text-[#0ff] text-2xl font-extrabold">Unlimited</div>
+                                    </div>
+                                    <div>
+                                        <div className="text-gray-400 text-sm">Remaining</div>
+                                        <div className="text-[#f03262] text-2xl font-extrabold">Unlimited</div>
                                     </div>
                                 </div>
-                            </div>
-                            <div className="text-gray-400 text-sm">
-                                Expired At: {plan.expired ? new Date(plan.expired).toLocaleString() : "-"}
-                            </div>
-                            {plan.registered_domain?.length > 0 && (
-                                <div className="mt-3 text-left w-full">
-                                    <div className="text-xs text-gray-400 mb-1">Registered Domains:</div>
-                                    <ul className="bg-[#1a1b20] rounded p-2">
-                                        {plan.registered_domain.map((d, idx) => (
-                                            <li key={idx}
-                                                className="text-white font-mono py-1 border-b border-gray-800 last:border-b-0">{d}</li>
-                                        ))}
-                                    </ul>
+                                <div className="text-gray-400 text-sm mt-4">
+                                    Expired At: {plan.expired ? new Date(plan.expired).toLocaleString() : "-"}
                                 </div>
-                            )}
-                        </div>
-                    )
+                                <div className="mt-8 text-center">
+                                    <span className="inline-block bg-gradient-to-r from-[#0ff] via-[#f03262] to-[#6b21a8] bg-clip-text text-transparent text-lg font-bold">
+                                        Unlimited domain monitoring enabled for this plan!
+                                    </span>
+                                </div>
+                            </div>
+                        ) : (
+                            <div
+                                className="mb-8 max-w-md mx-auto bg-gradient-to-br from-[#181825] to-[#232339] border border-[#f03262] rounded-xl shadow-xl p-6 flex flex-col items-center">
+                                <div className="text-lg font-bold text-pink-400 mb-1">Active Plan</div>
+                                <div className="text-white font-mono mb-2">ID: {plan.plan}</div>
+                                <div className="flex gap-8 items-center mb-2">
+                                    <div>
+                                        <div className="text-gray-400 text-sm">Domain Limit</div>
+                                        <div className="text-white font-bold text-lg">{plan.domain}</div>
+                                    </div>
+                                    <div>
+                                        <div className="text-gray-400 text-sm">Registered</div>
+                                        <div
+                                            className="text-green-400 font-bold text-lg">{plan.registered_domain?.length || 0}</div>
+                                    </div>
+                                    <div>
+                                        <div className="text-gray-400 text-sm">Remaining</div>
+                                        <div className="text-yellow-400 font-bold text-lg">
+                                            {(Number(plan.domain) || 0) - (plan.registered_domain?.length || 0)}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="text-gray-400 text-sm">
+                                    Expired At: {plan.expired ? new Date(plan.expired).toLocaleString() : "-"}
+                                </div>
+                                {plan.registered_domain?.length > 0 && (
+                                    <div className="mt-3 text-left w-full">
+                                        <div className="text-xs text-gray-400 mb-1">Registered Domains:</div>
+                                        <ul className="bg-[#1a1b20] rounded p-2">
+                                            {plan.registered_domain.map((d, idx) => (
+                                                <li key={idx}
+                                                    className="text-white font-mono py-1 border-b border-gray-800 last:border-b-0">{d}</li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </>
                 ) : null}
 
                 {loading ? (
                     <div className="text-center text-gray-400">Loading payments...</div>
                 ) : error ? (
                     <div className="text-center text-red-400">{error}</div>
+                ) : !showPaymentsTable ? (
+                    // Payment list/table not shown if plan active
+                    null
                 ) : payments.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-12 text-gray-400">
                         {/* SVG Dark Web Style */}
@@ -232,7 +280,48 @@ export default function MyPaymentsPage() {
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
-
+                        <table className="w-full font-mono text-sm bg-gradient-to-br from-[#18181c] via-[#232339] to-[#18181c] border border-[#2e2e2e] rounded-xl shadow-2xl overflow-hidden">
+                            <thead>
+                            <tr className="text-left border-b border-[#2e2e2e] text-[#f03262] bg-gradient-to-r from-[#26263a] to-[#1e1e24]">
+                                <th className="py-4 px-4 text-center w-8">No</th>
+                                <th className="py-4 px-4">Invoice ID</th>
+                                <th className="py-4 px-4">Domain</th>
+                                <th className="py-4 px-4">Plan</th>
+                                <th className="py-4 px-4">Payment ID</th>
+                                <th className="py-4 px-4">Action</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            {payments.map((payment, idx) => {
+                                const invoiceId = payment.invoice?.Id || "-";
+                                const paymentId = payment.payment?.Id || "-";
+                                return (
+                                    <tr
+                                        key={payment.id + idx}
+                                        className="border-b border-[#29293a] hover:bg-gradient-to-r from-[#232339] to-[#f03262]/10 group transition-all duration-150"
+                                    >
+                                        <td className="py-3 px-4 text-center font-bold text-pink-400">
+                                            {idx + 1}
+                                        </td>
+                                        <td className="py-3 px-4">{invoiceId}</td>
+                                        <td className="py-3 px-4">{payment.domain || "-"}</td>
+                                        <td className="py-3 px-4 capitalize">{payment.plan || "-"}</td>
+                                        <td className="py-3 px-4 font-mono text-green-400">{paymentId}</td>
+                                        <td className="py-3 px-4">
+                                            <button
+                                                onClick={() => handleShowModal(payment)}
+                                                className="bg-gradient-to-r from-[#f03262] to-[#232339] hover:from-[#c91d4e] hover:to-[#232339] px-4 py-2 rounded-lg text-xs font-bold text-white transition-all duration-150 shadow-md shadow-pink-800/30 group-hover:scale-105"
+                                            >
+                                                {payment.payment?.Id
+                                                    ? "Check Payment & Register Domain"
+                                                    : "Pay Now"}
+                                            </button>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                            </tbody>
+                        </table>
                     </div>
                 )}
             </div>
