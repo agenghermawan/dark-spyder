@@ -450,60 +450,35 @@ function StealerPageContent() {
                         </div>
                         <div className="overflow-x-auto" ref={tableRef}>
                             {filteredStealerData.length > 0 ? (
-                                <table
-                                    className="min-w-full bg-gradient-to-br from-[#111215]/90 via-[#1a1b20]/90 to-[#111215]/90 backdrop-blur-lg text-white rounded-xl shadow-2xl font-mono border border-[#2e2e2e] overflow-hidden">
-                                    <thead>
-                                    <tr className="text-left border-b border-gray-700 text-gray-400 bg-gradient-to-r from-[#1e1e24] to-[#2a2a32]">
-                                        <th className="py-4 px-6">Exposed Data</th>
-                                        <th className="py-4 px-6">Intel Source</th>
-                                        <th className="py-4 px-6">Last Seen in Dump</th>
-                                        <th className="py-4 px-6 text-center">Actions</th>
-                                    </tr>
-                                    </thead>
-                                    <tbody>
-                                    {filteredStealerData.map((entry, index) => (
-                                        <tr
-                                            key={entry.id}
-                                            className={`border-b border-gray-800 hover:bg-gradient-to-r from-[#1a1a20] to-[#25252d] transition-all duration-300 group`}
-                                        >
-                                            <ExposedData entry={entry} />
-                                            <td className="py-4 px-6">
-                                                <span className="inline-flex items-center px-3 py-1 rounded-full bg-gradient-to-r from-gray-700 to-gray-800 text-gray-300 text-sm">
-                                                    {entry.source}
-                                                </span>
-                                            </td>
-                                            <td className="py-4 px-6">
-                                                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-gradient-to-r from-gray-700 to-gray-800 text-gray-400">
-                                                    {entry.lastBreach}
-                                                </span>
-                                            </td>
-                                            <td className="py-4 px-6 text-center">
-                                                <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
-                                                    {updatedIds[entry.id] === true ? (
-                                                        <button
-                                                            onClick={() => markAsValid(entry.id, false)}
-                                                            disabled={markingId === entry.id}
-                                                            className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white px-4 py-2 rounded-lg text-sm transition-all transform hover:scale-105 shadow-lg hover:shadow-red-500/20 flex items-center justify-center gap-1"
-                                                        >
-                                                            Mark as Not Valid
-                                                        </button>
-                                                    ) : updatedIds[entry.id] === false ? (
-                                                        <button
-                                                            onClick={() => markAsValid(entry.id, true)}
-                                                            disabled={markingId === entry.id}
-                                                            className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white px-4 py-2 rounded-lg text-sm transition-all transform hover:scale-105 shadow-lg hover:shadow-green-500/20 flex items-center justify-center gap-1"
-                                                        >
-                                                            Mark as Valid
-                                                        </button>
-                                                    ) : (
-                                                        <>
-                                                            <button
-                                                                onClick={() => markAsValid(entry.id, true)}
-                                                                disabled={markingId === entry.id}
-                                                                className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white px-4 py-2 rounded-lg text-sm transition-all transform hover:scale-105 shadow-lg hover:shadow-green-500/20 flex items-center justify-center gap-1"
-                                                            >
-                                                                Mark as Valid
-                                                            </button>
+                                    <table className="w-full font-mono text-sm bg-gradient-to-br from-[#18181c] via-[#232339] to-[#18181c] border border-[#2e2e2e] rounded-xl shadow-2xl overflow-hidden">
+                                        <thead>
+                                        <tr className="text-left border-b border-[#2e2e2e] text-[#f03262] bg-gradient-to-r from-[#26263a] to-[#1e1e24]">
+                                            <th className="py-4 px-4" width="400">Exposed Data</th>
+                                            <th className="py-4 px-4">Intel Source</th>
+                                            <th className="py-4 px-4">Last Seen in Dump</th>
+                                            <th className="py-4 px-4 text-center">Actions</th>
+                                        </tr>
+                                        </thead>
+                                        <tbody>
+                                        {filteredStealerData.map((entry, index) => (
+                                            <tr
+                                                key={entry.id}
+                                                className="border-b border-[#29293a] group transition-all duration-150 hover:bg-gradient-to-r from-[#232339] to-[#f03262]/10"
+                                            >
+                                                <ExposedData entry={entry} />
+                                                <td className="py-4 px-4">
+          <span className="inline-flex items-center px-3 py-1 rounded-full bg-gradient-to-r from-gray-700 to-gray-800 text-gray-300 text-sm">
+            {entry.source}
+          </span>
+                                                </td>
+                                                <td className="py-4 px-4">
+          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-gradient-to-r from-gray-700 to-gray-800 text-gray-400">
+            {entry.lastBreach}
+          </span>
+                                                </td>
+                                                <td className="py-4 px-4 text-center">
+                                                    <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
+                                                        {updatedIds[entry.id] === true ? (
                                                             <button
                                                                 onClick={() => markAsValid(entry.id, false)}
                                                                 disabled={markingId === entry.id}
@@ -511,24 +486,49 @@ function StealerPageContent() {
                                                             >
                                                                 Mark as Not Valid
                                                             </button>
-                                                        </>
-                                                    )}
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                    </tbody>
-                                </table>
+                                                        ) : updatedIds[entry.id] === false ? (
+                                                            <button
+                                                                onClick={() => markAsValid(entry.id, true)}
+                                                                disabled={markingId === entry.id}
+                                                                className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white px-4 py-2 rounded-lg text-sm transition-all transform hover:scale-105 shadow-lg hover:shadow-green-500/20 flex items-center justify-center gap-1"
+                                                            >
+                                                                Mark as Valid
+                                                            </button>
+                                                        ) : (
+                                                            <>
+                                                                <button
+                                                                    onClick={() => markAsValid(entry.id, true)}
+                                                                    disabled={markingId === entry.id}
+                                                                    className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white px-4 py-2 rounded-lg text-sm transition-all transform hover:scale-105 shadow-lg hover:shadow-green-500/20 flex items-center justify-center gap-1"
+                                                                >
+                                                                    Mark as Valid
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => markAsValid(entry.id, false)}
+                                                                    disabled={markingId === entry.id}
+                                                                    className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white px-4 py-2 rounded-lg text-sm transition-all transform hover:scale-105 shadow-lg hover:shadow-red-500/20 flex items-center justify-center gap-1"
+                                                                >
+                                                                    Mark as Not Valid
+                                                                </button>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                        </tbody>
+                                    </table>
                             ) : (
                                 showEmptyAlert && (
                                     <table
                                         className="min-w-full bg-gradient-to-br from-[#111215]/90 via-[#1a1b20]/90 to-[#111215]/90 backdrop-blur-lg text-white rounded-xl shadow-2xl font-mono border border-[#2e2e2e] overflow-hidden">
+
                                         <thead>
                                         <tr className="text-left border-b border-gray-700 text-gray-400 bg-gradient-to-r from-[#1e1e24] to-[#2a2a32]">
-                                            <th className="py-4 px-6">Exposed Data</th>
-                                            <th className="py-4 px-6">Intel Source</th>
-                                            <th className="py-4 px-6">Last Seen in Dump</th>
-                                            <th className="py-4 px-6 text-center">Actions</th>
+                                            <th className="py-4 px-6" >Exposed Data</th>
+                                            <th className="py-4 px-6" >Intel Source</th>
+                                            <th className="py-4 px-6" >Last Seen in Dump</th>
+                                            <th className="py-4 px-6  text-center">Actions</th>
                                         </tr>
                                         </thead>
                                         <tbody>
