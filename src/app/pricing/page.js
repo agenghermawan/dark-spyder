@@ -5,7 +5,6 @@ import Navbar from "../../components/navbar";
 import Footer from "../../components/footer";
 import PaymentFlowModalPricing from "../../components/pricing/payment_flow_modal_pricing";
 
-// Hardcoded pricing data untuk user yang belum login
 const HARDCODE_PRICING = [
     {
         "_id": "6866108da3a6824bb869e488",
@@ -140,43 +139,34 @@ const HARDCODE_PRICING = [
 ];
 
 export default function PricingPage() {
-    // Auth & usage
+    // Auth & plan
     const [authState, setAuthState] = useState("loading");
     const [currentPlan, setCurrentPlan] = useState(null);
-    const [remainingScans, setRemainingScans] = useState(null);
 
     // Pricing
     const [plans, setPlans] = useState([]);
     const [plansLoading, setPlansLoading] = useState(true);
     const [plansError, setPlansError] = useState(null);
 
-    // Subscription Modal
+    // Modal states
     const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
     const [selectedPlan, setSelectedPlan] = useState(null);
     const [subscriptionLoading, setSubscriptionLoading] = useState(false);
-
-    // Payment Modal State
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [modalProps, setModalProps] = useState({});
 
-    // Fetch user info
+    // Fetch user info & plan
     useEffect(() => {
         const checkLoginStatus = async () => {
             try {
                 const res = await fetch("/api/me", { credentials: "include" });
                 if (res.ok) {
                     setAuthState("authenticated");
-                    const [planRes, usageRes] = await Promise.all([
-                        fetch("/api/user/plan"),
-                        fetch("/api/user/usage"),
-                    ]);
+                    // Use /api/my-plan as reference
+                    const planRes = await fetch("/api/my-plan", { credentials: "include" });
                     if (planRes.ok) {
                         const planData = await planRes.json();
-                        setCurrentPlan(planData);
-                    }
-                    if (usageRes.ok) {
-                        const usageData = await usageRes.json();
-                        setRemainingScans(usageData.remainingScans);
+                        setCurrentPlan(planData.data);
                     }
                 } else {
                     setAuthState("unauthenticated");
@@ -188,7 +178,7 @@ export default function PricingPage() {
         checkLoginStatus();
     }, []);
 
-    // Fetch pricing hanya jika sudah login
+    // Fetch pricing
     useEffect(() => {
         if (authState !== "authenticated") {
             setPlans(HARDCODE_PRICING);
@@ -243,7 +233,6 @@ export default function PricingPage() {
             setShowSubscriptionModal(false);
 
             if (data.data.Id) {
-                // Show payment modal (flow modal, not selection modal)
                 setModalProps({
                     show: true,
                     invoiceId: data.data.Id,
@@ -286,15 +275,25 @@ export default function PricingPage() {
         );
     };
 
-    // Check current plan
-    const isCurrentPlan = (plan) => {
-        if (!currentPlan?.planId) return false;
-        return (
-            plan._id === currentPlan.planId ||
-            (plan.domain === currentPlan.domain &&
-                plan.features?.join() === currentPlan.features?.join())
-        );
-    };
+    // Check plan expired & label
+    let isPlanActive = false;
+    let expiredDateString = "-";
+    let planName = null;
+    if (currentPlan) {
+        planName =
+            currentPlan.displayName
+                ? currentPlan.displayName
+                : currentPlan.domain === "unlimited"
+                    ? "Unlimited Domains"
+                    : `${currentPlan.domain} Domain${currentPlan.domain === "1" ? "" : "s"}`;
+        if (currentPlan.expired) {
+            const expiredDate = new Date(currentPlan.expired);
+            expiredDateString = expiredDate.toLocaleString();
+            isPlanActive = expiredDate > new Date(); // still active
+        } else {
+            isPlanActive = true;
+        }
+    }
 
     return (
         <div className="relative overflow-x-hidden">
@@ -375,6 +374,22 @@ export default function PricingPage() {
                 </div>
             )}
 
+            {/* -------- ACTIVE PLAN NOTIF -------- */}
+            {authState === "authenticated" && currentPlan && isPlanActive && (
+                <div className="fixed top-4 right-4 z-50 bg-green-500/95 text-white py-3 px-6 rounded-xl flex items-center gap-3 shadow-2xl border border-green-600 animate-fade-in-up">
+                    <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="10" fill="#22c55e" />
+                        <path d="M8 12.5l2.5 2L16 9" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    <div>
+                        <div className="font-bold">You have an active plan: <span className="underline">{planName}</span></div>
+                        {expiredDateString && expiredDateString !== "-" && (
+                            <div className="text-xs">Valid until: <span className="font-semibold">{expiredDateString}</span></div>
+                        )}
+                    </div>
+                </div>
+            )}
+
             {/* Pricing Section */}
             <section
                 className="relative bg-[#0D0D10] py-20 overflow-hidden"
@@ -399,7 +414,10 @@ export default function PricingPage() {
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                             {plans.map((plan, index) => {
-                                const isCurrent = isCurrentPlan(plan);
+                                const isCurrent = currentPlan && (
+                                    (plan._id && plan._id === currentPlan.plan) ||
+                                    (plan.domain && plan.domain === currentPlan.domain)
+                                );
                                 return (
                                     <div
                                         key={plan._id}

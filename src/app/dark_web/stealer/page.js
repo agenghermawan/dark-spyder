@@ -12,7 +12,7 @@ import CyberParticles from "../../../components/stealer/stealer_particles";
 gsap.registerPlugin(ScrollToPlugin, MotionPathPlugin);
 
 // Modal alert component
-function ErrorModal({ show, message, onClose }) {
+function ErrorModal({ show, message, onClose, userDomains, plan }) {
     if (!show) return null;
     const isExpired = message && message.toLowerCase().includes("expired");
     const isNotAllowed = message && (
@@ -20,6 +20,7 @@ function ErrorModal({ show, message, onClose }) {
         message.toLowerCase().includes("not registered") ||
         message.toLowerCase().includes("no domain")
     );
+    const showAllowed = isNotAllowed && plan?.domain !== "unlimited" && userDomains?.length > 0;
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
@@ -43,17 +44,8 @@ function ErrorModal({ show, message, onClose }) {
                             </g>
                             <text x="30" y="54" textAnchor="middle" fontSize="12" fill="#f03262" fontWeight="bold">EXPIRED</text>
                         </svg>
-                    ) : isNotAllowed ? (
-                        // SVG for domain not allowed
-                        <svg width="56" height="56" viewBox="0 0 56 56" fill="none" className="drop-shadow-xl">
-                            <circle cx="28" cy="28" r="26" fill="#18181c" stroke="#f03262" strokeWidth="2" />
-                            <rect x="18" y="24" width="20" height="14" rx="4" fill="#232339" stroke="#f03262" strokeWidth="1.5" />
-                            <path d="M28 31v-3" stroke="#f03262" strokeWidth="2" strokeLinecap="round" />
-                            <circle cx="28" cy="31" r="2" fill="#f03262" />
-                            <rect x="23" y="22" width="10" height="6" rx="3" fill="#101014" stroke="#f03262" strokeWidth="1" />
-                        </svg>
                     ) : (
-                        // Default subscription required
+                        // Default domain not allowed icon (your existing one)
                         <svg width="56" height="56" viewBox="0 0 56 56" fill="none" className="drop-shadow-xl">
                             <circle cx="28" cy="28" r="26" fill="#18181c" stroke="#f03262" strokeWidth="2" />
                             <rect x="18" y="24" width="20" height="14" rx="4" fill="#232339" stroke="#f03262" strokeWidth="1.5" />
@@ -63,26 +55,19 @@ function ErrorModal({ show, message, onClose }) {
                         </svg>
                     )}
                 </div>
-                <h2 className={`text-lg font-bold mb-4 text-center ${
-                    isExpired ? "text-yellow-400"
-                        : isNotAllowed ? "text-red-400"
-                            : "text-pink-400"
-                }`}>
-                    {isExpired
-                        ? "Your Plan Has Expired"
-                        : isNotAllowed
-                            ? "Domain Not Allowed"
-                            : "Subscription Required"
-                    }
+                <h2 className={`text-lg font-bold mb-4 text-center ${isExpired ? "text-yellow-400" : "text-red-400"}`}>
+                    {isExpired ? "Your Plan Has Expired" : "Domain not allowed"}
                 </h2>
                 <div className="text-white text-center whitespace-pre-line mb-2">
                     {isExpired
                         ? "Your subscription plan has expired. Please renew or purchase a new plan to continue accessing this feature."
-                        : isNotAllowed
-                            ? "To access this feature, please purchase a subscription plan and register your domain."
-                            : "To access this feature, please purchase a subscription plan and register your domain."
-                    }
+                        : message}
                 </div>
+                {showAllowed && (
+                    <div className="mt-2 text-sm text-cyan-400 text-center">
+                        Allowed domains: {userDomains.join(", ")}
+                    </div>
+                )}
                 {isExpired && (
                     <a
                         href="/pricing"
@@ -116,7 +101,7 @@ function StealerPageContent() {
     // Data & Fetching
     const [stealerData, setStealerData] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
-    const [hasSubscription, setHasSubscription] = useState(true); // Assume always true (customize for your use-case)
+    const [hasSubscription, setHasSubscription] = useState(true);
     const [errorModal, setErrorModal] = useState({ show: false, message: "" });
 
     // Pagination
@@ -164,7 +149,6 @@ function StealerPageContent() {
             }
         })();
         return () => { ignore = true; };
-        // eslint-disable-next-line
     }, []);
 
     // Fetch stealer data from API (domain, page, size)
@@ -258,6 +242,7 @@ function StealerPageContent() {
             router.push("/login");
             return;
         }
+        if (!domain.trim()) return; // Prevent search if input empty
         setPagination((prev) => ({ ...prev, page: 1 }));
         await fetchStealerData({ domain, page: 1, size: pagination.size });
     };
@@ -341,6 +326,8 @@ function StealerPageContent() {
                 show={errorModal.show}
                 message={errorModal.message}
                 onClose={() => setErrorModal({ show: false, message: "" })}
+                userDomains={userDomains}
+                plan={plan}
             />
             <div className="relative h-screen w-full">
                 <CyberParticles />
@@ -379,9 +366,9 @@ function StealerPageContent() {
                             />
                             <button
                                 onClick={handleSearch}
-                                disabled={isLoading}
+                                disabled={isLoading || !domain.trim()}
                                 className={`${
-                                    isLoading
+                                    isLoading || !domain.trim()
                                         ? "bg-gray-600 cursor-not-allowed"
                                         : "bg-[#f03262] hover:bg-[#c91d4e]"
                                 } text-white px-6 py-2 rounded-lg transition-all duration-300 font-semibold whitespace-nowrap flex items-center justify-center min-w-[120px] hover:cursor-pointer`}
@@ -450,43 +437,52 @@ function StealerPageContent() {
                         </div>
                         <div className="overflow-x-auto" ref={tableRef}>
                             {filteredStealerData.length > 0 ? (
-                                    <table className="w-full font-mono text-sm bg-gradient-to-br from-[#18181c] via-[#232339] to-[#18181c] border border-[#2e2e2e] rounded-xl shadow-2xl overflow-hidden">
-                                        <thead>
-                                        <tr className="text-left border-b border-[#2e2e2e] text-[#f03262] bg-gradient-to-r from-[#26263a] to-[#1e1e24]">
-                                            <th className="py-4 px-4" width="400">Exposed Data</th>
-                                            <th className="py-4 px-4">Intel Source</th>
-                                            <th className="py-4 px-4">Last Seen in Dump</th>
-                                            <th className="py-4 px-4 text-center">Actions</th>
-                                        </tr>
-                                        </thead>
-                                        <tbody>
-                                        {filteredStealerData.map((entry, index) => (
-                                            <tr
-                                                key={entry.id}
-                                                className="border-b border-[#29293a] group transition-all duration-150 hover:bg-gradient-to-r from-[#232339] to-[#f03262]/10"
-                                            >
-                                                <ExposedData entry={entry} />
-                                                <td className="py-4 px-4">
-          <span className="inline-flex items-center px-3 py-1 rounded-full bg-gradient-to-r from-gray-700 to-gray-800 text-gray-300 text-sm">
-            {entry.source}
-          </span>
-                                                </td>
-                                                <td className="py-4 px-4">
-          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-gradient-to-r from-gray-700 to-gray-800 text-gray-400">
-            {entry.lastBreach}
-          </span>
-                                                </td>
-                                                <td className="py-4 px-4 text-center">
-                                                    <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
-                                                        {updatedIds[entry.id] === true ? (
-                                                            <button
-                                                                onClick={() => markAsValid(entry.id, false)}
-                                                                disabled={markingId === entry.id}
-                                                                className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white px-4 py-2 rounded-lg text-sm transition-all transform hover:scale-105 shadow-lg hover:shadow-red-500/20 flex items-center justify-center gap-1"
-                                                            >
-                                                                Mark as Not Valid
-                                                            </button>
-                                                        ) : updatedIds[entry.id] === false ? (
+                                <table className="w-full font-mono text-sm bg-gradient-to-br from-[#18181c] via-[#232339] to-[#18181c] border border-[#2e2e2e] rounded-xl shadow-2xl overflow-hidden">
+                                    <thead>
+                                    <tr className="text-left border-b border-[#2e2e2e] text-[#f03262] bg-gradient-to-r from-[#26263a] to-[#1e1e24]">
+                                        <th className="py-4 px-4" width="400">Exposed Data</th>
+                                        <th className="py-4 px-4">Intel Source</th>
+                                        <th className="py-4 px-4">Last Seen in Dump</th>
+                                        <th className="py-4 px-4 text-center">Actions</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    {filteredStealerData.map((entry, index) => (
+                                        <tr
+                                            key={entry.id}
+                                            className="border-b border-[#29293a] group transition-all duration-150 hover:bg-gradient-to-r from-[#232339] to-[#f03262]/10"
+                                        >
+                                            <ExposedData entry={entry} />
+                                            <td className="py-4 px-4">
+                                                <span className="inline-flex items-center px-3 py-1 rounded-full bg-gradient-to-r from-gray-700 to-gray-800 text-gray-300 text-sm">
+                                                    {entry.source}
+                                                </span>
+                                            </td>
+                                            <td className="py-4 px-4">
+                                                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-gradient-to-r from-gray-700 to-gray-800 text-gray-400">
+                                                    {entry.lastBreach}
+                                                </span>
+                                            </td>
+                                            <td className="py-4 px-4 text-center">
+                                                <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
+                                                    {updatedIds[entry.id] === true ? (
+                                                        <button
+                                                            onClick={() => markAsValid(entry.id, false)}
+                                                            disabled={markingId === entry.id}
+                                                            className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white px-4 py-2 rounded-lg text-sm transition-all transform hover:scale-105 shadow-lg hover:shadow-red-500/20 flex items-center justify-center gap-1"
+                                                        >
+                                                            Mark as Not Valid
+                                                        </button>
+                                                    ) : updatedIds[entry.id] === false ? (
+                                                        <button
+                                                            onClick={() => markAsValid(entry.id, true)}
+                                                            disabled={markingId === entry.id}
+                                                            className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white px-4 py-2 rounded-lg text-sm transition-all transform hover:scale-105 shadow-lg hover:shadow-green-500/20 flex items-center justify-center gap-1"
+                                                        >
+                                                            Mark as Valid
+                                                        </button>
+                                                    ) : (
+                                                        <>
                                                             <button
                                                                 onClick={() => markAsValid(entry.id, true)}
                                                                 disabled={markingId === entry.id}
@@ -494,30 +490,21 @@ function StealerPageContent() {
                                                             >
                                                                 Mark as Valid
                                                             </button>
-                                                        ) : (
-                                                            <>
-                                                                <button
-                                                                    onClick={() => markAsValid(entry.id, true)}
-                                                                    disabled={markingId === entry.id}
-                                                                    className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white px-4 py-2 rounded-lg text-sm transition-all transform hover:scale-105 shadow-lg hover:shadow-green-500/20 flex items-center justify-center gap-1"
-                                                                >
-                                                                    Mark as Valid
-                                                                </button>
-                                                                <button
-                                                                    onClick={() => markAsValid(entry.id, false)}
-                                                                    disabled={markingId === entry.id}
-                                                                    className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white px-4 py-2 rounded-lg text-sm transition-all transform hover:scale-105 shadow-lg hover:shadow-red-500/20 flex items-center justify-center gap-1"
-                                                                >
-                                                                    Mark as Not Valid
-                                                                </button>
-                                                            </>
-                                                        )}
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                        </tbody>
-                                    </table>
+                                                            <button
+                                                                onClick={() => markAsValid(entry.id, false)}
+                                                                disabled={markingId === entry.id}
+                                                                className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white px-4 py-2 rounded-lg text-sm transition-all transform hover:scale-105 shadow-lg hover:shadow-red-500/20 flex items-center justify-center gap-1"
+                                                            >
+                                                                Mark as Not Valid
+                                                            </button>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    </tbody>
+                                </table>
                             ) : (
                                 showEmptyAlert && (
                                     <table
