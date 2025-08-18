@@ -4,8 +4,8 @@ export async function GET(req) {
     console.log("🔍 Proxy route accessed");
 
     // Retrieve search parameters from the URL
-    const {searchParams} = new URL(req.url);
-    const domain = searchParams.get('domain');
+    const { searchParams } = new URL(req.url);
+    const q = searchParams.get('q');
     const type = searchParams.get('type');
     const page = searchParams.get('page');
     const size = searchParams.get('size');
@@ -14,14 +14,14 @@ export async function GET(req) {
     const token = req.cookies.get("token")?.value;
     if (!token) {
         return new Response(
-            JSON.stringify({message: "Unauthorized: Token missing"}),
-            {status: 401, headers: {'Content-Type': 'application/json'}}
+            JSON.stringify({ message: "Unauthorized: Token missing" }),
+            { status: 401, headers: { 'Content-Type': 'application/json' } }
         );
     }
 
     // Forward token asli ke backend (jangan decode/jangan ambil .user)
     const res = await fetch(
-        `http://103.245.181.5:5001/do-search?domain=${encodeURIComponent(domain)}&type=${encodeURIComponent(type)}&page=${encodeURIComponent(page)}&size=${encodeURIComponent(size)}`,
+        `http://103.245.181.5:5001/search?q=${encodeURIComponent(q)}&type=${encodeURIComponent(type)}&page=${encodeURIComponent(page)}&size=${encodeURIComponent(size)}`,
         {
             headers: {
                 'Content-Type': 'application/json',

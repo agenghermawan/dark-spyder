@@ -175,9 +175,9 @@ export default function LeaksPage() {
     try {
       setIsLoading(true);
       const { page, size } = pagination;
-      const response = await fetch(
-          `/api/leaks?domain=${searchQuery}&type=breach&page=${page}&size=${size}`
-      );
+        const response = await fetch(
+            `/api/leaks?q=${encodeURIComponent(searchQuery)}&type=breach&page=${page}&size=${size}`
+        );
       if (response.status === 403) {
         const data = await response.json();
         setErrorModal({
@@ -374,11 +374,7 @@ export default function LeaksPage() {
                     value={searchInput}
                     onChange={(e) => setSearchInput(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                    placeholder={
-                      plan?.domain === "unlimited"
-                          ? "Search by Domain"
-                          : `Search by Domain (${userDomains[0] || "your domain"})`
-                    }
+                    placeholder="Search by name, email, domain, or keyword"
                     className="input-glass bg-black text-white placeholder-gray-500 border border-gray-700 flex-1 px-4 py-2 rounded-lg transition-all duration-300 focus:ring-2 focus:ring-[#0aafff] focus:border-transparent"
                 />
                 <button

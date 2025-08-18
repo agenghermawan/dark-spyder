@@ -440,7 +440,7 @@ function StealerPageContent() {
                                 <table className="w-full font-mono text-sm bg-gradient-to-br from-[#18181c] via-[#232339] to-[#18181c] border border-[#2e2e2e] rounded-xl shadow-2xl overflow-hidden">
                                     <thead>
                                     <tr className="text-left border-b border-[#2e2e2e] text-[#f03262] bg-gradient-to-r from-[#26263a] to-[#1e1e24]">
-                                        <th className="py-4 px-4" width="400">Exposed Data</th>
+                                        <th className="py-4 px-4" width="600">Exposed Data</th>
                                         <th className="py-4 px-4">Intel Source</th>
                                         <th className="py-4 px-4">Last Seen in Dump</th>
                                         <th className="py-4 px-4 text-center">Actions</th>
@@ -465,40 +465,53 @@ function StealerPageContent() {
                                             </td>
                                             <td className="py-4 px-4 text-center">
                                                 <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
-                                                    {updatedIds[entry.id] === true ? (
-                                                        <button
-                                                            onClick={() => markAsValid(entry.id, false)}
-                                                            disabled={markingId === entry.id}
-                                                            className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white px-4 py-2 rounded-lg text-sm transition-all transform hover:scale-105 shadow-lg hover:shadow-red-500/20 flex items-center justify-center gap-1"
-                                                        >
-                                                            Mark as Not Valid
-                                                        </button>
-                                                    ) : updatedIds[entry.id] === false ? (
-                                                        <button
-                                                            onClick={() => markAsValid(entry.id, true)}
-                                                            disabled={markingId === entry.id}
-                                                            className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white px-4 py-2 rounded-lg text-sm transition-all transform hover:scale-105 shadow-lg hover:shadow-green-500/20 flex items-center justify-center gap-1"
-                                                        >
-                                                            Mark as Valid
-                                                        </button>
-                                                    ) : (
-                                                        <>
-                                                            <button
-                                                                onClick={() => markAsValid(entry.id, true)}
-                                                                disabled={markingId === entry.id}
-                                                                className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white px-4 py-2 rounded-lg text-sm transition-all transform hover:scale-105 shadow-lg hover:shadow-green-500/20 flex items-center justify-center gap-1"
-                                                            >
-                                                                Mark as Valid
-                                                            </button>
-                                                            <button
-                                                                onClick={() => markAsValid(entry.id, false)}
-                                                                disabled={markingId === entry.id}
-                                                                className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white px-4 py-2 rounded-lg text-sm transition-all transform hover:scale-105 shadow-lg hover:shadow-red-500/20 flex items-center justify-center gap-1"
-                                                            >
-                                                                Mark as Not Valid
-                                                            </button>
-                                                        </>
-                                                    )}
+                                                    {(() => {
+                                                        const effectiveValid =
+                                                            updatedIds[entry.id] !== undefined ? updatedIds[entry.id] : entry.valid;
+                                                        if (effectiveValid === true) {
+                                                            // Sudah valid → tampilkan "Mark as Not Valid"
+                                                            return (
+                                                                <button
+                                                                    onClick={() => markAsValid(entry.id, false)}
+                                                                    disabled={markingId === entry.id}
+                                                                    className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white px-4 py-2 rounded-lg text-sm transition-all transform hover:scale-105 shadow-lg hover:shadow-red-500/20 flex items-center justify-center gap-1"
+                                                                >
+                                                                    Mark as Not Valid
+                                                                </button>
+                                                            );
+                                                        }
+                                                        if (effectiveValid === false) {
+                                                            // Belum valid → tampilkan "Mark as Valid"
+                                                            return (
+                                                                <button
+                                                                    onClick={() => markAsValid(entry.id, true)}
+                                                                    disabled={markingId === entry.id}
+                                                                    className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white px-4 py-2 rounded-lg text-sm transition-all transform hover:scale-105 shadow-lg hover:shadow-green-500/20 flex items-center justify-center gap-1"
+                                                                >
+                                                                    Mark as Valid
+                                                                </button>
+                                                            );
+                                                        }
+                                                        // undefined/null: tampilkan dua button
+                                                        return (
+                                                            <>
+                                                                <button
+                                                                    onClick={() => markAsValid(entry.id, true)}
+                                                                    disabled={markingId === entry.id}
+                                                                    className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white px-4 py-2 rounded-lg text-sm transition-all transform hover:scale-105 shadow-lg hover:shadow-green-500/20 flex items-center justify-center gap-1"
+                                                                >
+                                                                    Mark as Valid
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => markAsValid(entry.id, false)}
+                                                                    disabled={markingId === entry.id}
+                                                                    className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white px-4 py-2 rounded-lg text-sm transition-all transform hover:scale-105 shadow-lg hover:shadow-red-500/20 flex items-center justify-center gap-1"
+                                                                >
+                                                                    Mark as Not Valid
+                                                                </button>
+                                                            </>
+                                                        );
+                                                    })()}
                                                 </div>
                                             </td>
                                         </tr>

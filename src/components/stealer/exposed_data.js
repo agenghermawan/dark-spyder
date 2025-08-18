@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useLayoutEffect } from "react";
 
 function ExposedData({ entry }) {
     const [copied, setCopied] = useState("");
@@ -26,7 +26,7 @@ function ExposedData({ entry }) {
                     </span>
                     {copied === "identity" && (
                         <span
-                                className="absolute left-1/2 -translate-x-1/2 -top-7 px-2 py-1 text-xs bg-black/80 text-white rounded shadow-lg z-10 animate-fade-in-up">
+                            className="absolute left-1/2 -translate-x-1/2 -top-7 px-2 py-1 text-xs bg-black/80 text-white rounded shadow-lg z-10 animate-fade-in-up">
                             Copied!
                         </span>
                     )}
@@ -45,34 +45,80 @@ function ExposedData({ entry }) {
                     </span>
                     {copied === "password" && (
                         <span
-                                className="absolute left-1/2 -translate-x-1/2 -top-7 px-2 py-1 text-xs bg-black/80 text-white rounded shadow-lg z-10 animate-fade-in-up">
+                            className="absolute left-1/2 -translate-x-1/2 -top-7 px-2 py-1 text-xs bg-black/80 text-white rounded shadow-lg z-10 animate-fade-in-up">
                             Copied!
                         </span>
                     )}
                 </div>
                 {/* Origin */}
-                <div
-                    className="flex items-center cursor-pointer group"
-                    title="Go to origin"
-                    onClick={() => {
-                        if (entry.origin) {
-                            let url = entry.origin;
-                            if (!/^https?:\/\//i.test(url)) {
-                                url = "https://" + url;
-                            }
-                            window.open(url, "_blank");
-                        }
-                    }}
-                >
-                    <span className="text-xs bg-gradient-to-r from-blue-600 to-blue-800 px-2 py-1 rounded mr-2">
-                        🌐 origin
-                    </span>
-                    <span className="group-hover:text-blue-300 transition-colors underline break-all">
-                        <DomainList domainsString={entry.origin} limit={3} />
-                    </span>
-                </div>
+                <OriginCell origin={entry.origin} />
             </div>
         </td>
+    );
+}
+
+function OriginCell({ origin }) {
+    const [isHover, setIsHover] = useState(false);
+    const [showAbove, setShowAbove] = useState(false);
+    const cellRef = useRef(null);
+
+    // Ambil domain pertama saja buat href (jika lebih dari satu, pakai pertama)
+    let first = "";
+    if (origin) {
+        first = origin.split(",")[0]?.trim() ?? "";
+    }
+    let href = first;
+    if (href && !/^https?:\/\//i.test(href)) href = "https://" + href;
+
+    // Detect if tooltip at bottom would overflow, show above if necessary
+    useLayoutEffect(() => {
+        if (!isHover) return;
+        const el = cellRef.current;
+        if (!el) return;
+        const rect = el.getBoundingClientRect();
+        const tooltipHeight = 56; // approx min height px, you can adjust as needed
+        const margin = 12;
+        if (window.innerHeight - rect.bottom < tooltipHeight + margin) {
+            setShowAbove(true);
+        } else {
+            setShowAbove(false);
+        }
+    }, [isHover]);
+
+    return (
+        <div
+            className="flex items-center group relative"
+            ref={cellRef}
+            onMouseEnter={() => setIsHover(true)}
+            onMouseLeave={() => setIsHover(false)}
+        >
+            <span className="text-xs bg-gradient-to-r from-blue-600 to-blue-800 px-2 py-1 rounded mr-2">
+                🌐 origin
+            </span>
+            <a
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group-hover:text-blue-300 underline transition-colors break-all relative max-w-[600px] whitespace-nowrap overflow-hidden text-ellipsis block"
+                title={origin}
+                onClick={e => { e.stopPropagation(); }}
+            >
+                <DomainList domainsString={origin} limit={3} />
+            </a>
+            {/* Tooltip on hover */}
+            {(isHover && !!origin) && (
+                <span
+                    className={
+                        "absolute left-0 z-30 bg-[#232339] text-white px-3 py-2 rounded shadow-xl min-w-[220px] max-w-[600px] break-words text-xs border border-blue-500 animate-fade-in-up select-text"
+                        + (showAbove ? " mb-2 bottom-full" : " mt-2 top-full")
+                    }
+                    style={{whiteSpace:"pre-line"}}
+                    onClick={e => e.stopPropagation()}
+                >
+                    {origin}
+                </span>
+            )}
+        </div>
     );
 }
 
@@ -84,7 +130,6 @@ const DomainList = ({ domainsString, limit = 3 }) => {
 
     if (domains.length === 0) return <span>-</span>;
 
-    // Untuk tampilan "..." lebih elegan, gunakan ellipsis bukan ", ..."
     const shown = domains.slice(0, limit).join(", ");
     const needEllipsis = domains.length > limit;
 
@@ -96,7 +141,7 @@ const DomainList = ({ domainsString, limit = 3 }) => {
                     <>
                         <span
                             style={{
-                                maxWidth: 140,
+                                maxWidth: 600,
                                 display: "inline-block",
                                 whiteSpace: "nowrap",
                                 overflow: "hidden",
