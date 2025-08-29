@@ -377,10 +377,6 @@ export default function PaymentFlowModalPricing({
                                 <span>{paymentData?.BlockchainCode?.toUpperCase()}</span>
                             </div>
                             <div className="text-white mb-2">
-                                <b>Fee:</b> <br />
-                                <span>{paymentData?.Fee || "0"}</span>
-                            </div>
-                            <div className="text-white mb-2">
                                 <b>Payment ID:</b> <br />
                                 <span>{paymentData?.Id || "-"}</span>
                             </div>

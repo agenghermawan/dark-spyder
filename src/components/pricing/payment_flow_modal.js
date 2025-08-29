@@ -20,8 +20,8 @@ function ModalHeaderSVG() {
                 viewBox="0 0 80 80"
                 fill="none"
             >
-                <ellipse cx="40" cy="44" rx="28" ry="18" fill="#232339" />
-                <ellipse cx="40" cy="40" rx="32" ry="22" stroke="#f03262" strokeWidth="2" />
+                <ellipse cx="40" cy="44" rx="28" ry="18" fill="#232339"/>
+                <ellipse cx="40" cy="40" rx="32" ry="22" stroke="#f03262" strokeWidth="2"/>
                 <path
                     d="M40 22v14"
                     stroke="#f03262"
@@ -29,8 +29,8 @@ function ModalHeaderSVG() {
                     strokeLinecap="round"
                     className="animate-bounce"
                 />
-                <circle cx="40" cy="58" r="3.5" fill="#f03262" />
-                <rect x="28" y="32" width="24" height="10" rx="5" fill="#18181c" stroke="#f03262" strokeWidth="2" />
+                <circle cx="40" cy="58" r="3.5" fill="#f03262"/>
+                <rect x="28" y="32" width="24" height="10" rx="5" fill="#18181c" stroke="#f03262" strokeWidth="2"/>
                 <path d="M32 52c8 6 8 6 16 0" stroke="#f03262" strokeWidth="2" strokeLinecap="round"/>
             </svg>
         </div>
@@ -38,15 +38,15 @@ function ModalHeaderSVG() {
 }
 
 export default function PaymentFlowModal({
-    show,
-    onClose,
-    invoiceId,
-    idPricing,
-    plan,
-    paymentData: propPaymentData,
-    forceRegisterDomain = false,
-    domainLimit = 1,
-}) {
+                                             show,
+                                             onClose,
+                                             invoiceId,
+                                             idPricing,
+                                             plan,
+                                             paymentData: propPaymentData,
+                                             forceRegisterDomain = false,
+                                             domainLimit = 1,
+                                         }) {
     // asset selection state (if payment belum ada)
     const [assets, setAssets] = useState([]);
     const [loadingAssets, setLoadingAssets] = useState(false);
@@ -245,14 +245,15 @@ export default function PaymentFlowModal({
         <div className="fixed inset-0 z-50 bg-black bg-opacity-70 flex items-center justify-center px-4">
             <div
                 className="relative w-full max-w-3xl bg-gradient-to-br from-[#18181c] via-[#232339] to-[#18181c] rounded-3xl shadow-2xl p-8 animate-fade-in-up border border-[#29293a] flex flex-col"
-                style={{ maxHeight: "90vh" }}
+                style={{maxHeight: "90vh"}}
             >
                 <button
                     className="absolute top-4 right-6 text-gray-400 hover:text-white text-3xl"
                     onClick={onClose}
                     aria-label="Close"
-                >×</button>
-                <ModalHeaderSVG />
+                >×
+                </button>
+                <ModalHeaderSVG/>
                 <h2 className="text-3xl font-extrabold text-white mb-2 text-center tracking-wide drop-shadow-lg">
                     Payment & Domain Registration
                 </h2>
@@ -263,7 +264,7 @@ export default function PaymentFlowModal({
                     <div className="bg-red-900 text-red-200 p-2 rounded mb-4 text-center">{assetsError}</div>
                 )}
 
-                <div className="flex-1 overflow-y-auto custom-scrollbar" style={{ minHeight: 0 }}>
+                <div className="flex-1 overflow-y-auto custom-scrollbar" style={{minHeight: 0}}>
                     {showRegisterForm ? (
                         <div className="mt-6 border-t border-gray-700 pt-4">
                             <h3 className="text-xl font-bold text-white mb-3">Register Domains to Monitor</h3>
@@ -293,7 +294,8 @@ export default function PaymentFlowModal({
                                     className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded text-white text-lg font-bold mt-1"
                                     onClick={handleAddDomain}
                                     disabled={domains.length >= domainLimit}
-                                >+ Add Domain</button>
+                                >+ Add Domain
+                                </button>
                                 {domains.length >= domainLimit && (
                                     <div className="text-xs text-yellow-400 mt-1">
                                         Maximum {domainLimit} domains allowed for this plan.
@@ -393,26 +395,24 @@ export default function PaymentFlowModal({
                                     )}
                                 </div>
                                 <div className="text-white mb-2">
-                                    <b>Amount:</b> <br />
+                                    <b>Amount:</b> <br/>
                                     <span className="font-mono text-yellow-300 text-lg">
                                         {formatAmount(paymentData?.Amount, decimals)} {paymentData?.AssetCode?.toUpperCase()}
                                     </span>
                                 </div>
                                 <div className="text-white mb-2">
-                                    <b>Blockchain:</b> <br />
+                                    <b>Blockchain:</b> <br/>
                                     <span>{paymentData?.BlockchainCode?.toUpperCase()}</span>
                                 </div>
                                 <div className="text-white mb-2">
-                                    <b>Fee:</b> <br />
-                                    <span>{paymentData?.Fee || "0"}</span>
-                                </div>
-                                <div className="text-white mb-2">
-                                    <b>Payment ID:</b> <br />
+                                    <b>Payment ID:</b> <br/>
                                     <span>{paymentData?.Id || "-"}</span>
                                 </div>
                                 <div className="bg-yellow-900 text-yellow-300 rounded p-2 text-md mt-4 font-mono">
-                                    <b>Important:</b> The amount you transfer must <u>exactly</u> match the value shown above (including all decimals).<br />
-                                    If you use an exchange (e.g., Binance) that charges a withdrawal fee, <u>add the fee to your transfer amount</u> so that we receive the exact required amount.<br />
+                                    <b>Important:</b> The amount you transfer must <u>exactly</u> match the value shown
+                                    above (including all decimals).<br/>
+                                    If you use an exchange (e.g., Binance) that charges a withdrawal fee, <u>add the fee
+                                    to your transfer amount</u> so that we receive the exact required amount.<br/>
                                     <b>No refund</b> will be issued if the amount received is incorrect.
                                 </div>
                             </div>
@@ -428,7 +428,7 @@ export default function PaymentFlowModal({
                                 {statusError && <div className="text-red-400 mt-2">{statusError}</div>}
                                 {notPaidError && (
                                     <div className="text-yellow-400 mt-4">
-                                        Your payment has not been received yet. Please try again in a few moments.<br />
+                                        Your payment has not been received yet. Please try again in a few moments.<br/>
                                     </div>
                                 )}
                             </div>
@@ -462,7 +462,8 @@ export default function PaymentFlowModal({
                                             className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded text-white text-lg font-bold mt-1"
                                             onClick={handleAddDomain}
                                             disabled={domains.length >= domainLimit}
-                                        >+ Add Domain</button>
+                                        >+ Add Domain
+                                        </button>
                                         {domains.length >= domainLimit && (
                                             <div className="text-xs text-yellow-400 mt-1">
                                                 Maximum {domainLimit} domains allowed for this plan.
@@ -490,23 +491,34 @@ export default function PaymentFlowModal({
             </div>
             <style jsx>{`
                 .animate-fade-in-up {
-                    animation: fadeInUp .4s cubic-bezier(.33,1,.68,1);
+                    animation: fadeInUp .4s cubic-bezier(.33, 1, .68, 1);
                 }
+
                 @keyframes fadeInUp {
-                    from { opacity:0; transform:translateY(24px) scale(0.96);}
-                    to { opacity:1; transform:translateY(0) scale(1);}
+                    from {
+                        opacity: 0;
+                        transform: translateY(24px) scale(0.96);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateY(0) scale(1);
+                    }
                 }
+
                 .custom-scrollbar {
                     scrollbar-width: thin;
                     scrollbar-color: #f03262 #232339;
                 }
+
                 .custom-scrollbar::-webkit-scrollbar {
                     width: 8px;
                 }
+
                 .custom-scrollbar::-webkit-scrollbar-thumb {
                     background: #f03262;
                     border-radius: 8px;
                 }
+
                 .custom-scrollbar::-webkit-scrollbar-track {
                     background: #232339;
                 }

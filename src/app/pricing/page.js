@@ -1,9 +1,8 @@
 "use client";
 import { useState, useEffect } from "react";
 import Script from "next/script";
-import Navbar from "../../components/navbar";
-import Footer from "../../components/footer";
 import PaymentFlowModalPricing from "../../components/pricing/payment_flow_modal_pricing";
+import {useAuth} from "../../context/AuthContext";
 
 const HARDCODE_PRICING = [
     {
@@ -139,8 +138,7 @@ const HARDCODE_PRICING = [
 ];
 
 export default function PricingPage() {
-    // Auth & plan
-    const [authState, setAuthState] = useState("loading");
+    const { authState } = useAuth(); // Ambil status login dari context
     const [currentPlan, setCurrentPlan] = useState(null);
 
     // Pricing
@@ -155,28 +153,24 @@ export default function PricingPage() {
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [modalProps, setModalProps] = useState({});
 
-    // Fetch user info & plan
+    // Fetch current plan after login
     useEffect(() => {
-        const checkLoginStatus = async () => {
+        if (authState !== "authenticated") {
+            setCurrentPlan(null);
+            return;
+        }
+        (async () => {
             try {
-                const res = await fetch("/api/me", { credentials: "include" });
-                if (res.ok) {
-                    setAuthState("authenticated");
-                    // Use /api/my-plan as reference
-                    const planRes = await fetch("/api/my-plan", { credentials: "include" });
-                    if (planRes.ok) {
-                        const planData = await planRes.json();
-                        setCurrentPlan(planData.data);
-                    }
-                } else {
-                    setAuthState("unauthenticated");
+                const planRes = await fetch("/api/my-plan", { credentials: "include" });
+                if (planRes.ok) {
+                    const planData = await planRes.json();
+                    setCurrentPlan(planData.data);
                 }
             } catch {
-                setAuthState("unauthenticated");
+                setCurrentPlan(null);
             }
-        };
-        checkLoginStatus();
-    }, []);
+        })();
+    }, [authState]);
 
     // Fetch pricing
     useEffect(() => {
@@ -297,8 +291,7 @@ export default function PricingPage() {
 
     return (
         <div className="relative overflow-x-hidden">
-            <Script src="https://atlos.io/packages/app/atlos.js" strategy="afterInteractive"/>
-            <Navbar/>
+            <Script src="https://atlos.io/packages/app/atlos.js" strategy="afterInteractive" />
 
             {/* Payment Modal */}
             <PaymentFlowModalPricing {...modalProps} show={showPaymentModal} />
@@ -376,7 +369,7 @@ export default function PricingPage() {
 
             {/* -------- ACTIVE PLAN NOTIF -------- */}
             {authState === "authenticated" && currentPlan && isPlanActive && (
-                <div className="fixed top-4 right-4 z-50 bg-green-500/95 text-white py-3 px-6 rounded-xl flex items-center gap-3 shadow-2xl border border-green-600 animate-fade-in-up">
+                <div className="fixed top-24 left-4 z-50 bg-green-500/95 text-white py-3 px-6 rounded-xl flex items-center gap-3 shadow-2xl border border-green-600 animate-fade-in-up">
                     <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24">
                         <circle cx="12" cy="12" r="10" fill="#22c55e" />
                         <path d="M8 12.5l2.5 2L16 9" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -522,7 +515,6 @@ export default function PricingPage() {
                     )}
                 </div>
             </section>
-            <Footer/>
         </div>
     );
 }

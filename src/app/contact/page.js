@@ -19,7 +19,6 @@ export default function ContactPage() {
 
     return (
         <>
-            <Navbar/>
             <section className="min-h-screen bg-[#0D0D10] py-16 px-4 flex items-center justify-center">
                 <div className="max-w-5xl w-full bg-[#181820] rounded-2xl shadow-2xl grid grid-cols-1 md:grid-cols-2 overflow-hidden">
                     {/* Info/Branding */}

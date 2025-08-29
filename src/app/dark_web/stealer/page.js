@@ -1,18 +1,14 @@
 "use client";
 import { Suspense, useState, useEffect, useRef } from "react";
-import { gsap } from "gsap";
-import { ScrollToPlugin } from "gsap/ScrollToPlugin";
-import { MotionPathPlugin } from "gsap/MotionPathPlugin";
-import Navbar from "../../../components/navbar";
+import { useAuth } from "../../../context/AuthContext";
 import LoadingSpinner from "../../../components/ui/loading-spinner";
 import { useRouter } from "next/navigation";
 import ExposedData from "../../../components/stealer/exposed_data";
 import CyberParticles from "../../../components/stealer/stealer_particles";
+import StealerDetailModal from "../../../components/stealer/stealer_detail_modal";
 
-gsap.registerPlugin(ScrollToPlugin, MotionPathPlugin);
-
-// Modal alert component
-function ErrorModal({ show, message, onClose, userDomains, plan }) {
+// ErrorModal Component
+function ErrorModal({show, message, onClose, userDomains, plan}) {
     if (!show) return null;
     const isExpired = message && message.toLowerCase().includes("expired");
     const isNotAllowed = message && (
@@ -29,29 +25,33 @@ function ErrorModal({ show, message, onClose, userDomains, plan }) {
                     className="absolute top-2 right-3 text-gray-400 hover:text-white text-2xl"
                     onClick={onClose}
                     aria-label="Close"
-                >×</button>
+                >×
+                </button>
                 <div className="mb-2 mt-2 flex justify-center">
                     {isExpired ? (
-                        // SVG for expired/timeout/clock
                         <svg width="60" height="60" fill="none" viewBox="0 0 60 60">
-                            <circle cx="30" cy="30" r="27" stroke="#f03262" strokeWidth="3" fill="#18181c" />
-                            <path d="M30 17v13l9 6" stroke="#f03262" strokeWidth="2.5" strokeLinecap="round" />
-                            <circle cx="30" cy="30" r="23" stroke="#fff" strokeDasharray="2 6" opacity="0.2" />
+                            <circle cx="30" cy="30" r="27" stroke="#f03262" strokeWidth="3" fill="#18181c"/>
+                            <path d="M30 17v13l9 6" stroke="#f03262" strokeWidth="2.5" strokeLinecap="round"/>
+                            <circle cx="30" cy="30" r="23" stroke="#fff" strokeDasharray="2 6" opacity="0.2"/>
                             <g>
-                                <circle cx="30" cy="30" r="10" fill="#f03262" fillOpacity="0.08" />
-                                <path d="M24 38c2.7 2.5 9.3 2.5 12 0" stroke="#f03262" strokeWidth="2" strokeLinecap="round" />
-                                <ellipse cx="30" cy="28" rx="1.8" ry="1.8" fill="#fff" />
+                                <circle cx="30" cy="30" r="10" fill="#f03262" fillOpacity="0.08"/>
+                                <path d="M24 38c2.7 2.5 9.3 2.5 12 0" stroke="#f03262" strokeWidth="2"
+                                      strokeLinecap="round"/>
+                                <ellipse cx="30" cy="28" rx="1.8" ry="1.8" fill="#fff"/>
                             </g>
-                            <text x="30" y="54" textAnchor="middle" fontSize="12" fill="#f03262" fontWeight="bold">EXPIRED</text>
+                            <text x="30" y="54" textAnchor="middle" fontSize="12" fill="#f03262"
+                                  fontWeight="bold">EXPIRED
+                            </text>
                         </svg>
                     ) : (
-                        // Default domain not allowed icon (your existing one)
                         <svg width="56" height="56" viewBox="0 0 56 56" fill="none" className="drop-shadow-xl">
-                            <circle cx="28" cy="28" r="26" fill="#18181c" stroke="#f03262" strokeWidth="2" />
-                            <rect x="18" y="24" width="20" height="14" rx="4" fill="#232339" stroke="#f03262" strokeWidth="1.5" />
-                            <path d="M28 31v-3" stroke="#f03262" strokeWidth="2" strokeLinecap="round" />
-                            <circle cx="28" cy="31" r="2" fill="#f03262" />
-                            <rect x="23" y="22" width="10" height="6" rx="3" fill="#101014" stroke="#f03262" strokeWidth="1" />
+                            <circle cx="28" cy="28" r="26" fill="#18181c" stroke="#f03262" strokeWidth="2"/>
+                            <rect x="18" y="24" width="20" height="14" rx="4" fill="#232339" stroke="#f03262"
+                                  strokeWidth="1.5"/>
+                            <path d="M28 31v-3" stroke="#f03262" strokeWidth="2" strokeLinecap="round"/>
+                            <circle cx="28" cy="31" r="2" fill="#f03262"/>
+                            <rect x="23" y="22" width="10" height="6" rx="3" fill="#101014" stroke="#f03262"
+                                  strokeWidth="1"/>
                         </svg>
                     )}
                 </div>
@@ -91,9 +91,9 @@ export default function Page() {
 
 function StealerPageContent() {
     const router = useRouter();
+    const { authState } = useAuth();
 
-    // Auth & Plan
-    const [authState, setAuthState] = useState("loading");
+    // Plan & domain
     const [plan, setPlan] = useState(null);
     const [userDomains, setUserDomains] = useState([]);
     const [domainLoaded, setDomainLoaded] = useState(false);
@@ -120,36 +120,42 @@ function StealerPageContent() {
     const [markingId, setMarkingId] = useState(null);
     const [updatedIds, setUpdatedIds] = useState({});
 
+    // Modal detail: simpan hanya id
+    const [detailModal, setDetailModal] = useState({ show: false, id: null });
+
     const resultsRef = useRef(null);
     const tableRef = useRef(null);
 
-    // Check authentication & fetch plan/domains
+    // Fetch plan & domain only (auth sudah dari context)
     useEffect(() => {
+        if (authState !== "authenticated") {
+            setDomainLoaded(true);
+            return;
+        }
         let ignore = false;
         (async () => {
             try {
-                const res = await fetch("/api/me", { credentials: "include" });
-                setAuthState(res.ok ? "authenticated" : "unauthenticated");
-                if (res.ok) {
-                    const planRes = await fetch("/api/my-plan", { credentials: "include" });
-                    if (planRes.ok) {
-                        const planData = await planRes.json();
-                        setPlan(planData.data);
-                        if (planData.data?.domain !== "unlimited") {
-                            const domains = Array.isArray(planData.data?.registered_domain) ? planData.data.registered_domain : [];
-                            setUserDomains(domains);
-                            if (!domain && domains.length > 0) setDomain(domains[0]);
-                        }
+                const planRes = await fetch("/api/my-plan", { credentials: "include" });
+                if (planRes.ok) {
+                    const planData = await planRes.json();
+                    setPlan(planData.data);
+                    setHasSubscription(!!planData.data);
+                    if (planData.data?.domain !== "unlimited") {
+                        const domains = Array.isArray(planData.data?.registered_domain) ? planData.data.registered_domain : [];
+                        setUserDomains(domains);
+                        if (!domain && domains.length > 0) setDomain(domains[0]);
                     }
+                } else {
+                    setHasSubscription(false);
                 }
-            } catch {
-                setAuthState("unauthenticated");
             } finally {
                 if (!ignore) setDomainLoaded(true);
             }
         })();
-        return () => { ignore = true; };
-    }, []);
+        return () => {
+            ignore = true;
+        };
+    }, [authState]);
 
     // Fetch stealer data from API (domain, page, size)
     const fetchStealerData = async ({ domain: domainParam, page = 1, size = 10 }) => {
@@ -242,7 +248,7 @@ function StealerPageContent() {
             router.push("/login");
             return;
         }
-        if (!domain.trim()) return; // Prevent search if input empty
+        if (!domain.trim()) return;
         setPagination((prev) => ({ ...prev, page: 1 }));
         await fetchStealerData({ domain, page: 1, size: pagination.size });
     };
@@ -318,10 +324,18 @@ function StealerPageContent() {
         )
         : stealerData;
 
-    // UI
+    // Cari entry terbaru untuk modal (ALWAYS up-to-date)
+    const currentEntry = filteredStealerData.find(e => e.id === detailModal.id);
+    const effectiveValid =
+        currentEntry && updatedIds[currentEntry.id] !== undefined
+            ? updatedIds[currentEntry.id]
+            : currentEntry?.valid;
+    const entryForModal = currentEntry
+        ? { ...currentEntry, valid: effectiveValid }
+        : null;
+
     return (
         <div>
-            <Navbar />
             <ErrorModal
                 show={errorModal.show}
                 message={errorModal.message}
@@ -329,9 +343,15 @@ function StealerPageContent() {
                 userDomains={userDomains}
                 plan={plan}
             />
+            <StealerDetailModal
+                show={detailModal.show}
+                entry={entryForModal}
+                onClose={() => setDetailModal({ show: false, id: null })}
+            />
             <div className="relative h-screen w-full">
                 <CyberParticles />
-                <section className="absolute inset-0 flex items-center justify-center px-4 sm:px-6 lg:px-8 text-white z-10">
+                <section
+                    className="absolute inset-0 flex items-center justify-center px-4 sm:px-6 lg:px-8 text-white z-10">
                     <div className="max-w-3xl mx-auto text-center">
                         <h2 className="text-4xl font-bold mb-4">Uncover Hidden Credentials</h2>
                         <p className="text-xl mb-8 text-gray-300">
@@ -339,7 +359,8 @@ function StealerPageContent() {
                                 ? "Full access to all compromised credentials"
                                 : "Subscribe to unlock full access to breach data"}
                         </p>
-                        <div className="flex flex-row gap-2 max-w-xl mx-auto shadow-lg rounded-lg overflow-hidden w-full">
+                        <div
+                            className="flex flex-row gap-2 max-w-xl mx-auto shadow-lg rounded-lg overflow-hidden w-full">
                             <input
                                 type="text"
                                 value={domain}
@@ -437,7 +458,8 @@ function StealerPageContent() {
                         </div>
                         <div className="overflow-x-auto" ref={tableRef}>
                             {filteredStealerData.length > 0 ? (
-                                <table className="w-full font-mono text-sm bg-gradient-to-br from-[#18181c] via-[#232339] to-[#18181c] border border-[#2e2e2e] rounded-xl shadow-2xl overflow-hidden">
+                                <table
+                                    className="w-full font-mono text-sm bg-gradient-to-br from-[#18181c] via-[#232339] to-[#18181c] border border-[#2e2e2e] rounded-xl shadow-2xl overflow-hidden">
                                     <thead>
                                     <tr className="text-left border-b border-[#2e2e2e] text-[#f03262] bg-gradient-to-r from-[#26263a] to-[#1e1e24]">
                                         <th className="py-4 px-4" width="600">Exposed Data</th>
@@ -447,87 +469,94 @@ function StealerPageContent() {
                                     </tr>
                                     </thead>
                                     <tbody>
-                                    {filteredStealerData.map((entry, index) => (
-                                        <tr
-                                            key={entry.id}
-                                            className="border-b border-[#29293a] group transition-all duration-150 hover:bg-gradient-to-r from-[#232339] to-[#f03262]/10"
-                                        >
-                                            <ExposedData entry={entry} />
-                                            <td className="py-4 px-4">
-                                                <span className="inline-flex items-center px-3 py-1 rounded-full bg-gradient-to-r from-gray-700 to-gray-800 text-gray-300 text-sm">
-                                                    {entry.source}
-                                                </span>
-                                            </td>
-                                            <td className="py-4 px-4">
-                                                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-gradient-to-r from-gray-700 to-gray-800 text-gray-400">
-                                                    {entry.lastBreach}
-                                                </span>
-                                            </td>
-                                            <td className="py-4 px-4 text-center">
-                                                <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
-                                                    {(() => {
-                                                        const effectiveValid =
-                                                            updatedIds[entry.id] !== undefined ? updatedIds[entry.id] : entry.valid;
-                                                        if (effectiveValid === true) {
-                                                            // Sudah valid → tampilkan "Mark as Not Valid"
+                                    {filteredStealerData.map((entry, index) => {
+                                        const effectiveValid = updatedIds[entry.id] !== undefined
+                                            ? updatedIds[entry.id]
+                                            : entry.valid;
+                                        return (
+                                            <tr
+                                                key={entry.id}
+                                                className="border-b border-[#29293a] group transition-all duration-150 hover:bg-gradient-to-r from-[#232339] to-[#f03262]/10"
+                                            >
+                                                <ExposedData entry={entry} />
+                                                <td className="py-4 px-4">
+                                                    <span
+                                                        className="inline-flex items-center px-3 py-1 rounded-full bg-gradient-to-r from-gray-700 to-gray-800 text-gray-300 text-sm">
+                                                        {entry.source}
+                                                    </span>
+                                                </td>
+                                                <td className="py-4 px-4">
+                                                    <span
+                                                        className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-gradient-to-r from-gray-700 to-gray-800 text-gray-400">
+                                                        {entry.lastBreach}
+                                                    </span>
+                                                </td>
+                                                <td className="py-4 px-4 text-center">
+                                                    <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
+                                                        <button
+                                                            onClick={() => setDetailModal({ show: true, id: entry.id })}
+                                                            className="bg-gradient-to-r from-[#18181c] to-[#f03262]/60 hover:from-[#232339] hover:to-[#f03262] text-pink-300 border border-[#f03262] px-4 py-2 rounded-lg text-sm transition-all hover:scale-105 font-bold shadow-lg mr-2"
+                                                        >
+                                                            More Detail
+                                                        </button>
+                                                        {(() => {
+                                                            if (effectiveValid === true) {
+                                                                return (
+                                                                    <button
+                                                                        onClick={() => markAsValid(entry.id, false)}
+                                                                        disabled={markingId === entry.id}
+                                                                        className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white px-4 py-2 rounded-lg text-sm transition-all transform hover:scale-105 shadow-lg hover:shadow-red-500/20 flex items-center justify-center gap-1"
+                                                                    >
+                                                                        Mark as Not Valid
+                                                                    </button>
+                                                                );
+                                                            }
+                                                            if (effectiveValid === false) {
+                                                                return (
+                                                                    <button
+                                                                        onClick={() => markAsValid(entry.id, true)}
+                                                                        disabled={markingId === entry.id}
+                                                                        className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white px-4 py-2 rounded-lg text-sm transition-all transform hover:scale-105 shadow-lg hover:shadow-green-500/20 flex items-center justify-center gap-1"
+                                                                    >
+                                                                        Mark as Valid
+                                                                    </button>
+                                                                );
+                                                            }
                                                             return (
-                                                                <button
-                                                                    onClick={() => markAsValid(entry.id, false)}
-                                                                    disabled={markingId === entry.id}
-                                                                    className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white px-4 py-2 rounded-lg text-sm transition-all transform hover:scale-105 shadow-lg hover:shadow-red-500/20 flex items-center justify-center gap-1"
-                                                                >
-                                                                    Mark as Not Valid
-                                                                </button>
+                                                                <>
+                                                                    <button
+                                                                        onClick={() => markAsValid(entry.id, true)}
+                                                                        disabled={markingId === entry.id}
+                                                                        className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white px-4 py-2 rounded-lg text-sm transition-all transform hover:scale-105 shadow-lg hover:shadow-green-500/20 flex items-center justify-center gap-1"
+                                                                    >
+                                                                        Mark as Valid
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => markAsValid(entry.id, false)}
+                                                                        disabled={markingId === entry.id}
+                                                                        className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white px-4 py-2 rounded-lg text-sm transition-all transform hover:scale-105 shadow-lg hover:shadow-red-500/20 flex items-center justify-center gap-1"
+                                                                    >
+                                                                        Mark as Not Valid
+                                                                    </button>
+                                                                </>
                                                             );
-                                                        }
-                                                        if (effectiveValid === false) {
-                                                            // Belum valid → tampilkan "Mark as Valid"
-                                                            return (
-                                                                <button
-                                                                    onClick={() => markAsValid(entry.id, true)}
-                                                                    disabled={markingId === entry.id}
-                                                                    className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white px-4 py-2 rounded-lg text-sm transition-all transform hover:scale-105 shadow-lg hover:shadow-green-500/20 flex items-center justify-center gap-1"
-                                                                >
-                                                                    Mark as Valid
-                                                                </button>
-                                                            );
-                                                        }
-                                                        // undefined/null: tampilkan dua button
-                                                        return (
-                                                            <>
-                                                                <button
-                                                                    onClick={() => markAsValid(entry.id, true)}
-                                                                    disabled={markingId === entry.id}
-                                                                    className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white px-4 py-2 rounded-lg text-sm transition-all transform hover:scale-105 shadow-lg hover:shadow-green-500/20 flex items-center justify-center gap-1"
-                                                                >
-                                                                    Mark as Valid
-                                                                </button>
-                                                                <button
-                                                                    onClick={() => markAsValid(entry.id, false)}
-                                                                    disabled={markingId === entry.id}
-                                                                    className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white px-4 py-2 rounded-lg text-sm transition-all transform hover:scale-105 shadow-lg hover:shadow-red-500/20 flex items-center justify-center gap-1"
-                                                                >
-                                                                    Mark as Not Valid
-                                                                </button>
-                                                            </>
-                                                        );
-                                                    })()}
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
+                                                        })()}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
                                     </tbody>
                                 </table>
                             ) : (
                                 showEmptyAlert && (
                                     <table
                                         className="min-w-full bg-gradient-to-br from-[#111215]/90 via-[#1a1b20]/90 to-[#111215]/90 backdrop-blur-lg text-white rounded-xl shadow-2xl font-mono border border-[#2e2e2e] overflow-hidden">
-
                                         <thead>
                                         <tr className="text-left border-b border-gray-700 text-gray-400 bg-gradient-to-r from-[#1e1e24] to-[#2a2a32]">
-                                            <th className="py-4 px-6" >Exposed Data</th>
-                                            <th className="py-4 px-6" >Intel Source</th>
-                                            <th className="py-4 px-6" >Last Seen in Dump</th>
+                                            <th className="py-4 px-6">Exposed Data</th>
+                                            <th className="py-4 px-6">Intel Source</th>
+                                            <th className="py-4 px-6">Last Seen in Dump</th>
                                             <th className="py-4 px-6  text-center">Actions</th>
                                         </tr>
                                         </thead>
@@ -562,7 +591,8 @@ function StealerPageContent() {
                                 )
                             )}
                             {hasSubscription && (
-                                <div className="mt-6 flex flex-col md:flex-row md:justify-between md:items-center gap-3">
+                                <div
+                                    className="mt-6 flex flex-col md:flex-row md:justify-between md:items-center gap-3">
                                     <div className="flex items-center gap-2">
                                         <p className="text-gray-500 text-sm">
                                             Showing {filteredStealerData.length} of {pagination.total} entries

@@ -65,7 +65,6 @@ export default function Home() {
 
     return (
         <div className="relative overflow-x-hidden">
-            <Navbar/>
 
             {/* Hero Section */}
             <div className="relative h-screen w-full">
@@ -79,11 +78,12 @@ export default function Home() {
                             Instantly Detect Stolen Credentials
                         </h2>
                         <p className="text-md md:text-xl mb-8 animate-fade-in">
-                            Search our real-time stealer malware database for<br className="hidden md:block" />
+                            Search our real-time stealer malware database for<br className="hidden md:block"/>
                             exposed credentials, cookies, and sensitive data targeting your domain.
                         </p>
 
-                        <div className="flex flex-col sm:flex-row gap-2 max-w-xl mx-auto shadow-lg rounded-lg overflow-hidden animate-fade-in">
+                        <div
+                            className="flex flex-col sm:flex-row gap-2 max-w-xl mx-auto shadow-lg rounded-lg overflow-hidden animate-fade-in">
                             <input
                                 type="text"
                                 value={searchQuery}
@@ -291,14 +291,15 @@ export default function Home() {
                                 <ShieldCheckIcon className="w-5 h-5 mr-2"/>
                                 Request Access
                             </a>
-                    
+
                         </div>
                     </div>
                 </div>
             </section>
 
             {/* Use Cases Section */}
-            <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-gray-900 to-black border-t border-gray-800">
+            <section
+                className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-gray-900 to-black border-t border-gray-800">
                 <div className="max-w-7xl mx-auto">
                     <div className="text-center mb-16">
           <span className="text-sm font-mono text-[#f03262] tracking-widest">
@@ -324,7 +325,7 @@ export default function Home() {
                                 <ul className="space-y-3">
                                     {item.features.map((feature, i) => (
                                         <li key={i} className="flex items-center text-gray-400">
-                                            <CheckCircleIcon className="w-5 h-5 text-[#f03262] mr-2" />
+                                            <CheckCircleIcon className="w-5 h-5 text-[#f03262] mr-2"/>
                                             {feature}
                                         </li>
                                     ))}

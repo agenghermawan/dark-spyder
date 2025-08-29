@@ -2,7 +2,6 @@
 
 import {useEffect, useState} from "react";
 import PaymentFlowModal from "../../components/pricing/payment_flow_modal";
-import Navbar from "../../components/navbar";
 
 // Simple accent SVG for unlimited plan card
 function UnlimitedSVG() {
@@ -136,7 +135,6 @@ export default function MyPaymentsPage() {
 
     return (
         <div className="min-h-screen bg-[#161622] p-6">
-            <Navbar/>
             <PaymentFlowModal {...modalProps} show={showPaymentModal}/>
             <div className="max-w-4xl mx-auto my-10 bg-[#232339] rounded-2xl p-8 shadow-xl">
                 <h1 className="text-3xl font-bold text-white mb-6 text-center">

@@ -1,15 +1,13 @@
 "use client";
 
-import React, {useEffect, useState, useRef} from "react";
-import Navbar from "../../components/navbar";
-import {useRouter} from "next/navigation";
+import React, { useEffect, useState, useRef } from "react";
+import { useAuth } from "../../context/AuthContext";
+import { useRouter } from "next/navigation";
 import AssetDetailModal from "../../components/va/va_detail_modal";
 import VAThemedParticles from "../../components/va/va_particles";
 import { FaServer } from "react-icons/fa";
 
-
-// ErrorModal with dark web SVG (copy this to components/va/ErrorModal.jsx if you want to reuse)
-function ErrorModal({show, message, onClose}) {
+function ErrorModal({ show, message, onClose }) {
     if (!show) return null;
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
@@ -24,13 +22,11 @@ function ErrorModal({show, message, onClose}) {
                 <div className="mb-2 mt-2 flex justify-center">
                     {/* Dark web SVG */}
                     <svg width="56" height="56" viewBox="0 0 56 56" fill="none" className="drop-shadow-xl">
-                        <circle cx="28" cy="28" r="26" fill="#18181c" stroke="#f03262" strokeWidth="2"/>
-                        <rect x="18" y="24" width="20" height="14" rx="4" fill="#232339" stroke="#f03262"
-                              strokeWidth="1.5"/>
-                        <path d="M28 31v-3" stroke="#f03262" strokeWidth="2" strokeLinecap="round"/>
-                        <circle cx="28" cy="31" r="2" fill="#f03262"/>
-                        <rect x="23" y="22" width="10" height="6" rx="3" fill="#101014" stroke="#f03262"
-                              strokeWidth="1"/>
+                        <circle cx="28" cy="28" r="26" fill="#18181c" stroke="#f03262" strokeWidth="2" />
+                        <rect x="18" y="24" width="20" height="14" rx="4" fill="#232339" stroke="#f03262" strokeWidth="1.5" />
+                        <path d="M28 31v-3" stroke="#f03262" strokeWidth="2" strokeLinecap="round" />
+                        <circle cx="28" cy="31" r="2" fill="#f03262" />
+                        <rect x="23" y="22" width="10" height="6" rx="3" fill="#101014" stroke="#f03262" strokeWidth="1" />
                     </svg>
                 </div>
                 <h2 className="text-lg font-bold text-pink-400 mb-4 text-center">
@@ -66,16 +62,16 @@ function formatAgo(dateString) {
     const diffHr = Math.floor(diffMin / 60);
     if (diffHr < 24) return `${diffHr}h ago`;
     const diffDay = Math.floor(diffHr / 24);
-    if (diffDay < 30) return `${diffMo}mo ago`;
     const diffMo = Math.floor(diffDay / 30);
+    if (diffDay < 30) return `${diffDay}d ago`;
     return `${diffMo}mo ago`;
 }
 
 export default function VulnerabilitiesPage() {
     const router = useRouter();
+    const { authState } = useAuth();
 
-    // Auth & Plan
-    const [authState, setAuthState] = useState("loading");
+    // Plan/domain state
     const [userDomains, setUserDomains] = useState([]);
     const [hasSubscription, setHasSubscription] = useState(false);
     const [domainLoaded, setDomainLoaded] = useState(false);
@@ -83,18 +79,18 @@ export default function VulnerabilitiesPage() {
     // Data & Fetching
     const [vulnData, setVulnData] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
-    const [errorModal, setErrorModal] = useState({show: false, message: ""});
+    const [errorModal, setErrorModal] = useState({ show: false, message: "" });
 
     // Pagination
-    const [pagination, setPagination] = useState({page: 1, size: 10, total: 0});
+    const [pagination, setPagination] = useState({ page: 1, size: 10, total: 0 });
     const [pageInput, setPageInput] = useState(1);
     const [sizeInput, setSizeInput] = useState(10);
 
-    // Domain Search (API)
+    // Domain search (API)
     const [domain, setDomain] = useState("");
     const [showEmptyAlert, setShowEmptyAlert] = useState(false);
 
-    // Local filter (search in table data, not API)
+    // Local filter (search in table, not API)
     const [localSearch, setLocalSearch] = useState("");
 
     // Modal
@@ -103,31 +99,26 @@ export default function VulnerabilitiesPage() {
 
     const resultsRef = useRef(null);
 
-    // Auth check & fetch domains & subscription
+    // Fetch plan/domains (auth dari context)
     useEffect(() => {
+        if (authState !== "authenticated") {
+            setDomainLoaded(true);
+            return;
+        }
         let ignore = false;
         (async () => {
             try {
-                const res = await fetch("/api/me", {credentials: "include"});
-                setAuthState(res.ok ? "authenticated" : "unauthenticated");
-                if (res.ok) {
-                    const planRes = await fetch("/api/my-plan", {credentials: "include"});
-                    if (planRes.ok) {
-                        const planData = await planRes.json();
-                        const domains = Array.isArray(planData.data?.registered_domain)
-                            ? planData.data.registered_domain
-                            : [];
-                        setUserDomains(domains);
-
-                        // Eligible: jika ada registered domain
-                        const eligible = domains.length > 0;
-                        setHasSubscription(eligible);
-
-                        if (!domain && domains.length > 0) setDomain(domains[0]);
-                    }
+                const planRes = await fetch("/api/my-plan", { credentials: "include" });
+                if (planRes.ok) {
+                    const planData = await planRes.json();
+                    const domains = Array.isArray(planData.data?.registered_domain)
+                        ? planData.data.registered_domain
+                        : [];
+                    setUserDomains(domains);
+                    const eligible = domains.length > 0;
+                    setHasSubscription(eligible);
+                    if (!domain && domains.length > 0) setDomain(domains[0]);
                 }
-            } catch {
-                setAuthState("unauthenticated");
             } finally {
                 if (!ignore) setDomainLoaded(true);
             }
@@ -135,15 +126,10 @@ export default function VulnerabilitiesPage() {
         return () => {
             ignore = true;
         };
-        // eslint-disable-next-line
-    }, []);
+    }, [authState]);
 
-    // Fetch vulnerabilities data from API (domain, page, size)
-    const fetchVulnData = async ({
-                                     domain: domainParam,
-                                     page = 1,
-                                     size = 10,
-                                 }) => {
+    // Fetch vulnerabilities data from API
+    const fetchVulnData = async ({ domain: domainParam, page = 1, size = 10 }) => {
         setIsLoading(true);
         setShowEmptyAlert(false);
 
@@ -169,7 +155,7 @@ export default function VulnerabilitiesPage() {
         try {
             const options = {
                 method: "GET",
-                headers: {"X-API-Key": API_KEY},
+                headers: { "X-API-Key": API_KEY },
             };
             const url = `https://api.projectdiscovery.io/v1/scans/results/filters?${params.toString()}`;
             const res = await fetch(url, options);
@@ -198,7 +184,7 @@ export default function VulnerabilitiesPage() {
             setIsLoading(false);
             setTimeout(() => {
                 if (resultsRef.current) {
-                    resultsRef.current.scrollIntoView({behavior: "smooth"});
+                    resultsRef.current.scrollIntoView({ behavior: "smooth" });
                 }
             }, 100);
         }
@@ -211,7 +197,6 @@ export default function VulnerabilitiesPage() {
             router.push("/login");
             return;
         }
-        // Validate subscription and domain before allowing search
         if (!hasSubscription || userDomains.length === 0) {
             setErrorModal({
                 show: true,
@@ -220,7 +205,6 @@ export default function VulnerabilitiesPage() {
             });
             return;
         }
-        // PATCH: cek apakah domain yang diinput termasuk allowed domain
         if (!userDomains.includes(domain.trim())) {
             setErrorModal({
                 show: true,
@@ -228,8 +212,8 @@ export default function VulnerabilitiesPage() {
             });
             return;
         }
-        setPagination((prev) => ({...prev, page: 1}));
-        await fetchVulnData({domain: domain, page: 1, size: pagination.size});
+        setPagination((prev) => ({ ...prev, page: 1 }));
+        await fetchVulnData({ domain: domain, page: 1, size: pagination.size });
     };
 
     // Handler: Pagination (API)
@@ -241,7 +225,7 @@ export default function VulnerabilitiesPage() {
             newPage * pagination.size < pagination.total
         )
             newPage++;
-        setPagination((prev) => ({...prev, page: newPage}));
+        setPagination((prev) => ({ ...prev, page: newPage }));
         await fetchVulnData({
             domain: domain,
             page: newPage,
@@ -257,7 +241,7 @@ export default function VulnerabilitiesPage() {
         const maxPage = Math.ceil(pagination.total / pagination.size) || 1;
         if (value > maxPage) value = maxPage;
         setPageInput(value);
-        setPagination((prev) => ({...prev, page: value}));
+        setPagination((prev) => ({ ...prev, page: value }));
         await fetchVulnData({
             domain: domain,
             page: value,
@@ -272,7 +256,7 @@ export default function VulnerabilitiesPage() {
         if (isNaN(value) || value < 1) value = 10;
         if (value > 1000) value = 1000;
         setSizeInput(value);
-        setPagination((prev) => ({...prev, size: value, page: 1}));
+        setPagination((prev) => ({ ...prev, size: value, page: 1 }));
         await fetchVulnData({
             domain: domain,
             page: 1,
@@ -296,33 +280,29 @@ export default function VulnerabilitiesPage() {
         )
         : vulnData;
 
-    // Spinner saat auth check
     if (
         authState === "loading" ||
         (authState === "authenticated" && !domainLoaded)
     ) {
         return (
             <div className="min-h-screen flex flex-col justify-center items-center bg-[#161622] text-white">
-                <Navbar/>
                 <span className="mt-8 text-lg text-gray-400 animate-pulse">
-          Loading...
-        </span>
+                    Loading...
+                </span>
             </div>
         );
     }
 
     return (
         <div>
-            <Navbar/>
-            <VAThemedParticles/>
+            <VAThemedParticles />
             <ErrorModal
                 show={errorModal.show}
                 message={errorModal.message}
-                onClose={() => setErrorModal({show: false, message: ""})}
+                onClose={() => setErrorModal({ show: false, message: "" })}
             />
             <div className="relative h-screen w-full">
-                <section
-                    className="absolute inset-0 flex items-center justify-center px-4 sm:px-6 lg:px-8 text-white z-10">
+                <section className="absolute inset-0 flex items-center justify-center px-4 sm:px-6 lg:px-8 text-white z-10">
                     <div className="max-w-3xl mx-auto text-center">
                         <h2 className="text-4xl font-bold mb-4">
                             Vulnerability Assessment
@@ -330,8 +310,7 @@ export default function VulnerabilitiesPage() {
                         <p className="text-xl mb-8 text-gray-300">
                             View open vulnerabilities found on your assets.
                         </p>
-                        <div
-                            className="flex flex-row gap-2 max-w-xl mx-auto shadow-lg rounded-lg overflow-hidden w-full">
+                        <div className="flex flex-row gap-2 max-w-xl mx-auto shadow-lg rounded-lg overflow-hidden w-full">
                             <input
                                 type="text"
                                 value={domain}
@@ -412,22 +391,20 @@ export default function VulnerabilitiesPage() {
                                 onChange={(e) => setLocalSearch(e.target.value)}
                                 placeholder="Filter data in current results (e.g. template, severity, etc)"
                                 className="px-4 py-2 rounded-lg bg-black/30 border border-gray-700 text-white placeholder-gray-400 focus:ring-2 focus:ring-[#f03262] focus:border-transparent"
-                                style={{minWidth: 170}}
+                                style={{ minWidth: 170 }}
                             />
 
                             <button
                                 className="flex items-center gap-2 px-5 py-2 rounded-lg bg-gradient-to-r from-gray-800 to-gray-700 hover:from-pink-700 hover:to-pink-600 text-white font-semibold shadow transition"
                                 onClick={() => router.push('/vulnerabilities/assets')}
                             >
-                                <FaServer className="text-base"/>
+                                <FaServer className="text-base" />
                                 <span>Assets Group</span>
                             </button>
-
                         </div>
                         <div className="overflow-x-auto">
                             {filteredVulnData.length > 0 ? (
-                                <table
-                                    className="min-w-full bg-gradient-to-br from-[#111215]/90 via-[#1a1b20]/90 to-[#111215]/90 backdrop-blur-lg text-white rounded-xl shadow-2xl font-mono border border-[#2e2e2e] overflow-hidden">
+                                <table className="min-w-full bg-gradient-to-br from-[#111215]/90 via-[#1a1b20]/90 to-[#111215]/90 backdrop-blur-lg text-white rounded-xl shadow-2xl font-mono border border-[#2e2e2e] overflow-hidden">
                                     <thead>
                                     <tr className="text-left border-b border-gray-700 text-gray-400 bg-gradient-to-r from-[#1e1e24] to-[#2a2a32]">
                                         <th className="py-4 px-6">Severity</th>
@@ -444,34 +421,34 @@ export default function VulnerabilitiesPage() {
                                             className="border-b border-gray-800 hover:bg-gradient-to-r from-[#1a1a20] to-[#25252d] transition-all duration-300 group"
                                         >
                                             <td className="py-4 px-6">
-                          <span
-                              className={`px-4 py-1 rounded-full font-semibold ${
-                                  severityColor[
-                                      (item.severity || "critical").toLowerCase()
-                                      ] || severityColor["critical"]
-                              }`}
-                          >
-                            {item.severity
-                                ? item.severity.charAt(0).toUpperCase() +
-                                item.severity.slice(1)
-                                : "Critical"}
-                          </span>
+                                                    <span
+                                                        className={`px-4 py-1 rounded-full font-semibold ${
+                                                            severityColor[
+                                                                (item.severity || "critical").toLowerCase()
+                                                                ] || severityColor["critical"]
+                                                        }`}
+                                                    >
+                                                        {item.severity
+                                                            ? item.severity.charAt(0).toUpperCase() +
+                                                            item.severity.slice(1)
+                                                            : "Critical"}
+                                                    </span>
                                             </td>
                                             <td className="py-4 px-6 font-bold text-white">
                                                 {item.name}
                                             </td>
                                             <td className="py-4 px-6">
-                          <span className="ml-2 px-2 py-0.5 rounded-full bg-gray-800 text-gray-300 text-xs font-mono">
-                            {item.count}
-                          </span>
+                                                    <span className="ml-2 px-2 py-0.5 rounded-full bg-gray-800 text-gray-300 text-xs font-mono">
+                                                        {item.count}
+                                                    </span>
                                             </td>
                                             <td className="py-4 px-6">
-                          <span className="bg-[#18181c] px-3 py-1 rounded text-xs font-mono text-gray-200 mr-1">
-                            TEMPLATE
-                          </span>
+                                                    <span className="bg-[#18181c] px-3 py-1 rounded text-xs font-mono text-gray-200 mr-1">
+                                                        TEMPLATE
+                                                    </span>
                                                 <span className="bg-[#23232b] px-2 py-1 rounded text-xs text-gray-300">
-                            {item.value}
-                          </span>
+                                                        {item.value}
+                                                    </span>
                                             </td>
                                             <td className="py-4 px-6">
                                                 <button
@@ -487,8 +464,7 @@ export default function VulnerabilitiesPage() {
                                 </table>
                             ) : (
                                 showEmptyAlert && (
-                                    <table
-                                        className="min-w-full bg-gradient-to-br from-[#111215]/90 via-[#1a1b20]/90 to-[#111215]/90 backdrop-blur-lg text-white rounded-xl shadow-2xl font-mono border border-[#2e2e2e] overflow-hidden">
+                                    <table className="min-w-full bg-gradient-to-br from-[#111215]/90 via-[#1a1b20]/90 to-[#111215]/90 backdrop-blur-lg text-white rounded-xl shadow-2xl font-mono border border-[#2e2e2e] overflow-hidden">
                                         <thead>
                                         <tr className="text-left border-b border-gray-700 text-gray-400 bg-gradient-to-r from-[#1e1e24] to-[#2a2a32]">
                                             <th className="py-4 px-6">Severity</th>
@@ -500,10 +476,7 @@ export default function VulnerabilitiesPage() {
                                         </thead>
                                         <tbody>
                                         <tr className="border-b border-gray-800">
-                                            <td
-                                                colSpan="5"
-                                                className="py-8 px-6 text-center text-gray-400"
-                                            >
+                                            <td colSpan="5" className="py-8 px-6 text-center text-gray-400">
                                                 <div className="flex flex-col items-center justify-center">
                                                     <svg
                                                         className="w-12 h-12 mb-4 text-gray-600"

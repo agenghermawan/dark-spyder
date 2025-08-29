@@ -244,7 +244,6 @@ export default function MyPlanPage() {
 
     return (
         <AnimatedDarkWebBackground>
-            <Navbar />
             <RegisterDomainModal
                 show={showRegisterModal}
                 onClose={() => setShowRegisterModal(false)}

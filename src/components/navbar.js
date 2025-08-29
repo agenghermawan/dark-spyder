@@ -1,86 +1,75 @@
-'use client'
+'use client';
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import gsap from "gsap";
+import { useAuth } from "../context/AuthContext"; // pastikan path benar
 
 export default function Navbar() {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-    const [authState, setAuthState] = useState('loading');
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-    const router = useRouter();
-    const logoRef = useRef(null);
+    const logoImgRef = useRef(null);
     const mobileMenuRef = useRef(null);
     const dropdownRef = useRef(null);
+    const router = useRouter();
 
+    // Ambil state dari context
+    const { authState, user, logout } = useAuth();
+
+    // GSAP logo entrance
     useEffect(() => {
-        gsap.from(logoRef.current, {
-            opacity: 0,
-            y: -20,
-            duration: 0.8,
-            ease: "elastic.out(1, 0.5)",
-            delay: 0.3
-        });
-
-        if (isMobileMenuOpen) {
-            gsap.from(mobileMenuRef.current, {
-                opacity: 0,
-                y: -20,
-                duration: 0.5,
-                ease: "power3.out"
-            });
+        if (logoImgRef.current) {
+            gsap.fromTo(logoImgRef.current,
+                { opacity: 0, y: -20 },
+                { opacity: 1, y: 0, duration: 0.8, ease: "elastic.out(1, 0.5)", delay: 0.3 }
+            );
         }
+    }, []);
 
+    // GSAP mobile menu entrance
+    useEffect(() => {
+        if (isMobileMenuOpen && mobileMenuRef.current) {
+            gsap.fromTo(mobileMenuRef.current,
+                { opacity: 0, y: -20 },
+                { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }
+            );
+        }
+        document.body.style.overflow = isMobileMenuOpen ? 'hidden' : '';
+        return () => {
+            document.body.style.overflow = '';
+        };
+    }, [isMobileMenuOpen]);
+
+    // Dropdown outside click
+    useEffect(() => {
+        if (!isDropdownOpen) return;
         function handleClickOutside(event) {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
                 setIsDropdownOpen(false);
             }
         }
-        if (isDropdownOpen) {
-            document.addEventListener("mousedown", handleClickOutside);
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, [isDropdownOpen]);
+
+    // GSAP logo hover animation
+    const handleLogoHover = useCallback(() => {
+        if (logoImgRef.current) {
+            gsap.to(logoImgRef.current, {
+                scale: 1.08,
+                duration: 0.25,
+                ease: "back.out(2)",
+                yoyo: true,
+                repeat: 1
+            });
         }
-        return () => {
-            document.removeEventListener("mousedown", handleClickOutside);
-        };
+    }, []);
 
-    }, [isMobileMenuOpen, isDropdownOpen]);
-
-
-    useEffect(() => {
-        const checkLoginStatus = async () => {
-            try {
-                const res = await fetch("/api/me", {
-                    credentials: "include",
-                });
-                setAuthState(res.ok ? 'authenticated' : 'unauthenticated');
-            } catch {
-                setAuthState('unauthenticated');
-            }
-        };
-
-        checkLoginStatus();
-    }, [isMobileMenuOpen]);
-
-    const handleLogoHover = () => {
-        gsap.to(logoRef.current, {
-            scale: 1.05,
-            duration: 0.3,
-            ease: "back.out(2)",
-            yoyo: true,
-            repeat: 1
-        });
-    };
-
-    const handleMobileMenuToggle = () => {
-        setIsMobileMenuOpen(!isMobileMenuOpen);
-        if (!isMobileMenuOpen) {
-            document.body.style.overflow = 'hidden';
-        } else {
-            document.body.style.overflow = '';
-        }
-    };
+    const handleMobileMenuToggle = useCallback(() => {
+        setIsMobileMenuOpen(open => !open);
+    }, []);
 
     const handleLogout = async () => {
         try {
@@ -88,53 +77,43 @@ export default function Navbar() {
                 method: "POST",
                 credentials: "include"
             });
-
             if (res.ok) {
+                logout(); // update context!
                 router.push("/login");
-                router.refresh();
             }
         } catch (error) {
             console.error("Logout failed:", error);
         }
     };
 
-    if (authState === 'loading') {
-        return <></>;
-    }
+    if (authState === "loading") return null;
+    const isLoggedIn = authState === "authenticated";
 
-    const isLoggedIn = authState === 'authenticated';
-
-    // Menu data: href dan label
     const menuItems = [
         { href: "/dark_web/stealer", label: "Darkweb Stealer Monitoring" },
         { href: "/dark_web/leaks", label: "Darkweb Leaks Monitoring" },
         { href: "/vulnerabilities", label: "Vulnerability Scanning" },
         { href: "/pricing", label: "Pricing" },
     ];
-
-    // Dropdown menu for authenticated user
     const dropdownItems = [
         { href: "/my-payments", label: "My Payments" },
         { href: "/my-plan", label: "My Plan" },
     ];
-
-    // Mobile merged menu
-    const mobileMenuItems = [
-        ...menuItems,
-        ...(isLoggedIn ? dropdownItems : [])
-    ];
+    const mobileMenuItems = [...menuItems, ...(isLoggedIn ? dropdownItems : [])];
 
     return (
-        <div className="z-50 bg-[#14141f] w-full p-4 shadow-lg sticky top-0">
-            {/* Mobile Header */}
-            <div className="md:hidden flex justify-between items-center p-4">
-                <Link href="/" ref={logoRef} onMouseEnter={handleLogoHover}>
+        <header className="z-50 bg-[#14141f] w-full shadow-lg sticky top-0">
+            {/* Mobile Navbar */}
+            <nav className="md:hidden flex justify-between items-center p-4">
+                <Link href="/" className="flex items-center" aria-label="Home">
                     <Image
                         src="/image/logo.png"
                         alt="logo"
                         width={200}
-                        height={50}
+                        height={75}
                         className="invert hover:cursor-pointer transition-transform"
+                        ref={logoImgRef}
+                        onMouseEnter={handleLogoHover}
                         priority
                     />
                 </Link>
@@ -161,13 +140,13 @@ export default function Navbar() {
                         </svg>
                     )}
                 </button>
-            </div>
+            </nav>
 
             {/* Mobile Menu */}
             {isMobileMenuOpen && (
                 <div
                     ref={mobileMenuRef}
-                    className="md:hidden mt-4 text-white bg-[#14141f] rounded-lg p-4 shadow-xl"
+                    className="md:hidden mt-2 text-white bg-[#14141f] rounded-lg p-4 shadow-xl"
                 >
                     <div className="space-y-4">
                         {mobileMenuItems.map((item) => (
@@ -184,14 +163,14 @@ export default function Navbar() {
                             {isLoggedIn ? (
                                 <button
                                     onClick={handleLogout}
-                                    className="text-white hover:bg-[#f53d6b] px-4 py-2 rounded-lg transition-all duration-300 border border-[#1c1f26] w-full hover:scale-105"
+                                    className="w-full py-2 rounded-lg border border-[#1c1f26] text-white hover:bg-[#f53d6b] hover:scale-105 transition-all duration-300"
                                 >
                                     Logout
                                 </button>
                             ) : (
                                 <Link
                                     href="/login"
-                                    className="text-white px-6 py-2 rounded-lg transition-all duration-300 font-semibold whitespace-nowrap flex items-center justify-center min-w-[120px] bg-gradient-to-r from-red-500 to-pink-500"
+                                    className="w-full block text-white px-6 py-2 rounded-lg bg-gradient-to-r from-red-500 to-pink-500 font-semibold transition-all duration-300 text-center"
                                     onClick={() => setIsMobileMenuOpen(false)}
                                 >
                                     Login
@@ -203,19 +182,16 @@ export default function Navbar() {
             )}
 
             {/* Desktop Navbar */}
-            <div className="hidden md:flex justify-between items-center w-full md:w-10/12 mx-auto">
-                <Link
-                    href="/"
-                    ref={logoRef}
-                    onMouseEnter={handleLogoHover}
-                    className="hover:scale-105 transition-transform duration-300"
-                >
+            <nav className="hidden md:flex justify-between items-center w-full max-w-[90%] mx-auto p-6">
+                <Link href="/" className="flex items-center" aria-label="Home">
                     <Image
                         src="/image/logo.png"
                         alt="logo"
-                        width={150}
+                        width={200}
                         height={50}
-                        className="invert hover:cursor-pointer"
+                        className="invert hover:cursor-pointer transition-transform"
+                        ref={logoImgRef}
+                        onMouseEnter={handleLogoHover}
                         priority
                     />
                 </Link>
@@ -236,20 +212,26 @@ export default function Navbar() {
                     {isLoggedIn ? (
                         <div className="relative" ref={dropdownRef}>
                             <button
-                                onClick={() => setIsDropdownOpen((open) => !open)}
+                                onClick={() => setIsDropdownOpen(open => !open)}
                                 className="flex items-center gap-2 text-white px-4 py-2 rounded-lg hover:bg-[#232339] transition-all duration-200 border border-[#29293b] font-semibold"
+                                aria-haspopup="true"
+                                aria-expanded={isDropdownOpen}
+                                aria-controls="navbar-dropdown"
                             >
                                 <svg className="w-5 h-5 text-[#f33d74]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                                     <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
                                     <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" fill="currentColor" />
                                 </svg>
                                 My Account
-                                <svg className="w-4 h-4 ml-1 transition-transform" style={{ transform: isDropdownOpen ? "rotate(180deg)" : "rotate(0)" }} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                <svg className={`w-4 h-4 ml-1 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                                     <path d="M6 9l6 6 6-6" />
                                 </svg>
                             </button>
                             {isDropdownOpen && (
-                                <div className="absolute right-0 mt-2 w-56 bg-[#232339] rounded-lg shadow-lg border border-[#2a2a3a] ring-1 ring-black ring-opacity-5 z-50 divide-y divide-[#29293b]">
+                                <div
+                                    id="navbar-dropdown"
+                                    className="absolute right-0 mt-2 w-56 bg-[#232339] rounded-lg shadow-lg border border-[#2a2a3a] ring-1 ring-black ring-opacity-5 z-50 divide-y divide-[#29293b]"
+                                >
                                     {dropdownItems.map((item) => (
                                         <Link
                                             key={item.href}
@@ -270,15 +252,12 @@ export default function Navbar() {
                             )}
                         </div>
                     ) : (
-                        <Link href="/login">
-                            <button
-                                className="text-white px-6 py-2 rounded-lg transition-all duration-300 font-semibold whitespace-nowrap flex items-center justify-center min-w-[120px] bg-gradient-to-r from-red-500 to-pink-500">
-                                Login
-                            </button>
+                        <Link href="/login" className="text-white px-6 py-2 rounded-lg bg-gradient-to-r from-red-500 to-pink-500 font-semibold flex items-center justify-center min-w-[120px] transition-all duration-300">
+                            Login
                         </Link>
                     )}
                 </div>
-            </div>
-        </div>
+            </nav>
+        </header>
     );
 }
