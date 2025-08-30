@@ -1,7 +1,38 @@
-import {useEffect, useState} from "react";
+import { useEffect, useState } from "react";
 import QRCode from "react-qr-code";
 
-// Helper to format amount with decimals
+// Simple Spinner (no neon)
+function SimpleSpinner({ size = 44, color = "#e5e7eb" }) {
+    return (
+        <svg className="animate-spin" width={size} height={size} viewBox="0 0 50 50">
+            <circle
+                cx="25" cy="25" r="20"
+                fill="none"
+                stroke={color}
+                strokeWidth="5"
+                strokeDasharray="90"
+                strokeDashoffset="30"
+                strokeLinecap="round"
+                opacity="0.5"
+            />
+        </svg>
+    );
+}
+
+// Header SVG (subtle, no neon)
+function ModalPaySVG() {
+    return (
+        <svg className="w-16 h-16 mx-auto mb-2" viewBox="0 0 64 64">
+            <ellipse cx="32" cy="36" rx="18" ry="14" fill="#232339" />
+            <ellipse cx="32" cy="32" rx="22" ry="18" stroke="#c7d2fe" strokeWidth="2" fill="none" />
+            <path d="M32 20v10" stroke="#a1a1aa" strokeWidth="3" strokeLinecap="round" />
+            <circle cx="32" cy="44" r="3" fill="#a1a1aa" />
+            <rect x="24" y="26" width="16" height="6" rx="3" fill="#18181c" stroke="#a1a1aa" strokeWidth="1" />
+        </svg>
+    );
+}
+
+// Helper: Format crypto amount
 function formatAmount(amount, decimals = 6) {
     if (!amount) return "-";
     const str = amount.toString().padStart(decimals + 1, "0");
@@ -9,32 +40,6 @@ function formatAmount(amount, decimals = 6) {
     let fracPart = str.slice(-decimals);
     fracPart = fracPart.replace(/0+$/, "");
     return fracPart.length ? `${intPart}.${fracPart}` : intPart;
-}
-
-// Animated SVG Header for modal (dark web style)
-function ModalHeaderSVG() {
-    return (
-        <div className="flex justify-center mb-4">
-            <svg
-                className="w-28 h-28 animate-fade-in-up"
-                viewBox="0 0 80 80"
-                fill="none"
-            >
-                <ellipse cx="40" cy="44" rx="28" ry="18" fill="#232339"/>
-                <ellipse cx="40" cy="40" rx="32" ry="22" stroke="#f03262" strokeWidth="2"/>
-                <path
-                    d="M40 22v14"
-                    stroke="#f03262"
-                    strokeWidth="3"
-                    strokeLinecap="round"
-                    className="animate-bounce"
-                />
-                <circle cx="40" cy="58" r="3.5" fill="#f03262"/>
-                <rect x="28" y="32" width="24" height="10" rx="5" fill="#18181c" stroke="#f03262" strokeWidth="2"/>
-                <path d="M32 52c8 6 8 6 16 0" stroke="#f03262" strokeWidth="2" strokeLinecap="round"/>
-            </svg>
-        </div>
-    );
 }
 
 export default function PaymentFlowModal({
@@ -47,41 +52,30 @@ export default function PaymentFlowModal({
                                              forceRegisterDomain = false,
                                              domainLimit = 1,
                                          }) {
-    // asset selection state (if payment belum ada)
+    // --- STATE ---
     const [assets, setAssets] = useState([]);
     const [loadingAssets, setLoadingAssets] = useState(false);
     const [assetsError, setAssetsError] = useState(null);
-
     const [selectedAsset, setSelectedAsset] = useState(null);
     const [selectedBlockchain, setSelectedBlockchain] = useState(null);
-
-    // payment creation state
     const [creatingPayment, setCreatingPayment] = useState(false);
     const [createError, setCreateError] = useState(null);
-
-    // payment data (instructions)
     const [paymentData, setPaymentData] = useState(propPaymentData || null);
-
-    // status check
     const [checkingStatus, setCheckingStatus] = useState(false);
     const [paymentStatus, setPaymentStatus] = useState(
         propPaymentData && propPaymentData.Status !== undefined
-            ? {Status: propPaymentData.Status}
+            ? { Status: propPaymentData.Status }
             : null
     );
     const [statusError, setStatusError] = useState(null);
     const [notPaidError, setNotPaidError] = useState(false);
-
-    // register domains
     const [domains, setDomains] = useState([""]);
     const [registering, setRegistering] = useState(false);
     const [registerSuccess, setRegisterSuccess] = useState("");
     const [registerError, setRegisterError] = useState(null);
-
-    // direct show register form state
     const [showRegisterForm, setShowRegisterForm] = useState(false);
 
-    // Fetch asset list if needed
+    // --- EFFECTS ---
     useEffect(() => {
         if (!show || propPaymentData || !invoiceId || !idPricing || !plan) return;
         setLoadingAssets(true);
@@ -99,8 +93,8 @@ export default function PaymentFlowModal({
         fetch("/api/asset-list", {
             method: "POST",
             credentials: "include",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({idPricing, plan}),
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ idPricing, plan }),
         })
             .then(res => res.json())
             .then(data => setAssets(Array.isArray(data.data) ? data.data : []))
@@ -108,7 +102,6 @@ export default function PaymentFlowModal({
             .finally(() => setLoadingAssets(false));
     }, [show, invoiceId, idPricing, plan, propPaymentData]);
 
-    // Reset state on modal open/asset change or paymentData change
     useEffect(() => {
         setSelectedAsset(null);
         setSelectedBlockchain(null);
@@ -116,7 +109,7 @@ export default function PaymentFlowModal({
         setPaymentData(propPaymentData || null);
         setPaymentStatus(
             propPaymentData && propPaymentData.Status !== undefined
-                ? {Status: propPaymentData.Status}
+                ? { Status: propPaymentData.Status }
                 : null
         );
         setStatusError(null);
@@ -127,7 +120,6 @@ export default function PaymentFlowModal({
         setShowRegisterForm(false);
     }, [show, assets.length, propPaymentData]);
 
-    // Show register form if forceRegisterDomain (from page) or paymentData.Status === 100
     useEffect(() => {
         if (forceRegisterDomain) {
             setShowRegisterForm(true);
@@ -141,7 +133,7 @@ export default function PaymentFlowModal({
         }
     }, [forceRegisterDomain, paymentStatus, propPaymentData]);
 
-    // Create Payment
+    // --- HANDLERS ---
     const handleCreatePayment = async () => {
         if (!selectedAsset || !selectedBlockchain) return;
         setCreatingPayment(true);
@@ -150,7 +142,7 @@ export default function PaymentFlowModal({
             const res = await fetch("/api/create-payment", {
                 method: "POST",
                 credentials: "include",
-                headers: {"Content-Type": "application/json"},
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     invoiceId,
                     assetCode: selectedAsset.Code,
@@ -168,14 +160,12 @@ export default function PaymentFlowModal({
         }
     };
 
-    // Find decimals for selected blockchain
     const decimals =
         selectedBlockchain?.Decimals ||
         selectedAsset?.Decimals ||
         paymentData?.Decimals ||
         6;
 
-    // Check Payment Status (use /api/process-payment)
     const handleCheckPayment = async () => {
         setCheckingStatus(true);
         setStatusError(null);
@@ -187,8 +177,8 @@ export default function PaymentFlowModal({
             const res = await fetch("/api/process-payment", {
                 method: "POST",
                 credentials: "include",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({paymentId})
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ paymentId })
             });
             const result = await res.json();
             if (!res.ok) {
@@ -198,7 +188,7 @@ export default function PaymentFlowModal({
                 }
                 throw new Error(result.message || "Failed to check payment status");
             }
-            setPaymentStatus(result.data || result); // adjust if needed
+            setPaymentStatus(result.data || result);
         } catch (e) {
             setStatusError(e.message || "Failed to check payment status.");
         } finally {
@@ -206,14 +196,12 @@ export default function PaymentFlowModal({
         }
     };
 
-    // Add domain (with limit)
     const handleAddDomain = () => {
         if (domains.length < domainLimit) {
             setDomains([...domains, ""]);
         }
     };
 
-    // Register domains
     const handleRegisterDomain = async () => {
         setRegistering(true);
         setRegisterError(null);
@@ -225,8 +213,8 @@ export default function PaymentFlowModal({
             const res = await fetch(`/api/register-domain?invoiceId=${invoiceId}`, {
                 method: "POST",
                 credentials: "include",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({selected_domains: filteredDomains})
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ selected_domains: filteredDomains })
             });
             const result = await res.json();
             if (!res.ok) throw new Error(result.message || "Failed to register domains");
@@ -239,86 +227,49 @@ export default function PaymentFlowModal({
         }
     };
 
+    // --- RENDER ---
     if (!show) return null;
 
     return (
-        <div className="fixed inset-0 z-50 bg-black bg-opacity-70 flex items-center justify-center px-4">
-            <div
-                className="relative w-full max-w-3xl bg-gradient-to-br from-[#18181c] via-[#232339] to-[#18181c] rounded-3xl shadow-2xl p-8 animate-fade-in-up border border-[#29293a] flex flex-col"
-                style={{maxHeight: "90vh"}}
-            >
+        <div className="fixed inset-0 z-50 flex items-start justify-center px-2 bg-black/70 backdrop-blur-[3px] overflow-y-auto py-8">
+            <div className="relative w-full max-w-[40%] bg-gradient-to-br from-[#18181c] via-[#232339] to-[#18181c] rounded-3xl shadow-lg border border-gray-700 p-0 sm:p-8 animate-fade-in-up overflow-hidden max-h-[95vh] flex flex-col mt-[100px]">
+                {/* Loader overlay */}
+                {(loadingAssets || creatingPayment || checkingStatus || registering) && (
+                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-50 rounded-3xl">
+                        <SimpleSpinner size={54} color="#e5e7eb" />
+                    </div>
+                )}
+                {/* Close (sticky/fixed at top for scroll) */}
                 <button
-                    className="absolute top-4 right-6 text-gray-400 hover:text-white text-3xl"
+                    className="sticky top-0 left-0 right-0 ml-auto mr-2 mt-2 text-gray-400 hover:text-gray-200 text-3xl z-10 transition bg-transparent"
+                    style={{ zIndex: 100 }}
                     onClick={onClose}
                     aria-label="Close"
-                >×
-                </button>
-                <ModalHeaderSVG/>
-                <h2 className="text-3xl font-extrabold text-white mb-2 text-center tracking-wide drop-shadow-lg">
-                    Payment & Domain Registration
+                >×</button>
+                {/* Header SVG */}
+                <div className="pt-2 pb-2">
+                    <ModalPaySVG />
+                </div>
+                {/* Title */}
+                <h2 className="text-center text-2xl font-bold text-gray-100 mb-2 tracking-wide">
+                    Crypto Payment
                 </h2>
-                <p className="mb-6 text-center text-gray-400 font-mono text-md">
-                    Secure your plan and monitor your domains
+                <p className="mb-2 text-center text-gray-400 font-mono text-md">
+                    Secure your plan & monitor your domains
                 </p>
-                {assetsError && (
-                    <div className="bg-red-900 text-red-200 p-2 rounded mb-4 text-center">{assetsError}</div>
-                )}
-
-                <div className="flex-1 overflow-y-auto custom-scrollbar" style={{minHeight: 0}}>
-                    {showRegisterForm ? (
-                        <div className="mt-6 border-t border-gray-700 pt-4">
-                            <h3 className="text-xl font-bold text-white mb-3">Register Domains to Monitor</h3>
-                            <div className="space-y-2">
-                                {domains.map((domain, idx) => (
-                                    <div key={idx} className="flex gap-2">
-                                        <input
-                                            className="w-full p-3 rounded bg-gray-700 text-white text-lg"
-                                            placeholder="Enter domain (e.g. example.com)"
-                                            value={domain}
-                                            onChange={e => {
-                                                const newDomains = [...domains];
-                                                newDomains[idx] = e.target.value;
-                                                setDomains(newDomains);
-                                            }}
-                                        />
-                                        {domains.length > 1 && (
-                                            <button
-                                                className="bg-red-600 hover:bg-red-700 px-3 rounded text-white text-md font-bold"
-                                                onClick={() => setDomains(domains.filter((_, i) => i !== idx))}
-                                                title="Remove"
-                                            >-</button>
-                                        )}
-                                    </div>
-                                ))}
-                                <button
-                                    className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded text-white text-lg font-bold mt-1"
-                                    onClick={handleAddDomain}
-                                    disabled={domains.length >= domainLimit}
-                                >+ Add Domain
-                                </button>
-                                {domains.length >= domainLimit && (
-                                    <div className="text-xs text-yellow-400 mt-1">
-                                        Maximum {domainLimit} domains allowed for this plan.
-                                    </div>
-                                )}
-                            </div>
-                            <button
-                                className="w-full py-3 rounded bg-[#f33d74] hover:bg-[#e63368] text-white font-bold mt-4 text-lg"
-                                onClick={handleRegisterDomain}
-                                disabled={registering}
-                            >
-                                {registering ? "Registering..." : "Register Domains"}
-                            </button>
-                            {registerError && <div className="text-red-400 mt-2">{registerError}</div>}
-                            {registerSuccess && <div className="text-green-400 mt-2">{registerSuccess}</div>}
-                        </div>
-                    ) : !paymentData && !propPaymentData ? (
+                {/* CONTENT */}
+                <div className="flex-1 overflow-y-auto custom-scrollbar px-1 sm:px-0 pb-4">
+                    {/* Select Coin & Blockchain */}
+                    {!showRegisterForm && !paymentData && (
                         <>
+                            {assetsError && (
+                                <div className="bg-red-900 text-red-200 p-2 rounded mb-4 text-center">{assetsError}</div>
+                            )}
                             <div className="space-y-4">
                                 <div>
                                     <label className="block text-gray-400 mb-1 font-mono">Select Coin:</label>
                                     <select
-                                        className="w-full p-3 rounded bg-gray-800 text-white text-lg"
+                                        className="w-full p-3 rounded bg-gray-800 text-white text-lg border border-gray-700 focus:ring-2 focus:ring-gray-500"
                                         value={selectedAsset?.Code || ""}
                                         onChange={e => {
                                             const asset = assets.find(a => a.Code === e.target.value);
@@ -338,7 +289,7 @@ export default function PaymentFlowModal({
                                 <div>
                                     <label className="block text-gray-400 mb-1 font-mono">Select Blockchain:</label>
                                     <select
-                                        className="w-full p-3 rounded bg-gray-800 text-white text-lg"
+                                        className="w-full p-3 rounded bg-gray-800 text-white text-lg border border-gray-700 focus:ring-2 focus:ring-gray-500"
                                         value={selectedBlockchain?.Code || ""}
                                         onChange={e => {
                                             const bc = selectedAsset?.Blockchains?.find(bc => bc.Code === e.target.value);
@@ -356,7 +307,7 @@ export default function PaymentFlowModal({
                                 </div>
                             </div>
                             <button
-                                className="mt-8 w-full py-3 rounded bg-[#f33d74] hover:bg-[#e63368] text-white font-bold text-lg transition disabled:opacity-50"
+                                className="mt-8 w-full py-3 rounded bg-gray-700 hover:bg-gray-600 text-white font-bold text-lg transition-all"
                                 onClick={handleCreatePayment}
                                 disabled={!selectedAsset || !selectedBlockchain || creatingPayment}
                             >
@@ -364,165 +315,163 @@ export default function PaymentFlowModal({
                             </button>
                             {createError && <div className="text-red-400 mt-2 text-center">{createError}</div>}
                         </>
-                    ) : (
+                    )}
+
+                    {/* Payment instructions */}
+                    {!showRegisterForm && paymentData && (
                         <>
-                            {/* Payment instructions */}
-                            <div className="mt-2 border-t border-gray-700 pt-4">
-                                <h3 className="text-xl font-bold text-white mb-2">Payment Instructions</h3>
-                                <div className="text-white mb-2">
-                                    <b>Recipient Address:</b> <br/>
-                                    <span className="break-all text-green-300 font-mono text-lg">
-                                        {paymentData?.RecipientAddress || "-"}
-                                    </span>
-                                    {paymentData?.RecipientAddress && (
-                                        <div className="mt-2 flex justify-center">
-                                            <div
-                                                style={{
-                                                    background: "#fff",
-                                                    borderRadius: 12,
-                                                    padding: 16,
-                                                    display: "inline-block",
-                                                }}
-                                            >
-                                                <QRCode
-                                                    value={paymentData.RecipientAddress}
-                                                    bgColor="#fff"
-                                                    fgColor="#00ff99"
-                                                    size={168}
-                                                />
-                                            </div>
-                                        </div>
-                                    )}
+                            <div className="bg-gray-900 border border-gray-700 rounded-2xl p-4 my-4 shadow">
+                                <h3 className="text-xl font-bold text-gray-100 mb-2">Send Payment</h3>
+                                <div className="mb-3">
+                                    <span className="text-gray-300 font-mono">Recipient Address:</span>
+                                    <div className="flex items-center gap-2 mt-1">
+                                        <span className="break-all text-gray-200 font-mono text-lg select-all">
+                                            {paymentData?.RecipientAddress || "-"}
+                                        </span>
+                                        <button
+                                            className="text-xs px-2 py-1 bg-gray-200 text-gray-900 rounded hover:bg-gray-100 transition"
+                                            onClick={() => navigator.clipboard.writeText(paymentData?.RecipientAddress)}
+                                            title="Copy to clipboard"
+                                        >Copy</button>
+                                    </div>
                                 </div>
-                                <div className="text-white mb-2">
-                                    <b>Amount:</b> <br/>
-                                    <span className="font-mono text-yellow-300 text-lg">
-                                        {formatAmount(paymentData?.Amount, decimals)} {paymentData?.AssetCode?.toUpperCase()}
-                                    </span>
+                                <div className="mb-3">
+                                    <span className="text-gray-300 font-mono">Amount:</span>
+                                    <div className="flex items-center gap-2 mt-1">
+                                        <span className="font-mono text-yellow-300 text-lg select-all">
+                                            {formatAmount(paymentData?.Amount, decimals)} {paymentData?.AssetCode?.toUpperCase()}
+                                        </span>
+                                        <button
+                                            className="text-xs px-2 py-1 bg-gray-200 text-gray-900 rounded hover:bg-gray-100 transition"
+                                            onClick={() => navigator.clipboard.writeText(formatAmount(paymentData?.Amount, decimals))}
+                                            title="Copy amount"
+                                        >Copy</button>
+                                    </div>
                                 </div>
-                                <div className="text-white mb-2">
-                                    <b>Blockchain:</b> <br/>
-                                    <span>{paymentData?.BlockchainCode?.toUpperCase()}</span>
+                                <div className="mb-3">
+                                    <span className="text-gray-300 font-mono">Blockchain:</span>
+                                    <div className="ml-2 inline-block font-bold text-gray-200">
+                                        {paymentData?.BlockchainCode?.toUpperCase()}
+                                    </div>
                                 </div>
-                                <div className="text-white mb-2">
-                                    <b>Payment ID:</b> <br/>
-                                    <span>{paymentData?.Id || "-"}</span>
+                                <div className="mb-3">
+                                    <span className="text-gray-300 font-mono">Payment ID:</span>
+                                    <span className="ml-2 font-mono text-gray-200">{paymentData?.Id || "-"}</span>
                                 </div>
-                                <div className="bg-yellow-900 text-yellow-300 rounded p-2 text-md mt-4 font-mono">
-                                    <b>Important:</b> The amount you transfer must <u>exactly</u> match the value shown
-                                    above (including all decimals).<br/>
-                                    If you use an exchange (e.g., Binance) that charges a withdrawal fee, <u>add the fee
-                                    to your transfer amount</u> so that we receive the exact required amount.<br/>
-                                    <b>No refund</b> will be issued if the amount received is incorrect.
+                                <div className="flex justify-center mt-3">
+                                    <div
+                                        style={{
+                                            background: "#fff",
+                                            borderRadius: 16,
+                                            padding: 14,
+                                            boxShadow: "0 0 6px #0004"
+                                        }}
+                                    >
+                                        <QRCode
+                                            value={paymentData.RecipientAddress}
+                                            bgColor="#fff"
+                                            fgColor="#2d3748"
+                                            size={136}
+                                        />
+                                    </div>
                                 </div>
                             </div>
-                            {/* Check Payment Status */}
+                            <div className="bg-gray-800 border-l-4 border-yellow-400 rounded-xl p-3 mt-2 text-yellow-200 font-mono">
+                                <b>Important:</b> The amount you send must <u>exactly</u> match the amount shown above.<br />
+                                If you are sending from an exchange or app (e.g. Binance) that charges a withdrawal fee, please <u>add the fee</u> to your transfer so we receive the exact required amount.<br />
+                                Payments with incorrect amounts may not be processed or credited, and cannot be refunded.
+                            </div>
                             <div className="mt-8 text-center">
+                                {notPaidError && (
+                                    <div className="text-yellow-400 mt-4">
+                                        Payment not received yet. Please try again in a few moments.<br />
+                                    </div>
+                                )}
                                 <button
                                     onClick={handleCheckPayment}
-                                    className="py-3 px-8 bg-blue-600 hover:bg-blue-700 rounded text-white font-bold text-lg"
+                                    className="py-3 px-8 bg-gray-700 hover:bg-gray-600 rounded-xl text-white font-bold text-lg"
                                     disabled={checkingStatus}
                                 >
                                     {checkingStatus ? "Checking Payment Status..." : "I've Paid, Check Payment Status"}
                                 </button>
                                 {statusError && <div className="text-red-400 mt-2">{statusError}</div>}
-                                {notPaidError && (
-                                    <div className="text-yellow-400 mt-4">
-                                        Your payment has not been received yet. Please try again in a few moments.<br/>
+                            </div>
+                        </>
+                    )}
+
+                    {/* Register Domain */}
+                    {showRegisterForm && (
+                        <div className="mt-6 border-t border-gray-700 pt-4 bg-gray-900 rounded-2xl shadow">
+                            <h3 className="text-xl font-bold text-gray-100 mb-3">Register Domains to Monitor</h3>
+                            <div className="space-y-2">
+                                {domains.map((domain, idx) => (
+                                    <div key={idx} className="flex gap-2">
+                                        <input
+                                            className="w-full p-3 rounded bg-gray-800 text-white text-lg border border-gray-700 focus:ring-gray-500"
+                                            placeholder="Enter domain (e.g. example.com)"
+                                            value={domain}
+                                            onChange={e => {
+                                                const newDomains = [...domains];
+                                                newDomains[idx] = e.target.value;
+                                                setDomains(newDomains);
+                                            }}
+                                        />
+                                        {domains.length > 1 && (
+                                            <button
+                                                className="bg-gray-700 hover:bg-gray-600 px-3 rounded text-white text-md font-bold"
+                                                onClick={() => setDomains(domains.filter((_, i) => i !== idx))}
+                                                title="Remove"
+                                            >-</button>
+                                        )}
+                                    </div>
+                                ))}
+                                <button
+                                    className="bg-gray-200 hover:bg-gray-100 px-4 py-2 rounded text-gray-900 text-lg font-bold mt-1"
+                                    onClick={handleAddDomain}
+                                    disabled={domains.length >= domainLimit}
+                                >+ Add Domain</button>
+                                {domains.length >= domainLimit && (
+                                    <div className="text-xs text-yellow-400 mt-1">
+                                        Maximum {domainLimit} domains allowed for this plan.
                                     </div>
                                 )}
                             </div>
-                            {/* If paid, show register domain form */}
-                            {paymentStatus?.Status === 100 ? (
-                                <div className="mt-8 border-t border-gray-700 pt-4">
-                                    <h3 className="text-xl font-bold text-white mb-3">Register Domains to Monitor</h3>
-                                    <div className="space-y-2">
-                                        {domains.map((domain, idx) => (
-                                            <div key={idx} className="flex gap-2">
-                                                <input
-                                                    className="w-full p-3 rounded bg-gray-700 text-white text-lg"
-                                                    placeholder="Enter domain (e.g. example.com)"
-                                                    value={domain}
-                                                    onChange={e => {
-                                                        const newDomains = [...domains];
-                                                        newDomains[idx] = e.target.value;
-                                                        setDomains(newDomains);
-                                                    }}
-                                                />
-                                                {domains.length > 1 && (
-                                                    <button
-                                                        className="bg-red-600 hover:bg-red-700 px-3 rounded text-white text-md font-bold"
-                                                        onClick={() => setDomains(domains.filter((_, i) => i !== idx))}
-                                                        title="Remove"
-                                                    >-</button>
-                                                )}
-                                            </div>
-                                        ))}
-                                        <button
-                                            className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded text-white text-lg font-bold mt-1"
-                                            onClick={handleAddDomain}
-                                            disabled={domains.length >= domainLimit}
-                                        >+ Add Domain
-                                        </button>
-                                        {domains.length >= domainLimit && (
-                                            <div className="text-xs text-yellow-400 mt-1">
-                                                Maximum {domainLimit} domains allowed for this plan.
-                                            </div>
-                                        )}
-                                    </div>
-                                    <button
-                                        className="w-full py-3 rounded bg-[#f33d74] hover:bg-[#e63368] text-white font-bold mt-4 text-lg"
-                                        onClick={handleRegisterDomain}
-                                        disabled={registering}
-                                    >
-                                        {registering ? "Registering..." : "Register Domains"}
-                                    </button>
-                                    {registerError && <div className="text-red-400 mt-2">{registerError}</div>}
-                                    {registerSuccess && <div className="text-green-400 mt-2">{registerSuccess}</div>}
-                                </div>
-                            ) : paymentStatus?.Status === undefined ? null : (
-                                <div className="mt-4 text-yellow-400 text-center">
-                                    Payment has not been received yet. Please try again in a few moments.
-                                </div>
-                            )}
-                        </>
+                            <button
+                                className="w-full py-3 rounded bg-gray-700 hover:bg-gray-600 text-white font-bold mt-4 text-lg"
+                                onClick={handleRegisterDomain}
+                                disabled={registering}
+                            >
+                                {registering ? "Registering..." : "Register Domains"}
+                            </button>
+                            {registerError && <div className="text-red-400 mt-2">{registerError}</div>}
+                            {registerSuccess && <div className="text-green-400 mt-2">{registerSuccess}</div>}
+                        </div>
                     )}
                 </div>
+                <style jsx>{`
+                    .animate-fade-in-up {
+                        animation: fadeInUp .4s cubic-bezier(.33,1,.68,1);
+                    }
+                    @keyframes fadeInUp {
+                        from { opacity:0; transform:translateY(24px) scale(0.96);}
+                        to { opacity:1; transform:translateY(0) scale(1);}
+                    }
+                    .custom-scrollbar {
+                        scrollbar-width: thin;
+                        scrollbar-color: #6b7280 #232339;
+                    }
+                    .custom-scrollbar::-webkit-scrollbar {
+                        width: 8px;
+                    }
+                    .custom-scrollbar::-webkit-scrollbar-thumb {
+                        background: #6b7280;
+                        border-radius: 8px;
+                    }
+                    .custom-scrollbar::-webkit-scrollbar-track {
+                        background: #232339;
+                    }
+                `}</style>
             </div>
-            <style jsx>{`
-                .animate-fade-in-up {
-                    animation: fadeInUp .4s cubic-bezier(.33, 1, .68, 1);
-                }
-
-                @keyframes fadeInUp {
-                    from {
-                        opacity: 0;
-                        transform: translateY(24px) scale(0.96);
-                    }
-                    to {
-                        opacity: 1;
-                        transform: translateY(0) scale(1);
-                    }
-                }
-
-                .custom-scrollbar {
-                    scrollbar-width: thin;
-                    scrollbar-color: #f03262 #232339;
-                }
-
-                .custom-scrollbar::-webkit-scrollbar {
-                    width: 8px;
-                }
-
-                .custom-scrollbar::-webkit-scrollbar-thumb {
-                    background: #f03262;
-                    border-radius: 8px;
-                }
-
-                .custom-scrollbar::-webkit-scrollbar-track {
-                    background: #232339;
-                }
-            `}</style>
         </div>
     );
 }

@@ -6,6 +6,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import gsap from "gsap";
 import { useAuth } from "../context/AuthContext"; // pastikan path benar
+import { usePathname } from "next/navigation";
 
 export default function Navbar() {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -14,6 +15,8 @@ export default function Navbar() {
     const mobileMenuRef = useRef(null);
     const dropdownRef = useRef(null);
     const router = useRouter();
+    const pathname = usePathname();
+
 
     // Ambil state dari context
     const { authState, user, logout } = useAuth();
@@ -85,6 +88,11 @@ export default function Navbar() {
             console.error("Logout failed:", error);
         }
     };
+
+    useEffect(() => {
+        setIsDropdownOpen(false);
+        setIsMobileMenuOpen(false);
+    }, [pathname]);
 
     if (authState === "loading") return null;
     const isLoggedIn = authState === "authenticated";

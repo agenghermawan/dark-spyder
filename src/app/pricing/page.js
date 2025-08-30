@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import Script from "next/script";
 import PaymentFlowModalPricing from "../../components/pricing/payment_flow_modal_pricing";
+import ButtonSpinner from "../../components/ui/button-spinner";
 import {useAuth} from "../../context/AuthContext";
 
 const HARDCODE_PRICING = [
@@ -299,7 +300,14 @@ export default function PricingPage() {
             {/* Subscription Modal */}
             {showSubscriptionModal && selectedPlan && !selectedPlan.isContact && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-[#1A1B1E] rounded-2xl p-8 max-w-md w-full">
+                    <div className="bg-[#1A1B1E] rounded-2xl p-8 max-w-md w-full relative">
+                        {/* Loader overlay */}
+                        {subscriptionLoading && (
+                            <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 rounded-2xl">
+                                <ButtonSpinner size={40} color="#f33d74" />
+                            </div>
+                        )}
+
                         <h2 className="text-2xl font-bold text-white mb-4">
                             Choose Billing Cycle
                         </h2>
@@ -314,12 +322,11 @@ export default function PricingPage() {
                             >
                                 <span>Monthly</span>
                                 <span className="font-bold">
-                                    ${Number(selectedPlan.monthly).toLocaleString(undefined, {
+                        ${Number(selectedPlan.monthly).toLocaleString(undefined, {
                                     minimumFractionDigits: 2,
                                     maximumFractionDigits: 2,
-                                })}
-                                    /month
-                                </span>
+                                })}/month
+                    </span>
                             </button>
                             <button
                                 onClick={() => handleSubscriptionSelect("quarterly")}
@@ -328,15 +335,14 @@ export default function PricingPage() {
                             >
                                 <span>Quarterly</span>
                                 <span className="font-bold">
-                                    ${Number(selectedPlan.quarterly).toLocaleString(undefined, {
+                        ${Number(selectedPlan.quarterly).toLocaleString(undefined, {
                                     minimumFractionDigits: 2,
                                     maximumFractionDigits: 2,
-                                })}
-                                    /quarter
-                                    <span className="text-sm text-green-400 ml-2">
-                                        (Save 10%)
-                                    </span>
-                                </span>
+                                })}/quarter
+                        <span className="text-sm text-green-400 ml-2">
+                            (Save 10%)
+                        </span>
+                    </span>
                             </button>
                             <button
                                 onClick={() => handleSubscriptionSelect("yearly")}
@@ -345,15 +351,14 @@ export default function PricingPage() {
                             >
                                 <span>Yearly</span>
                                 <span className="font-bold">
-                                    ${Number(selectedPlan.yearly).toLocaleString(undefined, {
+                        ${Number(selectedPlan.yearly).toLocaleString(undefined, {
                                     minimumFractionDigits: 2,
                                     maximumFractionDigits: 2,
-                                })}
-                                    /year
-                                    <span className="text-sm text-green-400 ml-2">
-                                        (Save 20%)
-                                    </span>
-                                </span>
+                                })}/year
+                        <span className="text-sm text-green-400 ml-2">
+                            (Save 20%)
+                        </span>
+                    </span>
                             </button>
                         </div>
                         <button
