@@ -8,7 +8,7 @@ import CyberParticles from "../../../components/stealer/stealer_particles";
 import StealerDetailModal from "../../../components/stealer/stealer_detail_modal";
 
 // ErrorModal Component
-function ErrorModal({show, message, onClose, userDomains, plan}) {
+function ErrorModal({ show, message, onClose, userDomains, plan }) {
     if (!show) return null;
     const isExpired = message && message.toLowerCase().includes("expired");
     const isNotAllowed = message && (
@@ -109,10 +109,6 @@ function StealerPageContent() {
     const [pageInput, setPageInput] = useState(1);
     const [sizeInput, setSizeInput] = useState(10);
 
-    // Domain Search (API)
-    const [domain, setDomain] = useState("");
-    const [showEmptyAlert, setShowEmptyAlert] = useState(false);
-
     // Local filter (search in table data, not API)
     const [localSearch, setLocalSearch] = useState("");
 
@@ -125,6 +121,9 @@ function StealerPageContent() {
 
     const resultsRef = useRef(null);
     const tableRef = useRef(null);
+
+    // Pencarian (domain/keyword)
+    const [searchValue, setSearchValue] = useState("");
 
     // Fetch plan & domain only (auth sudah dari context)
     useEffect(() => {
@@ -143,7 +142,7 @@ function StealerPageContent() {
                     if (planData.data?.domain !== "unlimited") {
                         const domains = Array.isArray(planData.data?.registered_domain) ? planData.data.registered_domain : [];
                         setUserDomains(domains);
-                        if (!domain && domains.length > 0) setDomain(domains[0]);
+                        if (!searchValue && domains.length > 0) setSearchValue(domains[0]);
                     }
                 } else {
                     setHasSubscription(false);
@@ -155,28 +154,45 @@ function StealerPageContent() {
         return () => {
             ignore = true;
         };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [authState]);
 
-    // Fetch stealer data from API (domain, page, size)
-    const fetchStealerData = async ({ domain: domainParam, page = 1, size = 10 }) => {
+    // Handler: Fetch stealer data from API
+    const fetchStealerData = async ({ searchValueParam, page = 1, size = 10 }) => {
         setIsLoading(true);
         setShowEmptyAlert(false);
 
-        let searchDomain = (domainParam && domainParam.trim());
-        if (!searchDomain) {
-            if (plan?.domain !== "unlimited" && userDomains.length > 0) {
-                searchDomain = userDomains[0];
+        let query = "";
+        if (plan?.domain === "unlimited") {
+            // Unlimited: bebas, tidak cek registered_domain
+            if (!searchValueParam?.trim()) {
+                setShowEmptyAlert(true);
+                setStealerData([]);
+                setIsLoading(false);
+                return;
             }
+            query = `q=${encodeURIComponent(searchValueParam)}&type=stealer&page=${page}&size=${size}`;
+        } else {
+            // Plan domain: cek allowed
+            let searchDomain = (searchValueParam && searchValueParam.trim());
+            if (!searchDomain) {
+                if (userDomains.length > 0) {
+                    searchDomain = userDomains[0];
+                }
+            }
+            if (!searchDomain || !userDomains.includes(searchDomain)) {
+                setShowEmptyAlert(true);
+                setStealerData([]);
+                setIsLoading(false);
+                setErrorModal({
+                    show: true,
+                    message: "Domain not allowed or not registered.",
+                });
+                return;
+            }
+            query = `domain=${encodeURIComponent(searchDomain)}&type=stealer&page=${page}&size=${size}`;
         }
-        if (!searchDomain) {
-            setShowEmptyAlert(true);
-            setStealerData([]);
-            setIsLoading(false);
-            return;
-        }
-        setDomain(searchDomain);
 
-        const query = `domain=${encodeURIComponent(searchDomain)}&type=stealer&page=${page}&size=${size}`;
         let errorHappened = false;
         try {
             const res = await fetch(`/api/proxy?${query}`);
@@ -241,18 +257,41 @@ function StealerPageContent() {
         }
     };
 
-    // Handler: Search domain (API)
+    // Handler: Search domain/keyword (API)
     const handleSearch = async () => {
         if (authState === "loading") return;
         if (authState !== "authenticated") {
             router.push("/login");
             return;
         }
-        if (!domain.trim()) return;
-        setPagination((prev) => ({ ...prev, page: 1 }));
-        await fetchStealerData({ domain, page: 1, size: pagination.size });
-    };
+        if (!searchValue.trim()) return;
 
+        if (!plan) return; // Plan belum loaded
+
+        // Validasi expired (universal)
+        const isPlanExpired = plan?.expired && new Date(plan.expired) < new Date();
+        if (isPlanExpired) {
+            setErrorModal({
+                show: true,
+                message: "Your subscription plan has expired. Please renew or purchase a new plan to continue accessing this feature.",
+            });
+            return;
+        }
+
+        // Hanya untuk plan domain
+        if (plan.domain !== "unlimited") {
+            if (!userDomains.includes(searchValue.trim())) {
+                setErrorModal({
+                    show: true,
+                    message: "Domain not allowed or not registered.",
+                });
+                return;
+            }
+        }
+
+        setPagination((prev) => ({ ...prev, page: 1 }));
+        await fetchStealerData({ searchValueParam: searchValue, page: 1, size: pagination.size });
+    };
     // Handler: Pagination (API)
     const handlePagination = async (direction) => {
         let newPage = pagination.page;
@@ -260,7 +299,7 @@ function StealerPageContent() {
         else if (direction === "next" && newPage * pagination.size < pagination.total) newPage++;
         setPagination((prev) => ({ ...prev, page: newPage }));
         await fetchStealerData({
-            domain,
+            searchValueParam: searchValue,
             page: newPage,
             size: pagination.size,
         });
@@ -276,7 +315,7 @@ function StealerPageContent() {
         setPageInput(value);
         setPagination((prev) => ({ ...prev, page: value }));
         await fetchStealerData({
-            domain,
+            searchValueParam: searchValue,
             page: value,
             size: pagination.size,
         });
@@ -291,7 +330,7 @@ function StealerPageContent() {
         setSizeInput(value);
         setPagination((prev) => ({ ...prev, size: value, page: 1 }));
         await fetchStealerData({
-            domain,
+            searchValueParam: searchValue,
             page: 1,
             size: value,
         });
@@ -314,7 +353,7 @@ function StealerPageContent() {
         }
     };
 
-    // Local filter for displayed data in table (not API search)
+    // Local filter untuk table
     const filteredStealerData = localSearch
         ? stealerData.filter(item =>
             Object.values(item)
@@ -324,7 +363,7 @@ function StealerPageContent() {
         )
         : stealerData;
 
-    // Cari entry terbaru untuk modal (ALWAYS up-to-date)
+    // Entry untuk modal
     const currentEntry = filteredStealerData.find(e => e.id === detailModal.id);
     const effectiveValid =
         currentEntry && updatedIds[currentEntry.id] !== undefined
@@ -333,6 +372,9 @@ function StealerPageContent() {
     const entryForModal = currentEntry
         ? { ...currentEntry, valid: effectiveValid }
         : null;
+
+    // Untuk empty alert
+    const [showEmptyAlert, setShowEmptyAlert] = useState(false);
 
     return (
         <div>
@@ -350,8 +392,7 @@ function StealerPageContent() {
             />
             <div className="relative h-screen w-full">
                 <CyberParticles />
-                <section
-                    className="absolute inset-0 flex items-center justify-center px-4 sm:px-6 lg:px-8 text-white z-10">
+                <section className="absolute inset-0 flex items-center justify-center px-4 sm:px-6 lg:px-8 text-white z-10">
                     <div className="max-w-3xl mx-auto text-center">
                         <h2 className="text-4xl font-bold mb-4">Uncover Hidden Credentials</h2>
                         <p className="text-xl mb-8 text-gray-300">
@@ -359,23 +400,14 @@ function StealerPageContent() {
                                 ? "Full access to all compromised credentials"
                                 : "Subscribe to unlock full access to breach data"}
                         </p>
-                        <div
-                            className="flex flex-row gap-2 max-w-xl mx-auto shadow-lg rounded-lg overflow-hidden w-full">
+                        <div className="flex flex-row gap-2 max-w-xl mx-auto shadow-lg rounded-lg overflow-hidden w-full">
                             <input
                                 type="text"
-                                value={domain}
-                                onChange={(e) => setDomain(e.target.value)}
-                                onBlur={() => {
-                                    if (
-                                        !domain &&
-                                        userDomains.length > 0 &&
-                                        plan?.domain !== "unlimited"
-                                    )
-                                        setDomain(userDomains[0]);
-                                }}
+                                value={searchValue}
+                                onChange={(e) => setSearchValue(e.target.value)}
                                 placeholder={
                                     plan?.domain === "unlimited"
-                                        ? "Search by Domain"
+                                        ? "Search by keyword (email, domain, password, etc)"
                                         : `Search by Domain (${userDomains[0] || "your domain"})`
                                 }
                                 onKeyDown={(e) => {
@@ -387,9 +419,9 @@ function StealerPageContent() {
                             />
                             <button
                                 onClick={handleSearch}
-                                disabled={isLoading || !domain.trim()}
+                                disabled={isLoading || !searchValue.trim()}
                                 className={`${
-                                    isLoading || !domain.trim()
+                                    isLoading || !searchValue.trim()
                                         ? "bg-gray-600 cursor-not-allowed"
                                         : "bg-[#f03262] hover:bg-[#c91d4e]"
                                 } text-white px-6 py-2 rounded-lg transition-all duration-300 font-semibold whitespace-nowrap flex items-center justify-center min-w-[120px] hover:cursor-pointer`}
@@ -591,8 +623,7 @@ function StealerPageContent() {
                                 )
                             )}
                             {hasSubscription && (
-                                <div
-                                    className="mt-6 flex flex-col md:flex-row md:justify-between md:items-center gap-3">
+                                <div className="mt-6 flex flex-col md:flex-row md:justify-between md:items-center gap-3">
                                     <div className="flex items-center gap-2">
                                         <p className="text-gray-500 text-sm">
                                             Showing {filteredStealerData.length} of {pagination.total} entries

@@ -5,7 +5,7 @@ export async function GET(req) {
     const { searchParams } = new URL(req.url);
 
     // Build backend query string
-    let backendUrl = "http://103.245.181.5:5001/do-search?";
+    let backendUrl = "http://103.245.181.5:5001/search?";
     let paramsArr = [];
     for (const [key, value] of searchParams.entries()) {
         if (value && value !== "undefined" && value !== "null") {
