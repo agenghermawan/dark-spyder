@@ -131,7 +131,6 @@ export default function MyPaymentsPage() {
         if (expiredDate < nowUTC) isExpired = true;
     }
 
-    // Show payments table if: (no plan) OR (plan expired)
     const showPaymentsTable = !plan || isExpired;
 
     return (
@@ -150,7 +149,7 @@ export default function MyPaymentsPage() {
                                 <a href="/pricing" className="text-pink-400 underline hover:text-pink-300">Pricing</a> page.
                             </span>
                         )
-                        : "You already have an active plan. See details on the My Plan page."
+                        : ""
                     }
                 </p>
 

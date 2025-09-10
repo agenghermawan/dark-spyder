@@ -266,7 +266,6 @@ function StealerPageContent() {
         }
         if (!searchValue.trim()) return;
 
-        if (!plan) return; // Plan belum loaded
 
         // Validasi expired (universal)
         const isPlanExpired = plan?.expired && new Date(plan.expired) < new Date();
@@ -274,6 +273,14 @@ function StealerPageContent() {
             setErrorModal({
                 show: true,
                 message: "Your subscription plan has expired. Please renew or purchase a new plan to continue accessing this feature.",
+            });
+            return;
+        }
+
+        if (!plan) {
+            setErrorModal({
+                show: true,
+                message: "Please purchase or renew a new plan to continue accessing this feature.",
             });
             return;
         }

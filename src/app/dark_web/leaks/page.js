@@ -9,9 +9,16 @@ import LeaksParticles from "../../../components/leaks/leaks_particles";
 
 gsap.registerPlugin(ScrollToPlugin);
 
-function ErrorModal({ show, message, onClose }) {
+function ErrorModal({ show, message, onClose, userDomains, plan  }) {
     if (!show) return null;
     const isExpired = message && message.toLowerCase().includes("expired");
+    const isNotAllowed = message && (
+        message.toLowerCase().includes("not allowed") ||
+        message.toLowerCase().includes("not registered") ||
+        message.toLowerCase().includes("no domain")
+    );
+    const showAllowed = isNotAllowed && plan?.domain !== "unlimited" && userDomains?.length > 0;
+
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
             <div className="bg-[#232339] rounded-2xl shadow-xl p-6 max-w-md w-full relative flex flex-col items-center">
@@ -52,6 +59,11 @@ function ErrorModal({ show, message, onClose }) {
                         ? "Your subscription plan has expired. Please renew or purchase a new plan to continue accessing this feature."
                         : message}
                 </div>
+                {showAllowed && (
+                    <div className="mt-2 text-sm text-cyan-400 text-center">
+                        Allowed domains: {userDomains.join(", ")}
+                    </div>
+                )}
                 {isExpired && (
                     <a
                         href="/pricing"
@@ -107,11 +119,9 @@ export default function LeaksPage() {
                     setPlan(planData.data);
                     setHasSubscription(!!planData.data);
                     if (planData.data?.domain !== "unlimited") {
-                        setUserDomains(
-                            Array.isArray(planData.data?.registered_domain)
-                                ? planData.data.registered_domain
-                                : []
-                        );
+                        const domains = Array.isArray(planData.data?.registered_domain) ? planData.data.registered_domain : [];
+                        setUserDomains(domains);
+                        if (!searchInput && domains.length > 0) setSearchInput(domains[0]);
                     }
                 } else {
                     setHasSubscription(false);
@@ -307,10 +317,14 @@ export default function LeaksPage() {
         }
         if (!searchInput.trim()) return;
 
-        if (!plan) return; // Plan belum loaded
+        if (!plan) {
+            setErrorModal({
+                show: true,
+                message: "Please purchase or renew a new plan to continue accessing this feature.",
+            });
+            return;
+        }
 
-        // 1. Validasi expired (universal)
-        // plan.expired adalah string tanggal, misal "2025-09-06 11:33:03.157000"
         const isPlanExpired = plan.expired && new Date(plan.expired) < new Date();
         if (isPlanExpired) {
             setErrorModal({
@@ -418,7 +432,10 @@ export default function LeaksPage() {
                 show={errorModal.show}
                 message={errorModal.message}
                 onClose={() => setErrorModal({ show: false, message: "" })}
+                userDomains={userDomains}
+                plan={plan}
             />
+
             <div className="relative h-screen w-full">
                 <LeaksParticles />
                 <section className="absolute inset-0 flex items-center justify-center px-4 sm:px-6 lg:px-8 text-white z-10">
@@ -439,7 +456,11 @@ export default function LeaksPage() {
                                 value={searchInput}
                                 onChange={(e) => setSearchInput(e.target.value)}
                                 onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                                placeholder="Search by name, email, domain, or keyword"
+                                placeholder={
+                                    plan?.domain === "unlimited"
+                                        ? "Search by keyword (email, domain, password, etc)"
+                                        : `Search by Domain (${userDomains[0] || "your domain"})`
+                                }
                                 className="input-glass bg-black text-white placeholder-gray-500 border border-gray-700 flex-1 px-4 py-2 rounded-lg transition-all duration-300 focus:ring-2 focus:ring-[#0aafff] focus:border-transparent"
                             />
                             <button
