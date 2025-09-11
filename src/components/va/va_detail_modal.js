@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 
 // Utility: format "ago"
 function formatAgo(dateString) {
@@ -17,151 +17,151 @@ function formatAgo(dateString) {
     return `${diffMo}mo ago`;
 }
 
-function AssetDetailModal({open, onClose, item}) {
+function AssetDetailModal({ open, onClose, item }) {
+    const [showJson, setShowJson] = useState(true);
+
     if (!open || !item) return null;
 
     const asset = item.asset_metadata || {};
-    const event = Array.isArray(item.event) ? item.event[0] : {};
+    const event = Array.isArray(item.event) ? item.event[0] : (item.event || {});
     const info = event.info || {};
     const classification = info.classification || {};
 
     return (
-        <div className="fixed inset-0 z-50 flex items-stretch justify-end bg-black/80">
-            <div className="w-full max-w-screen-md h-full overflow-y-auto shadow-2xl bg-[#18181d] p-5 relative flex flex-col">
+        <div className="fixed inset-0 z-50 flex items-start justify-end bg-black/30">
+            <div
+                className="w-full max-w-md h-[100vh] rounded-xl overflow-hidden bg-[#19191e] shadow-2xl border border-[#232339] flex flex-col animate-fade-in"
+                style={{ minWidth: 520 }}
+            >
                 {/* Top Bar */}
-                <div className="flex items-center justify-between mb-2">
-                    <div>
-                        <span className="text-lg font-bold text-white">{info.name || asset.title || asset.host}</span>
-                        <span
-                            className="ml-3 bg-[#23232b] px-2 py-1 rounded text-xs font-mono text-gray-300">{classification["cve-id"]?.[0] || item.template_id || item["template-id"]}</span>
+                <div className="flex items-center justify-between px-5 py-4 border-b border-[#232339] bg-[#18181d]/95">
+                    <div className="flex flex-col gap-1 w-3/4 truncate">
+                        <div className="text-base font-semibold text-white leading-tight truncate">
+                            {info.name || asset.title || asset.host}
+                        </div>
+                        <div className="flex gap-2 items-center">
+                            {classification["cve-id"]?.[0] && (
+                                <span className="bg-pink-900/40 px-2 py-0.5 rounded text-xs font-mono text-pink-300">{classification["cve-id"]?.[0]}</span>
+                            )}
+                            {(item.template_id || item["template-id"]) && (
+                                <span className="bg-[#23232b] px-2 py-0.5 rounded text-xs font-mono text-gray-300">
+                                    {item.template_id || item["template-id"]}
+                                </span>
+                            )}
+                        </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <span
-                            className="px-3 py-1 rounded-full bg-red-900 text-red-200 font-semibold text-xs">Critical</span>
-                        <button className="rounded px-2 py-1 text-gray-400 hover:text-white text-xl"
-                                onClick={onClose}>×
-                        </button>
-                    </div>
-                </div>
-                {/* Dropdown Actions */}
-                <div className="flex gap-2 mb-6">
-                    <button className="bg-[#23232b] px-3 py-1 rounded text-xs text-gray-300 font-semibold">Retest
-                    </button>
-                    <span className="bg-[#23232b] px-3 py-1 rounded text-xs text-gray-300 font-semibold">Open</span>
-                    <span className="bg-[#23232b] px-3 py-1 rounded text-xs text-gray-300 font-semibold">Ticket</span>
-                    <button className="ml-auto bg-[#23232b] px-3 py-1 rounded text-xs text-gray-300 font-semibold">Full
-                        report
+                    <button
+                        className="rounded px-2 py-1 text-gray-400 hover:text-red-300 text-2xl"
+                        onClick={onClose}
+                        aria-label="Close"
+                    >×
                     </button>
                 </div>
 
-                <div className="flex flex-col gap-4">
-                    {/* Description */}
-                    {info.description && (
-                        <p className="text-gray-200 mb-2">{info.description}</p>
-                    )}
-                    {/* Remediation */}
-                    {info.remediation && (
-                        <div className="mb-2">
-                            <div className="font-semibold text-gray-300 mb-1">Remediation</div>
-                            <div className="text-gray-200 text-sm">{info.remediation}</div>
-                        </div>
-                    )}
-                    {/* References */}
-                    {info.reference && (
-                        <div className="mb-2">
-                            <div className="font-semibold text-gray-300 mb-1">Reference</div>
-                            <div className="flex flex-col gap-1 text-sm">
-                                {info.reference.map((url, i) =>
-                                    <a key={url + i} href={url} className="text-blue-400 underline" target="_blank"
-                                       rel="noopener">{url}</a>
-                                )}
-                            </div>
-                        </div>
-                    )}
-                    {/* Found At */}
-                    {event["matched-at"] && (
-                        <div className="mb-2">
-                            <div className="font-semibold text-gray-300 mb-1">Found at</div>
-                            <div
-                                className="bg-[#23232b] p-2 rounded text-xs font-mono text-gray-200 overflow-x-auto">{event["matched-at"]}</div>
-                        </div>
-                    )}
-                    {/* Extracted */}
-                    {event["extracted-results"] && (
-                        <div className="mb-2">
-                            <div className="font-semibold text-gray-300 mb-1">Extracted</div>
-                            <div
-                                className="bg-[#23232b] p-2 rounded text-xs text-gray-200">{event["extracted-results"].join(", ")}</div>
-                        </div>
-                    )}
-                    {/* Request/Response */}
-                    <div className="mb-4">
-                        <div className="flex gap-2 text-xs text-gray-400 font-semibold mb-1">
-                            <span>Request</span>
-                            {/* Tabs: Response, JSON, CURL - TODO if needed */}
-                        </div>
-                        <div
-                            className="bg-[#23232b] p-2 rounded text-xs font-mono text-gray-200 overflow-x-auto whitespace-pre">
-                            {event.request}
-                        </div>
+                {/* Body */}
+                <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-4">
+                    {/* Action Buttons */}
+                    <div className="flex gap-2">
+                        <button className="bg-[#23232b] px-3 py-1 rounded text-xs text-gray-300 font-semibold">Retest</button>
+                        <span className="bg-[#23232b] px-3 py-1 rounded text-xs text-gray-300 font-semibold">Open</span>
+                        <span className="bg-[#23232b] px-3 py-1 rounded text-xs text-gray-300 font-semibold">Ticket</span>
+                        <button className="ml-auto bg-[red] px-3 py-1 rounded text-xs text-gray-300 font-semibold"
+                                onClick={() => setShowJson(j => !j)}
+                        >{showJson ? "Hide JSON" : "Full JSON"}</button>
                     </div>
-                    {/* Asset Info Table */}
-                    <table className="w-full text-xs mb-4">
-                        <tbody>
-                        <tr>
-                            <td className="py-1 text-gray-400">First seen</td>
-                            <td className="py-1 text-gray-100">{formatAgo(asset.created_at || item.created_at)}</td>
-                            <td className="py-1 text-gray-400">Last seen</td>
-                            <td className="py-1 text-gray-100">{formatAgo(asset.updated_at || item.updated_at)}</td>
-                        </tr>
-                        <tr>
-                            <td className="py-1 text-gray-400">Host</td>
-                            <td className="py-1 text-gray-100">{asset.host}</td>
-                            <td className="py-1 text-gray-400">IP address</td>
-                            <td className="py-1 text-gray-100">{Array.isArray(asset.ip) ? asset.ip.join(", ") : asset.ip}</td>
-                        </tr>
-                        <tr>
-                            <td className="py-1 text-gray-400">Template ID</td>
-                            <td className="py-1">
-                                <a href={item.template_url} target="_blank" rel="noopener"
-                                   className="text-blue-400 underline">{item.template_id || item["template-id"] || "-"}</a>
-                            </td>
-                            <td className="py-1 text-gray-400">Vuln ID</td>
-                            <td className="py-1">
-                                <a href="#" className="text-blue-400 underline">{item.vuln_id}</a>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td className="py-1 text-gray-400">Scan ID</td>
-                            <td className="py-1">
-                                <a href="#" className="text-blue-400 underline">{item.scan_id}</a>
-                            </td>
-                            <td className="py-1 text-gray-400">Asset Group</td>
-                            <td className="py-1">
-                                <a href="#" className="text-blue-400 underline">{asset.enumeration_name || "-"}</a>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td className="py-1 text-gray-400">CVSS</td>
-                            <td className="py-1 text-gray-100">{classification["cvss-score"]}</td>
-                            <td className="py-1 text-gray-400">CWE</td>
-                            <td className="py-1 text-gray-100">{Array.isArray(classification["cwe-id"]) ? classification["cwe-id"].join(", ") : classification["cwe-id"]}</td>
-                        </tr>
-                        <tr>
-                            <td className="py-1 text-gray-400">Vendor</td>
-                            <td className="py-1 text-gray-100">{info.metadata?.vendor}</td>
-                            <td className="py-1 text-gray-400">Product</td>
-                            <td className="py-1 text-gray-100">{info.metadata?.product}</td>
-                        </tr>
-                        <tr>
-                            <td className="py-1 text-gray-400">Protocol</td>
-                            <td className="py-1 text-gray-100">{event.type || asset.webserver}</td>
-                        </tr>
-                        </tbody>
-                    </table>
+
+                    {/* Main fields */}
+                    <div className="space-y-2">
+                        {info.description && (
+                            <div>
+                                <div className="font-semibold text-gray-300 mb-1">Description</div>
+                                <p className="text-gray-200 text-sm">{info.description}</p>
+                            </div>
+                        )}
+                        {info.remediation && (
+                            <div>
+                                <div className="font-semibold text-gray-300 mb-1">Remediation</div>
+                                <div className="text-gray-200 text-sm">{info.remediation}</div>
+                            </div>
+                        )}
+                        {info.reference && (
+                            <div>
+                                <div className="font-semibold text-gray-300 mb-1">Reference</div>
+                                <div className="flex flex-col gap-1 text-sm">
+                                    {info.reference.map((url, i) =>
+                                        <a key={url + i} href={url} className="text-blue-400 underline" target="_blank" rel="noopener">{url}</a>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                        {/* Asset/Event Info */}
+                        <div className="grid grid-cols-1 gap-1 border-t border-[#232339] pt-4">
+                            <InfoField label="First seen" value={formatAgo(asset.created_at || item.created_at)} />
+                            <InfoField label="Last seen" value={formatAgo(asset.updated_at || item.updated_at)} />
+                            <InfoField label="Host" value={asset.host} />
+                            <InfoField label="IP address" value={Array.isArray(asset.ip) ? asset.ip.join(", ") : asset.ip} />
+                            <InfoField label="Template ID" value={item.template_id || item["template-id"]} />
+                            <InfoField label="Vuln ID" value={item.vuln_id} />
+                            <InfoField label="Scan ID" value={item.scan_id} />
+                            <InfoField label="Asset Group" value={asset.enumeration_name} />
+                            <InfoField label="CVSS" value={classification["cvss-score"]} />
+                            <InfoField label="CWE" value={Array.isArray(classification["cwe-id"]) ? classification["cwe-id"].join(", ") : classification["cwe-id"]} />
+                            <InfoField label="Vendor" value={info.metadata?.vendor} />
+                            <InfoField label="Product" value={info.metadata?.product} />
+                            <InfoField label="Protocol" value={event.type || asset.webserver} />
+                        </div>
+                        {/* Found At */}
+                        {event["matched-at"] && (
+                            <div>
+                                <div className="font-semibold text-gray-300 mb-1">Found at</div>
+                                <div className="bg-[#23232b] p-2 rounded text-xs font-mono text-gray-200 overflow-x-auto">{event["matched-at"]}</div>
+                            </div>
+                        )}
+                        {/* Extracted */}
+                        {event["extracted-results"] && (
+                            <div>
+                                <div className="font-semibold text-gray-300 mb-1">Extracted</div>
+                                <div className="bg-[#23232b] p-2 rounded text-xs text-gray-200">
+                                    {event["extracted-results"].join(", ")}
+                                </div>
+                            </div>
+                        )}
+                        {/* Request/Response */}
+                        {event.request && (
+                            <div>
+                                <div className="font-semibold text-gray-300 mb-1">Request</div>
+                                <div className="bg-[#23232b] p-2 rounded text-xs font-mono text-gray-200 overflow-x-auto whitespace-pre">{event.request}</div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* JSON Section */}
+                    {showJson && (
+                        <div className="relative">
+                            <button
+                                className="absolute top-2 right-2 text-xs text-blue-400 underline"
+                                onClick={() => {
+                                    navigator.clipboard.writeText(JSON.stringify(item, null, 2));
+                                }}
+                            >copy</button>
+                            <pre className="bg-[#121217] p-2 rounded text-xs text-gray-200 overflow-x-auto max-h-[40vh] whitespace-pre-wrap">
+                                {JSON.stringify(item, null, 2)}
+                            </pre>
+                        </div>
+                    )}
                 </div>
-                {/* Optional: add more detail if needed */}
             </div>
+        </div>
+    );
+}
+
+// Helper for field rendering
+function InfoField({ label, value }) {
+    if (!value && value !== 0) return null;
+    return (
+        <div className="flex items-start gap-2 py-0.5 text-xs">
+            <span className="min-w-[84px] text-gray-400">{label}</span>
+            <span className="flex-1 break-all text-gray-100">{value}</span>
         </div>
     );
 }

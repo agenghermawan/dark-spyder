@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useEffect, useState } from "react";
-import Navbar from "../../../components/navbar";
 import { FaServer, FaSearch, FaSyncAlt } from "react-icons/fa";
 import { useRouter } from "next/navigation";
+import { useAuth } from "../../../context/AuthContext";
 import AssetGroupModal from "../../../components/vurnerability/AssetGroupModal";
 
 const API_KEY = "cf9452c4-7a79-4352-a1d3-9de3ba517347";
@@ -28,57 +28,65 @@ const tableHeadClasses = "py-3 px-4 text-xs font-semibold uppercase tracking-wid
 
 const AssetGroups = () => {
     const router = useRouter();
-
-    // Auth state
-    const [authState, setAuthState] = useState("loading");
+    const { authState } = useAuth();
 
     // Modal
     const [modalOpen, setModalOpen] = useState(false);
     const [modalGroupId, setModalGroupId] = useState(null);
 
-    // Table/filter state
+    // Data state
+    const [allData, setAllData] = useState([]);
     const [data, setData] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
     const [page, setPage] = useState(1);
     const [size, setSize] = useState(10);
     const [total, setTotal] = useState(0);
 
-    // Domain/plan state
+    // Registered domain (from /api/my-plan)
     const [registeredDomains, setRegisteredDomains] = useState([]);
     const [planReady, setPlanReady] = useState(false);
-    const [selectedDomain, setSelectedDomain] = useState("");
 
-    // Check login first
-    useEffect(() => {
-        let ignore = false;
-        (async () => {
-            try {
-                const res = await fetch("/api/me", { credentials: "include" });
-                if (!ignore) setAuthState(res.ok ? "authenticated" : "unauthenticated");
-            } catch {
-                if (!ignore) setAuthState("unauthenticated");
-            }
-        })();
-        return () => { ignore = true; };
-    }, []);
-
-    // Redirect if not logged in
-    useEffect(() => {
-        if (authState === "unauthenticated") {
-            router.push("/login");
+    // Fetch all asset groups (no domain filter)
+    const fetchAssetGroups = async () => {
+        setIsLoading(true);
+        try {
+            // fetch ALL asset groups (get up to 500, adjust if needed)
+            const params = new URLSearchParams();
+            params.append("limit", 500);
+            params.append("offset", 0);
+            const url = `https://api.projectdiscovery.io/v1/asset/enumerate?${params.toString()}`;
+            const options = {
+                method: "GET",
+                headers: { "X-API-Key": API_KEY },
+            };
+            const res = await fetch(url, options);
+            if (!res.ok) throw new Error("Failed to fetch asset groups");
+            const result = await res.json();
+            let assetGroups = Array.isArray(result.data) ? result.data : [];
+            setAllData(assetGroups);
+        } catch (e) {
+            setAllData([]);
+        } finally {
+            setIsLoading(false);
         }
-    }, [authState, router]);
+    };
 
-    // Fetch plan (registered domains) only if logged in
+    // Fetch asset groups on page load and when refresh
+    useEffect(() => {
+        if (authState === "authenticated") {
+            fetchAssetGroups();
+        }
+    }, [authState]);
+
+    // Fetch registered domains after login
     useEffect(() => {
         if (authState !== "authenticated") return;
         fetch("/api/my-plan", { credentials: "include" })
-            .then(async (res) => res.json())
-            .then((data) => {
+            .then(res => res.json())
+            .then(data => {
                 const domains = Array.isArray(data?.data?.registered_domain) ? data.data.registered_domain : [];
-                setRegisteredDomains(domains);
+                setRegisteredDomains(domains.map(d => d.toLowerCase()));
                 setPlanReady(true);
-                if (domains.length > 0) setSelectedDomain(domains[0]);
             })
             .catch(() => {
                 setRegisteredDomains([]);
@@ -86,62 +94,24 @@ const AssetGroups = () => {
             });
     }, [authState]);
 
-    // Fetch asset groups
-    const fetchAssetGroups = async (search = false, domain = "") => {
-        setIsLoading(true);
-        try {
-            const offset = (page - 1) * size;
-            const params = new URLSearchParams();
-            params.append("offset", offset);
-            params.append("limit", size);
-            const searchDomain = domain || selectedDomain;
-            if (searchDomain) {
-                params.append("search", searchDomain);
-            }
-            const options = {
-                method: "GET",
-                headers: { "X-API-Key": API_KEY },
-            };
-            const url = `https://api.projectdiscovery.io/v1/asset/enumerate?${params.toString()}`;
-            const res = await fetch(url, options);
-            if (!res.ok) throw new Error("Failed to fetch asset groups");
-            const result = await res.json();
-
-            let assetGroups = Array.isArray(result.data) ? result.data : [];
-            if (searchDomain) {
-                assetGroups = assetGroups.filter(item =>
-                    item.name && item.name.toLowerCase().includes(searchDomain.toLowerCase())
-                );
-            }
-            setData(assetGroups);
-            setTotal(assetGroups.length);
-        } catch (e) {
+    // FE Filter: only show asset groups that match registered domains (by name includes)
+    useEffect(() => {
+        if (!registeredDomains.length) {
             setData([]);
             setTotal(0);
-        } finally {
-            setIsLoading(false);
+            return;
         }
-    };
-
-    // Fetch asset groups when selectedDomain, page, or size changes
-    useEffect(() => {
-        if (
-            authState === "authenticated" &&
-            planReady &&
-            registeredDomains.length > 0 &&
-            selectedDomain
-        ) {
-            fetchAssetGroups(true, selectedDomain);
-        }
-        // eslint-disable-next-line
-    }, [page, size, planReady, selectedDomain, authState]);
-
-    // Search handler (dropdown submit)
-    const handleSearch = (e) => {
-        e.preventDefault();
-        setPage(1);
-        fetchAssetGroups(true, selectedDomain);
-    };
+        // Filter: group.name contains salah satu registered domain (case-insensitive)
+        const filtered = allData.filter(item =>
+            registeredDomains.some(domain =>
+                (item.name || "").toLowerCase().includes(domain)
+            )
+        );
+        setTotal(filtered.length);
+        // Pagination
+        const paged = filtered.slice((page - 1) * size, page * size);
+        setData(paged);
+    }, [allData, registeredDomains, page, size]);
 
     const handleRowDetail = (item) => {
         setModalGroupId(item.id);
@@ -152,21 +122,26 @@ const AssetGroups = () => {
     if (authState === "loading" || (authState === "authenticated" && !planReady)) {
         return (
             <div className="min-h-screen flex flex-col justify-center items-center bg-[#161622] text-white">
-                <Navbar />
                 <span className="mt-8 text-lg text-gray-400 animate-pulse">Loading...</span>
             </div>
         );
     }
 
-    // Jika plan sudah siap dan user tidak punya domain terdaftar, tampilkan info
+    // Redirect if not logged in
+    if (authState === "unauthenticated") {
+        if (typeof window !== "undefined") router.push("/login");
+        return null;
+    }
+
+    // Jika user tidak punya domain terdaftar
     if (planReady && registeredDomains.length === 0) {
         return (
             <div className="min-h-screen flex flex-col justify-center items-center bg-[#161622] text-white">
-                <Navbar />
                 <div className="bg-[#232339] p-8 rounded-2xl shadow-xl text-center max-w-md">
                     <h2 className="text-2xl font-bold mb-4">No Registered Domains</h2>
                     <p className="text-gray-300 mb-4">
-                        You have not registered any domains in your plan.<br />
+                        You have not registered any domains in your plan.
+                        <br />
                         Please register your domain first to view your asset groups.
                     </p>
                     <a href="/my-plan" className="inline-block bg-pink-600 hover:bg-pink-700 px-6 py-2 rounded-lg text-white font-bold transition">
@@ -179,7 +154,6 @@ const AssetGroups = () => {
 
     return (
         <div className="bg-gradient-to-br from-[#161622] to-[#232339] text-white min-h-screen">
-            <Navbar />
             <section className="max-w-7xl mx-auto px-6 py-10">
                 <div className="flex flex-col sm:flex-row items-center justify-between mb-8 gap-4">
                     <div>
@@ -191,31 +165,11 @@ const AssetGroups = () => {
                 </div>
                 <div className="bg-[#18181c] rounded-2xl px-6 py-6 shadow-lg">
                     <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mb-4">
-                        <form
-                            onSubmit={handleSearch}
-                            className="flex items-center bg-[#20202b] rounded-lg px-4 py-2 w-full max-w-md"
-                        >
-                            <FaSearch className="text-gray-400 mr-2" />
-                            <select
-                                className="bg-transparent outline-none text-white w-full"
-                                value={selectedDomain}
-                                onChange={e => {
-                                    setSelectedDomain(e.target.value);
-                                    setPage(1);
-                                    fetchAssetGroups(true, e.target.value);
-                                }}
-                                disabled={registeredDomains.length === 0}
-                            >
-                                {registeredDomains.map((domain, idx) =>
-                                    <option key={domain + idx} value={domain}>{domain}</option>
-                                )}
-                            </select>
-                        </form>
                         <div className="flex items-center gap-2 mt-2 sm:mt-0">
                             <button
                                 className="p-3 rounded-lg bg-[#23232b] hover:bg-[#28283a] text-gray-400 shadow transition text-sm"
                                 title="Refresh"
-                                onClick={() => fetchAssetGroups(true, selectedDomain)}
+                                onClick={() => fetchAssetGroups()}
                             >
                                 <FaSyncAlt />
                             </button>
@@ -273,95 +227,95 @@ function AssetGroupTable({ data, isLoading, formatAgo, onRowDetail }) {
         <div className="relative overflow-x-auto rounded-2xl border border-[#22222b] shadow-xl bg-[#19191d]">
             <table className="min-w-full font-mono text-[15px] leading-5 bg-[#19191d] rounded-xl">
                 <thead className="sticky top-0 z-10">
-                    <tr className="bg-gradient-to-r from-[#17171b] to-[#22222a] text-gray-400 border-b border-gray-700">
-                        <th className={tableHeadClasses + " text-left w-2"}>
-                            <input type="checkbox" className="form-checkbox h-4 w-4" disabled />
-                        </th>
-                        <th className={tableHeadClasses + " text-left"}>Assets</th>
-                        <th className={tableHeadClasses + " text-left w-44"}>Source</th>
-                        <th className={tableHeadClasses + " text-left w-44"}>Total services</th>
-                        <th className={tableHeadClasses + " text-left w-32"}>Duration</th>
-                        <th className={tableHeadClasses + " text-left w-32"}>Last Updated</th>
-                        <th className={tableHeadClasses + " text-left w-12"}></th>
-                    </tr>
+                <tr className="bg-gradient-to-r from-[#17171b] to-[#22222a] text-gray-400 border-b border-gray-700">
+                    <th className={tableHeadClasses + " text-left w-2"}>
+                        <input type="checkbox" className="form-checkbox h-4 w-4" disabled />
+                    </th>
+                    <th className={tableHeadClasses + " text-left"}>Assets</th>
+                    <th className={tableHeadClasses + " text-left w-44"}>Source</th>
+                    <th className={tableHeadClasses + " text-left w-44"}>Total services</th>
+                    <th className={tableHeadClasses + " text-left w-32"}>Duration</th>
+                    <th className={tableHeadClasses + " text-left w-32"}>Last Updated</th>
+                    <th className={tableHeadClasses + " text-left w-12"}></th>
+                </tr>
                 </thead>
                 <tbody>
-                    {isLoading && (
-                        <tr>
-                            <td colSpan={7} className="py-12 px-6 text-center text-pink-400 font-bold">
-                                Loading...
-                            </td>
-                        </tr>
-                    )}
-                    {!isLoading && data.length === 0 && (
-                        <tr>
-                            <td colSpan={7} className="py-12 px-6 text-center text-gray-400">
-                                <div className="flex flex-col items-center justify-center">
-                                    <svg className="w-12 h-12 mb-4 text-gray-600" fill="none"
-                                        stroke="currentColor"
-                                        viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5"
-                                            d="M9.172 16.172a4 4 0 0 1 5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" />
-                                    </svg>
-                                    <p className="text-xl font-bold">No asset group data found</p>
-                                </div>
-                            </td>
-                        </tr>
-                    )}
-                    {!isLoading && data.map((item, idx) => (
-                        <tr key={item.id}
-                            className="border-b border-gray-800 cursor-pointer group hover:bg-gradient-to-r from-[#19191d] to-[#23232b] hover:shadow-lg transition duration-150"
-                            onClick={() => onRowDetail?.(item)}
-                        >
-                            <td className="py-4 px-4">
-                                <input type="checkbox" disabled className="form-checkbox h-4 w-4" />
-                            </td>
-                            <td className="py-4 px-4 font-mono text-base text-white flex items-center gap-3">
+                {isLoading && (
+                    <tr>
+                        <td colSpan={7} className="py-12 px-6 text-center text-pink-400 font-bold">
+                            Loading...
+                        </td>
+                    </tr>
+                )}
+                {!isLoading && data.length === 0 && (
+                    <tr>
+                        <td colSpan={7} className="py-12 px-6 text-center text-gray-400">
+                            <div className="flex flex-col items-center justify-center">
+                                <svg className="w-12 h-12 mb-4 text-gray-600" fill="none"
+                                     stroke="currentColor"
+                                     viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5"
+                                          d="M9.172 16.172a4 4 0 0 1 5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" />
+                                </svg>
+                                <p className="text-xl font-bold">No asset group data found</p>
+                            </div>
+                        </td>
+                    </tr>
+                )}
+                {!isLoading && data.map((item, idx) => (
+                    <tr key={item.id}
+                        className="border-b border-gray-800 cursor-pointer group hover:bg-gradient-to-r from-[#19191d] to-[#23232b] hover:shadow-lg transition duration-150"
+                        onClick={() => onRowDetail?.(item)}
+                    >
+                        <td className="py-4 px-4">
+                            <input type="checkbox" disabled className="form-checkbox h-4 w-4" />
+                        </td>
+                        <td className="py-4 px-4 font-mono text-base text-white flex items-center gap-3">
                                 <span className="inline-block w-6 h-6 rounded-full bg-gradient-to-tr from-green-800 to-green-500 shadow flex items-center justify-center">
                                     <FaServer className="text-green-100 text-base" />
                                 </span>
-                                <span className="hover:underline font-bold tracking-tight">{item.name}</span>
-                            </td>
-                            <td className="py-4 px-4 text-xs">
+                            <span className="hover:underline font-bold tracking-tight">{item.name}</span>
+                        </td>
+                        <td className="py-4 px-4 text-xs">
                                 <span className="bg-[#21222b] px-3 py-1 rounded text-xs font-semibold text-gray-200 border border-gray-700 flex items-center gap-2 shadow">
                                     <FaSearch className="mr-1 text-gray-400" />
                                     Auto Discovery
                                 </span>
-                            </td>
-                            <td className="py-4 px-4 font-bold text-white flex gap-3 items-center">
-                                <span>{item.total_assets || 1} services</span>
-                                {item.new_assets > 0 && (
-                                    <span className="ml-2 px-3 py-1 rounded-full bg-green-900 text-green-400 text-xs font-bold animate-pulse">
+                        </td>
+                        <td className="py-4 px-4 font-bold text-white flex gap-3 items-center">
+                            <span>{item.total_assets || 1} services</span>
+                            {item.new_assets > 0 && (
+                                <span className="ml-2 px-3 py-1 rounded-full bg-green-900 text-green-400 text-xs font-bold animate-pulse">
                                         {item.new_assets} new
                                     </span>
-                                )}
-                            </td>
-                            <td className="py-4 px-4 text-gray-200 font-mono">
-                                {item.enumeration_time
-                                    ? item.enumeration_time.split('.')[0].replace('s', 's')
-                                    : "-"}
-                            </td>
-                            <td className="py-4 px-4 text-gray-400 font-mono">
-                                {formatAgo(item.updated_at)}
-                            </td>
-                            <td className="py-4 px-4 text-gray-500">
-                                <button
-                                    className="p-2 rounded-full hover:bg-[#23232b] transition"
-                                    onClick={e => {
-                                        e.stopPropagation();
-                                        onRowDetail?.(item);
-                                    }}
-                                    title="Details"
-                                >
-                                    <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                                        <circle cx="12" cy="12" r="1"></circle>
-                                        <circle cx="12" cy="5" r="1"></circle>
-                                        <circle cx="12" cy="19" r="1"></circle>
-                                    </svg>
-                                </button>
-                            </td>
-                        </tr>
-                    ))}
+                            )}
+                        </td>
+                        <td className="py-4 px-4 text-gray-200 font-mono">
+                            {item.enumeration_time
+                                ? item.enumeration_time.split('.')[0].replace('s', 's')
+                                : "-"}
+                        </td>
+                        <td className="py-4 px-4 text-gray-400 font-mono">
+                            {formatAgo(item.updated_at)}
+                        </td>
+                        <td className="py-4 px-4 text-gray-500">
+                            <button
+                                className="p-2 rounded-full hover:bg-[#23232b] transition"
+                                onClick={e => {
+                                    e.stopPropagation();
+                                    onRowDetail?.(item);
+                                }}
+                                title="Details"
+                            >
+                                <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                    <circle cx="12" cy="12" r="1"></circle>
+                                    <circle cx="12" cy="5" r="1"></circle>
+                                    <circle cx="12" cy="19" r="1"></circle>
+                                </svg>
+                            </button>
+                        </td>
+                    </tr>
+                ))}
                 </tbody>
             </table>
         </div>

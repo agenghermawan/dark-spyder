@@ -6,6 +6,7 @@ import { ScrollToPlugin } from "gsap/ScrollToPlugin";
 import { useRouter } from "next/navigation";
 import LeakCardDynamic from "../../../components/leaks/leaks_card";
 import LeaksParticles from "../../../components/leaks/leaks_particles";
+import VAScannerLoader from "../../../components/va/va_scanner_loader";
 
 gsap.registerPlugin(ScrollToPlugin);
 
@@ -85,6 +86,7 @@ export default function LeaksPage() {
     const [searchInput, setSearchInput] = useState("");
     const [searchQuery, setSearchQuery] = useState("");
     const [isLoading, setIsLoading] = useState(false);
+    const [scanStep, setScanStep] = useState("");
     const [pagination, setPagination] = useState({
         page: 1,
         size: DEFAULT_SIZE,
@@ -133,7 +135,6 @@ export default function LeaksPage() {
         return () => { ignore = true; };
     }, [authState]);
 
-    // Transform API data to card format
     const transformBreachData = (apiData) => {
         return apiData.current_page_data
             .map((item) => {
@@ -233,11 +234,11 @@ export default function LeaksPage() {
         }
     };
 
-    // Fetch data from API
     const loadNewData = async () => {
         let errorHappened = false;
         try {
             setIsLoading(true);
+            setScanStep("Querying breach data...");
             const { page, size } = pagination;
             const response = await fetch(
                 `/api/leaks?q=${encodeURIComponent(searchQuery)}&type=breach&page=${page}&size=${size}`
@@ -255,6 +256,7 @@ export default function LeaksPage() {
                     total: 0,
                 }));
                 setIsLoading(false);
+                setScanStep("");
                 errorHappened = true;
                 return;
             }
@@ -263,6 +265,7 @@ export default function LeaksPage() {
                     `Network response was not ok: ${response.status} ${response.statusText}`
                 );
             }
+            setScanStep("Processing result...");
             const data = await response.json();
             if (!data.current_page_data || data.current_page_data.length === 0) {
                 setBreachData([]);
@@ -272,6 +275,8 @@ export default function LeaksPage() {
                     ...prev,
                     total: 0,
                 }));
+                setIsLoading(false);
+                setScanStep("");
                 return;
             } else {
                 setShowEmptyAlert(false);
@@ -292,6 +297,7 @@ export default function LeaksPage() {
             errorHappened = true;
         } finally {
             setIsLoading(false);
+            setScanStep("");
             if (!errorHappened) {
                 setTimeout(() => {
                     if (resultsRef.current) {
@@ -308,7 +314,6 @@ export default function LeaksPage() {
         }
     };
 
-    // PATCH: Validasi expired dan domain allowed
     const handleSearch = () => {
         if (authState === "loading" || isLoading) return;
         if (authState !== "authenticated") {
@@ -334,7 +339,6 @@ export default function LeaksPage() {
             return;
         }
 
-        // 2. Validasi allowed domain HANYA untuk plan domain
         if (plan.domain !== "unlimited") {
             if (!userDomains.includes(searchInput.trim())) {
                 setErrorModal({
@@ -428,13 +432,18 @@ export default function LeaksPage() {
 
     return (
         <div className="relative">
-            <ErrorModal
-                show={errorModal.show}
-                message={errorModal.message}
-                onClose={() => setErrorModal({ show: false, message: "" })}
-                userDomains={userDomains}
-                plan={plan}
-            />
+            {(isLoading || scanStep) && (
+                <VAScannerLoader status={scanStep || "Scanning..."} domain={searchInput} />
+            )}
+            {!(isLoading || scanStep) && (
+                <ErrorModal
+                    show={errorModal.show}
+                    message={errorModal.message}
+                    onClose={() => setErrorModal({ show: false, message: "" })}
+                    userDomains={userDomains}
+                    plan={plan}
+                />
+            )}
 
             <div className="relative h-screen w-full">
                 <LeaksParticles />
@@ -535,24 +544,7 @@ export default function LeaksPage() {
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 min-h-[200px]">
                                 {isLoading ? (
                                     <div className="col-span-full flex justify-center items-center py-16">
-                                        <svg
-                                            className="animate-spin h-12 w-12 text-cyan-400"
-                                            viewBox="0 0 24 24"
-                                        >
-                                            <circle
-                                                className="opacity-25"
-                                                cx="12"
-                                                cy="12"
-                                                r="10"
-                                                stroke="currentColor"
-                                                strokeWidth="4"
-                                            />
-                                            <path
-                                                className="opacity-75"
-                                                fill="currentColor"
-                                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                                            />
-                                        </svg>
+                                        <VAScannerLoader status={scanStep || "Scanning..."} domain={searchInput} />
                                     </div>
                                 ) : breachData.length === 0 && showEmptyAlert ? (
                                     <div className="col-span-full flex flex-col items-center justify-center py-16">

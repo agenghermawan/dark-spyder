@@ -1,445 +1,613 @@
 "use client";
-
-import React, { useEffect, useState, useRef } from "react";
-import { useAuth } from "../../context/AuthContext";
-import { useRouter } from "next/navigation";
-import AssetDetailModal from "../../components/va/va_detail_modal";
-import VAThemedParticles from "../../components/va/va_particles";
+import {useState, useRef, useEffect} from "react";
+import {
+    MdAdd, MdRefresh, MdArrowDropDown, MdLayers, MdViewList, MdAccessTime, MdCheckCircle, MdError
+} from "react-icons/md";
+import ScanDomainModal from "../../components/va/va_scan_domain_modal";
 import VAScannerLoader from "../../components/va/va_scanner_loader";
-import { FaServer } from "react-icons/fa";
+import {useRouter} from "next/navigation";
+import {useAuth} from "../../context/AuthContext";
+import VAParticles from "../../components/va/va_particles";
 
-function ErrorModal({ show, message, onClose }) {
-    if (!show) return null;
+const severityColors = {
+    critical: "bg-red-700 text-red-100 border-red-400",
+    high: "bg-orange-600 text-orange-50 border-orange-400",
+    medium: "bg-yellow-500 text-yellow-50 border-yellow-400",
+    low: "bg-green-700 text-green-100 border-green-400",
+    info: "bg-blue-900 text-blue-100 border-blue-400",
+    unknown: "bg-gray-800 text-gray-100 border-gray-400",
+};
+
+function formatAgo(date) {
+    if (!date) return "";
+    const d = new Date(date);
+    const now = new Date();
+    const diff = Math.floor((now - d) / 1000);
+    if (diff < 60) return `${diff}s ago`;
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+    if (diff < 2592000) return `${Math.floor(diff / 86400)}d ago`;
+    return d.toLocaleDateString();
+}
+
+function formatDuration(str) {
+    if (!str) return "-";
+    const match = str.match(/((\d+)h)?((\d+)m)?((\d+(\.\d+)?)s)?/);
+    if (!match) return str;
+    let res = "";
+    if (match[2]) res += `${match[2]}h `;
+    if (match[4]) res += `${match[4]}m `;
+    if (match[6]) res += `${parseFloat(match[6]).toFixed(0)}s`;
+    return res.trim() || str;
+}
+
+function StatusBadge({status}) {
+    let color = "bg-gray-700 text-gray-300";
+    let icon = <MdAccessTime className="inline mr-1 -mt-1"/>;
+    if (status === "finished" || status === "completed") {
+        color = "bg-green-800 text-green-200";
+        icon = <MdCheckCircle className="inline mr-1 -mt-1"/>;
+    } else if (status === "failed") {
+        color = "bg-red-700 text-red-200";
+        icon = <MdError className="inline mr-1 -mt-1"/>;
+    } else if (status === "running" || status === "starting" || status === "queued") {
+        color = "bg-blue-700 text-blue-100 animate-pulse";
+    }
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
-            <div className="bg-[#232339] rounded-2xl shadow-xl p-6 max-w-md w-full relative flex flex-col items-center">
-                <button
-                    className="absolute top-2 right-3 text-gray-400 hover:text-white text-2xl"
-                    onClick={onClose}
-                    aria-label="Close"
+        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold ${color}`}>
+            {icon}
+            {status?.charAt(0).toUpperCase() + status?.slice(1)}
+        </span>
+    );
+}
+
+function SeverityBreakdown({severity}) {
+    const order = ["critical", "high", "medium", "low", "info", "unknown"];
+    const total = Object.keys(severity || {}).length
+        ? Object.values(severity).reduce((a, b) => a + parseInt(b), 0)
+        : 0;
+    if (!total) {
+        return <span
+            className="bg-gray-800 text-gray-400 px-4 py-1 rounded-full text-xs">NO VULNERABILITIES FOUND</span>;
+    }
+    return (
+        <div className="flex flex-nowrap gap-2">
+            {order.map(
+                key =>
+                    severity?.[key] > 0 && (
+                        <span key={key}
+                              className={`border ${severityColors[key]} px-2 py-1 rounded-full text-xs font-bold`}>
+                            {key.charAt(0).toUpperCase() + key.slice(1)}: {severity[key]}
+                        </span>
+                    )
+            )}
+        </div>
+    );
+}
+
+function Teaser() {
+    return (
+        <div className="flex flex-col items-center justify-center min-h-[60vh] py-16">
+            <div
+                className="rounded-2xl bg-gradient-to-br from-[#232339] via-[#232339] to-[#18181c] px-8 py-14 flex flex-col items-center border border-pink-700/30 shadow-2xl max-w-lg">
+                <div className="mb-6 flex flex-col items-center">
+                    <MdLayers className="text-pink-500 text-5xl mb-2"/>
+                    <h2 className="text-2xl md:text-3xl font-bold text-white text-center mb-1">
+                        Unlock Vulnerability Assessment
+                    </h2>
+                    <p className="text-gray-300 text-center mb-2">
+                        Sign in and activate your subscription plan to access scan history, run new vulnerability scans,
+                        and protect your assets.
+                    </p>
+                    <div className="text-pink-400 font-bold text-base mt-2">
+                        <span className="bg-pink-900/30 px-3 py-1 rounded-lg">Start your security journey now!</span>
+                    </div>
+                </div>
+                <a
+                    href="/pricing"
+                    className="mt-6 bg-pink-700 hover:bg-pink-800 text-white px-8 py-3 rounded-xl font-semibold text-lg shadow transition-all"
                 >
-                    ×
-                </button>
-                <div className="mb-2 mt-2 flex justify-center">
-                    <svg width="56" height="56" viewBox="0 0 56 56" fill="none" className="drop-shadow-xl">
-                        <circle cx="28" cy="28" r="26" fill="#18181c" stroke="#f03262" strokeWidth="2" />
-                        <rect x="18" y="24" width="20" height="14" rx="4" fill="#232339" stroke="#f03262" strokeWidth="1.5" />
-                        <path d="M28 31v-3" stroke="#f03262" strokeWidth="2" strokeLinecap="round" />
-                        <circle cx="28" cy="31" r="2" fill="#f03262" />
-                        <rect x="23" y="22" width="10" height="6" rx="3" fill="#101014" stroke="#f03262" strokeWidth="1" />
-                    </svg>
-                </div>
-                <h2 className="text-lg font-bold text-pink-400 mb-4 text-center">
-                    Subscription Required
-                </h2>
-                <div className="text-white text-center whitespace-pre-line">
-                    {message ||
-                        "To access vulnerability search, please purchase a subscription plan and register your domain."}
-                </div>
+                    See Plans & Pricing
+                </a>
             </div>
         </div>
     );
 }
 
-const severityColor = {
-    critical: "bg-red-900 text-red-200",
-    high: "bg-orange-900 text-orange-200",
-    medium: "bg-yellow-900 text-yellow-200",
-    low: "bg-green-900 text-green-200",
-    info: "bg-gray-900 text-gray-200",
-    unknown: "bg-gray-800 text-gray-300",
-};
+export default function Page() {
+    const {authState} = useAuth();
 
-export default function VulnerabilitiesPage() {
-    const router = useRouter();
-    const { authState } = useAuth();
-
-    // Plan/domain state
+    // Data & Pagination
+    const [scans, setScans] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [fetchError, setFetchError] = useState("");
     const [userDomains, setUserDomains] = useState([]);
-    const [hasSubscription, setHasSubscription] = useState(false);
-    const [domainLoaded, setDomainLoaded] = useState(false);
+    const [domainLimit, setDomainLimit] = useState(null);
 
-    // Data & Fetching
-    const [vulnData, setVulnData] = useState([]);
-    const [isLoading, setIsLoading] = useState(false);
-    const [errorModal, setErrorModal] = useState({ show: false, message: "" });
-    const [scanStatus, setScanStatus] = useState("");
-    const [scanStep, setScanStep] = useState(""); // NEW
+    // Plan fetch & state
+    const [plan, setPlan] = useState(null);
+    const [planLoaded, setPlanLoaded] = useState(false);
 
-    // Pagination
-    const [pagination, setPagination] = useState({ page: 1, size: 10, total: 0 });
+    // Pagination & search
+    const [page, setPage] = useState(1);
+    const [size, setSize] = useState(10);
+    const [total, setTotal] = useState(0);
     const [pageInput, setPageInput] = useState(1);
     const [sizeInput, setSizeInput] = useState(10);
-
-    // Domain search (API)
-    const [domain, setDomain] = useState("");
-    const [showEmptyAlert, setShowEmptyAlert] = useState(false);
-
-    // Local filter (search in table, not API)
-    const [localSearch, setLocalSearch] = useState("");
+    const [search, setSearch] = useState("");
+    const [status, setStatus] = useState("");
+    const [sort, setSort] = useState({dir: "desc", field: "created_at"});
 
     // Modal
-    const [detailOpen, setDetailOpen] = useState(false);
-    const [detailItem, setDetailItem] = useState(null);
+    const [modalOpen, setModalOpen] = useState(false);
+    const [scanLoading, setScanLoading] = useState(false);
+    const [scanError, setScanError] = useState("");
 
-    const resultsRef = useRef(null);
+    // Scan polling
+    const [pollScanId, setPollScanId] = useState(null);
+    const [pollScanStatus, setPollScanStatus] = useState(null);
+    const [lastScanStatus, setLastScanStatus] = useState(null);
+    const [polling, setPolling] = useState(false);
+    const pollingRef = useRef();
 
-    // Fetch plan/domains (auth dari context)
+    // Refresh
+    const [refreshKey, setRefreshKey] = useState(0);
+
+    // Loader (untuk modal/scan)
+    const [downloadStep, setDownloadStep] = useState("");
+    const [scanStep, setScanStep] = useState("");
+    const [searchValue, setSearchValue] = useState("");
+
+    const router = useRouter();
+    const [dropdownOpen, setDropdownOpen] = useState(false);
+    const dropdownBtnRef = useRef();
+    const [dropdownPos, setDropdownPos] = useState({top: 0, left: 0});
+
+    // Plan and allowed domains fetch
     useEffect(() => {
         if (authState !== "authenticated") {
-            setDomainLoaded(true);
+            setPlanLoaded(true);
             return;
         }
-        let ignore = false;
-        (async () => {
-            try {
-                const planRes = await fetch("/api/my-plan", { credentials: "include" });
-                if (planRes.ok) {
-                    const planData = await planRes.json();
-                    const domains = Array.isArray(planData.data?.registered_domain)
-                        ? planData.data.registered_domain
-                        : [];
+        fetch("/api/my-plan", {credentials: "include"})
+            .then(res => res.json())
+            .then(data => {
+                setPlan(data.data);
+                setPlanLoaded(true);
+                const domains = Array.isArray(data.data?.registered_domain) ? data.data.registered_domain : [];
+                const dLimit = data.data?.domain_limit;
+                setDomainLimit(dLimit);
+                if (dLimit === "unlimited") {
+                    setUserDomains(null);
+                } else {
                     setUserDomains(domains);
-                    const eligible = domains.length > 0;
-                    setHasSubscription(eligible);
-                    if (!domain && domains.length > 0) setDomain(domains[0]);
                 }
-            } finally {
-                if (!ignore) setDomainLoaded(true);
-            }
-        })();
-        return () => {
-            ignore = true;
-        };
+            })
+            .catch(() => {
+                setPlanLoaded(true);
+                setPlan(null);
+            });
     }, [authState]);
 
-    // === ProjectDiscovery Scan via API Route (with status) ===
-    async function scanViaApiRoute(domain) {
-        setScanStep("Submitting scan...");
-        const res = await fetch("/api/va-scan", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ domain }),
+    // Fetch + filter data (only if logged in & active plan & not expired)
+    useEffect(() => {
+        if (authState !== "authenticated" || !planLoaded) return;
+        if (!plan || (plan.expired && new Date(plan.expired) < new Date())) {
+            setScans([]);
+            setTotal(0);
+            setLoading(false);
+            return;
+        }
+        setLoading(true);
+        setFetchError("");
+        const params = new URLSearchParams({
+            page, size,
+            search, status,
         });
-        if (!res.ok) {
-            let errText = "Failed to scan domain";
-            try {
-                const err = await res.json();
-                errText = err.error || errText;
-            } catch {}
-            throw new Error(errText);
+        if (sort.field) {
+            params.append(sort.dir === "asc" ? "sort_asc" : "sort_desc", sort.field);
         }
-        setScanStep("Waiting for scan result...");
-        const data = await res.json();
-        return data;
-    }
+        fetch(`/api/va-scan-list?${params.toString()}`)
+            .then(r => r.json())
+            .then(data => {
+                let scanArr = Array.isArray(data.scans) ? data.scans : [];
+                let newTotal = data.total || scanArr.length;
+                if (domainLimit !== "unlimited" && Array.isArray(userDomains) && userDomains.length > 0) {
+                    scanArr = scanArr.filter(scan =>
+                        userDomains.some(domain =>
+                            scan.name && scan.name.toLowerCase().includes(domain.toLowerCase())
+                        )
+                    );
+                    newTotal = scanArr.length;
+                }
+                setScans(scanArr);
+                setTotal(newTotal);
+                setPageInput(page);
+                setSizeInput(size);
+                setLoading(false);
+            })
+            .catch(() => {
+                setFetchError("Failed to fetch scan history");
+                setLoading(false);
+            });
+    }, [authState, plan, planLoaded, page, size, search, status, sort, refreshKey, domainLimit, userDomains]);
 
-    // Handler: Search domain (API)
-    const handleSearch = async () => {
-        if (authState === "loading") return;
-        if (authState !== "authenticated") {
-            router.push("/login");
-            return;
-        }
-        if (!hasSubscription || userDomains.length === 0) {
-            setErrorModal({
-                show: true,
-                message:
-                    "You need an active subscription and a registered domain to use vulnerability search. Please purchase a plan and add your domain.",
-            });
-            return;
-        }
-        if (!userDomains.includes(domain.trim())) {
-            setErrorModal({
-                show: true,
-                message: "Domain not allowed to search. Please use one of your registered domains.",
-            });
-            return;
-        }
-        setIsLoading(true);
-        setScanStatus("running");
-        setScanStep("Submitting scan...");
-        setShowEmptyAlert(false);
-        setVulnData([]);
+    // Scan handler (modern, polling, tidak timeout)
+    async function handleScan(domain) {
+        setScanLoading(true);
+        setScanError("");
+        setSearchValue(domain);
+        setDownloadStep("Downloading templates...");
         try {
-            const result = await scanViaApiRoute(domain.trim());
-            setScanStep("Processing result...");
-            setVulnData(result.vulnerabilities || []);
-            setShowEmptyAlert(!result.vulnerabilities || result.vulnerabilities.length === 0);
-            setPagination((prev) => ({
-                ...prev,
-                page: 1,
-                size: sizeInput,
-                total: result.vulnerabilities ? result.vulnerabilities.length : 0,
-            }));
-            setPageInput(1);
-            setScanStep("Completed!");
-        } catch (e) {
-            setErrorModal({
-                show: true,
-                message: e.message || "Failed to scan and fetch vulnerability.",
+            await new Promise(r => setTimeout(r, 800));
+            setDownloadStep("");
+            setScanStep("Submitting scan...");
+            const res = await fetch("/api/va-scan", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({domain: domain.trim()}),
             });
-            setShowEmptyAlert(true);
-            setScanStep("Failed!");
-        } finally {
-            setTimeout(() => {
-                setIsLoading(false);
-                setScanStatus("");
-                setScanStep("");
-            }, 1200);
+            setScanStep("");
+            const data = await res.json();
+            if (!res.ok || data.error) {
+                setScanError(data.error || "Failed to start scan");
+                setScanLoading(false);
+                return;
+            }
+            setModalOpen(false);
+            setScanLoading(false);
+            setPollScanId(data.scan_id);
+            setPollScanStatus(data.status || "starting");
+            setLastScanStatus(data.status || "starting");
+            setPolling(true);
+
+            // Tambahkan scan baru ke list FE
+            setScans(prev => [
+                {
+                    scan_id: data.scan_id,
+                    name: domain,
+                    status: data.status || "starting",
+                    progress: 0,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString(),
+                },
+                ...prev,
+            ]);
+        } catch (e) {
+            setScanError("Failed to start scan");
+            setDownloadStep("");
+            setScanStep("");
+            setScanLoading(false);
         }
-    };
-
-    // Modal (detail)
-    const handleRowClick = (item) => {
-        setDetailItem(item);
-        setDetailOpen(true);
-    };
-
-    // Local filter for table (not API search)
-    const filteredVulnData = localSearch
-        ? vulnData.filter(
-            (item) =>
-                (item.template_name || "").toLowerCase().includes(localSearch.toLowerCase()) ||
-                (item.info?.name || "").toLowerCase().includes(localSearch.toLowerCase()) ||
-                (item.severity || "").toLowerCase().includes(localSearch.toLowerCase())
-        )
-        : vulnData;
-
-    if (
-        authState === "loading" ||
-        (authState === "authenticated" && !domainLoaded)
-    ) {
-        return (
-            <div className="min-h-screen flex flex-col justify-center items-center bg-[#161622] text-white">
-                <span className="mt-8 text-lg text-gray-400 animate-pulse">
-                    Loading...
-                </span>
-            </div>
-        );
     }
+
+    // Scan polling effect: update status FE list
+    useEffect(() => {
+        if (!pollScanId || !polling) return;
+
+        pollingRef.current = setInterval(async () => {
+            const res = await fetch(`/api/va-scan-status?scan_id=${pollScanId}`);
+            const data = await res.json();
+
+            let status = data.status;
+            if (!status) status = lastScanStatus || "starting";
+            setPollScanStatus(status);
+            setLastScanStatus(status);
+
+            setScans(prev =>
+                prev.map(scan =>
+                    scan.scan_id === pollScanId
+                        ? {
+                            ...scan,
+                            status: status,
+                            progress: status === "finished" ? 100 : (scan.progress ?? 0),
+                            updated_at: new Date().toISOString()
+                        }
+                        : scan
+                )
+            );
+
+            // === POLLING STOP CONDITION ===
+            if (["finished", "failed", "completed"].includes(status)) {
+                setPolling(false);
+                clearInterval(pollingRef.current);
+
+                // Setelah polling stop, refresh list scan dari BE (supaya update status & hasil)
+                setTimeout(() => setRefreshKey(k => k + 1), 1500);
+            }
+        }, 15000);
+
+        return () => clearInterval(pollingRef.current);
+    }, [pollScanId, polling, lastScanStatus]);
+
+    // Pagination logic
+    const maxPage = Math.max(1, Math.ceil(total / size));
+    const handlePagination = (direction) => {
+        let newPage = page;
+        if (direction === "prev" && newPage > 1) newPage--;
+        else if (direction === "next" && newPage < maxPage) newPage++;
+        setPage(newPage);
+    };
+    const handlePageInputChange = (e) => setPageInput(e.target.value);
+    const handlePageInputBlur = () => {
+        let value = parseInt(pageInput, 10);
+        if (isNaN(value) || value < 1) value = 1;
+        if (value > maxPage) value = maxPage;
+        setPageInput(value);
+        setPage(value);
+    };
+    const handleSizeInputChange = (e) => setSizeInput(e.target.value);
+    const handleSizeInputBlur = () => {
+        let value = parseInt(sizeInput, 10);
+        if (isNaN(value) || value < 1) value = 10;
+        if (value > 100) value = 100;
+        setSizeInput(value);
+        setSize(value);
+        setPage(1);
+        setPageInput(1);
+    };
+
+    // Determine teaser/show main
+    const showTeaser = (
+        authState !== "authenticated" ||
+        (planLoaded && (!plan || (plan.expired && new Date(plan.expired) < new Date())))
+    );
 
     return (
-        <div>
-            <VAThemedParticles />
-            {(isLoading || scanStatus || scanStep) && (
-                <VAScannerLoader status={scanStep || "Scanning..."} domain={domain} />
-            )}
-            {!(isLoading || scanStatus || scanStep) && (
-                <ErrorModal
-                    show={errorModal.show}
-                    message={errorModal.message}
-                    onClose={() => setErrorModal({ show: false, message: "" })}
-                />
-            )}
-            <div className="relative h-screen w-full">
-                <section className="absolute inset-0 flex items-center justify-center px-4 sm:px-6 lg:px-8 text-white z-10">
-                    <div className="max-w-3xl mx-auto text-center">
-                        <h2 className="text-4xl font-bold mb-4">
-                            Vulnerability Assessment
-                        </h2>
-                        <p className="text-xl mb-8 text-gray-300">
-                            View open vulnerabilities found on your assets.
-                        </p>
-                        <div className="w-full max-w-xl mx-auto">
-                            <div className="flex flex-row gap-2 shadow-lg rounded-lg overflow-hidden w-full">
-                                <input
-                                    type="text"
-                                    value={domain}
-                                    onChange={(e) => setDomain(e.target.value)}
-                                    onBlur={() => {
-                                        if (!domain && userDomains.length > 0)
-                                            setDomain(userDomains[0]);
-                                    }}
-                                    placeholder={`Search by Domain (${userDomains[0] || "your domain"})`}
-                                    onKeyDown={(e) => {
-                                        if (e.key === "Enter" && authState === "authenticated") {
-                                            handleSearch();
-                                        }
-                                    }}
-                                    className="input-glass bg-black text-white border border-gray-700 flex-1 px-4 py-2 rounded-lg focus:ring-2 focus:ring-[#f03262] focus:border-transparent"
-                                    disabled={isLoading || scanStatus}
-                                />
-                                <button
-                                    onClick={handleSearch}
-                                    disabled={isLoading || scanStatus}
-                                    className={`${
-                                        isLoading || scanStatus
-                                            ? "bg-gray-600 cursor-not-allowed"
-                                            : "bg-[#f03262] hover:bg-[#c91d4e]"
-                                    } text-white px-6 py-2 rounded-lg transition-all duration-300 font-semibold whitespace-nowrap flex items-center justify-center min-w-[120px]`}
-                                >
-                                    {(!isLoading && !scanStatus) ? "Scan" :
-                                        (
-                                            <>
-                                                <svg
-                                                    className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-                                                    xmlns="http://www.w3.org/2000/svg"
-                                                    fill="none"
-                                                    viewBox="0 0 24 24"
-                                                >
-                                                    <circle
-                                                        className="opacity-25"
-                                                        cx="12"
-                                                        cy="12"
-                                                        r="10"
-                                                        stroke="currentColor"
-                                                        strokeWidth="4"
-                                                    ></circle>
-                                                    <path
-                                                        className="opacity-75"
-                                                        fill="currentColor"
-                                                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                                                    ></path>
-                                                </svg>
-                                                {scanStep || "Scanning..."}
-                                            </>
-                                        )
-                                    }
-                                </button>
-                            </div>
-                            <div className="mt-2 text-sm text-gray-400">
-                                {userDomains.length > 0
-                                    ? `Allowed domains: ${userDomains.join(", ")}`
-                                    : "No domain available in your account. Please select a plan and register your domain to enable this feature."}
-                            </div>
+        <div
+            className="min-h-screen bg-gradient-to-br from-[#18181c] via-[#161622] to-[#18181c] text-white flex flex-col font-inter relative">
+            <VAParticles/>
+            {showTeaser ? (
+                <Teaser/>
+            ) : (
+                <>
+                    {/* Loader overlay untuk submit scan (bukan polling) */}
+                    {(scanLoading || downloadStep || scanStep) && (
+                        <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/70">
+                            <VAScannerLoader status={downloadStep || scanStep || "Scanning..."} domain={searchValue}/>
                         </div>
-                    </div>
-                </section>
-            </div>
-            {(vulnData.length > 0 || showEmptyAlert) && (
-                <section className="py-16 px-4 sm:px-6 lg:px-8" ref={resultsRef}>
-                    <div className="w-10/12 mx-auto">
-                        <p className="text-sm uppercase text-green-500 mb-2 tracking-widest text-center">
-                            🛡️ Vulnerability Assessment
-                        </p>
-                        <h2 className="text-4xl font-light text-white mb-8 text-center">
-                            Scan Result
-                        </h2>
-                        <div className="mb-4 flex items-center justify-between gap-3 flex-wrap">
+                    )}
+
+                    {/* Polling progress bar */}
+                    {polling && (
+                        <div
+                            className="fixed top-6 left-1/2 -translate-x-1/2 z-[1050] bg-pink-700/95 px-6 py-3 rounded-xl shadow-lg flex items-center gap-4 animate-fadeIn font-bold text-white text-base border border-pink-300">
+                            <svg className="animate-spin w-6 h-6 text-white mr-1" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-20" cx="12" cy="12" r="10" stroke="currentColor"
+                                        strokeWidth="4"/>
+                                <path className="opacity-80" fill="currentColor"
+                                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                            </svg>
+                            <span>
+                                Scanning... (Scan ID: <span className="font-mono">{pollScanId}</span>)
+                                <span className="ml-3">Status: <b>{pollScanStatus}</b></span>
+                            </span>
+                        </div>
+                    )}
+
+                    {/* TopBar */}
+                    <div
+                        className="flex items-center py-6 px-8 justify-between border-b border-[#232339] bg-[#161622]/80 backdrop-blur">
+                        <div className="flex gap-3 items-center w-full max-w-2xl">
                             <input
-                                type="text"
-                                value={localSearch}
-                                onChange={(e) => setLocalSearch(e.target.value)}
-                                placeholder="Filter data in current results (e.g. template, severity, etc)"
-                                className="px-4 py-2 rounded-lg bg-black/30 border border-gray-700 text-white placeholder-gray-400 focus:ring-2 focus:ring-[#f03262] focus:border-transparent"
-                                style={{ minWidth: 170 }}
+                                value={search}
+                                onChange={e => {
+                                    setSearch(e.target.value);
+                                    setPage(1);
+                                }}
+                                placeholder="🔎 Search scan by name"
+                                className="px-4 py-2 rounded-lg bg-[#161623] border border-[#232339] text-white placeholder-gray-500 flex-1 shadow"
                             />
                             <button
-                                className="flex items-center gap-2 px-5 py-2 rounded-lg bg-gradient-to-r from-gray-800 to-gray-700 hover:from-pink-700 hover:to-pink-600 text-white font-semibold shadow transition"
-                                onClick={() => router.push('/vulnerabilities/assets')}
+                                className="ml-2 px-3 py-2 bg-[#232339] hover:bg-[#1e1e24] rounded text-white shadow"
+                                onClick={() => setRefreshKey(k => k + 1)}
+                                title="Refresh"
                             >
-                                <FaServer className="text-base" />
-                                <span>Assets Group</span>
+                                <MdRefresh size={20}/>
                             </button>
                         </div>
-                        <div className="overflow-x-auto">
-                            {filteredVulnData.length > 0 ? (
-                                <table className="min-w-full bg-gradient-to-br from-[#111215]/90 via-[#1a1b20]/90 to-[#111215]/90 backdrop-blur-lg text-white rounded-xl shadow-2xl font-mono border border-[#2e2e2e] overflow-hidden">
-                                    <thead>
-                                    <tr className="text-left border-b border-gray-700 text-gray-400 bg-gradient-to-r from-[#1e1e24] to-[#2a2a32]">
-                                        <th className="py-4 px-6">Severity</th>
-                                        <th className="py-4 px-6">Title</th>
-                                        <th className="py-4 px-6">Template</th>
-                                        <th className="py-4 px-6">Host</th>
-                                        <th className="py-4 px-6"></th>
-                                    </tr>
-                                    </thead>
-                                    <tbody>
-                                    {filteredVulnData.map((item, idx) => (
-                                        <tr
-                                            key={(item.template_name || item.info?.name || "") + idx}
-                                            className="border-b border-gray-800 hover:bg-gradient-to-r from-[#1a1a20] to-[#25252d] transition-all duration-300 group"
-                                        >
-                                            <td className="py-4 px-6">
-                                                <span
-                                                    className={`px-4 py-1 rounded-full font-semibold ${
-                                                        severityColor[
-                                                            (item.severity || "critical").toLowerCase()
-                                                            ] || severityColor["critical"]
-                                                    }`}
-                                                >
-                                                    {item.severity
-                                                        ? item.severity.charAt(0).toUpperCase() +
-                                                        item.severity.slice(1)
-                                                        : "Critical"}
-                                                </span>
-                                            </td>
-                                            <td className="py-4 px-6 font-bold text-white">
-                                                {item.template_name || item.info?.name}
-                                            </td>
-                                            <td className="py-4 px-6">
-                                                <span className="bg-[#23232b] px-2 py-1 rounded text-xs text-gray-300 font-mono">
-                                                    {item.template_id}
-                                                </span>
-                                            </td>
-                                            <td className="py-4 px-6">
-                                                <span className="text-xs text-gray-300">
-                                                    {item.host || "-"}
-                                                </span>
-                                            </td>
-                                            <td className="py-4 px-6">
-                                                <button
-                                                    className="px-4 py-2 rounded-lg bg-[#23232b] hover:bg-pink-600 text-pink-400 hover:text-white transition"
-                                                    onClick={() => handleRowClick(item)}
-                                                >
-                                                    Detail
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                    </tbody>
-                                </table>
+                        <div className="flex items-center gap-2">
+                            {/* Dropdown Button */}
+                            <button
+                                className="bg-white text-black font-bold px-6 py-3 rounded-lg flex items-center gap-2 shadow hover:bg-pink-600 hover:text-white transition"
+                                onClick={() => {
+                                    setDropdownOpen(false);
+                                    router.push("vulnerabilities/assets");
+                                }}
+                            >
+                                <MdLayers size={22}/>
+                                Assets
+                            </button>
+                            {/* Create New Scan */}
+                            <button
+                                className="bg-white text-black font-bold px-6 py-3 rounded-lg flex items-center gap-2 shadow hover:bg-pink-600 hover:text-white transition"
+                                onClick={() => setModalOpen(true)}
+                            >
+                                <MdAdd size={22}/>
+                                Create New Scan
+                            </button>
+                        </div>
+                    </div>
+                    {/* Scan Modal */}
+                    <ScanDomainModal
+                        open={modalOpen}
+                        onClose={() => {
+                            setModalOpen(false);
+                            setScanError("");
+                        }}
+                        onSubmit={handleScan}
+                        allowedDomains={userDomains}
+                        loading={scanLoading}
+                        error={scanError}
+                    />
+                    {/* Table & Pagination */}
+                    <div className="flex-1 px-8 py-6 mt-8">
+                        <div className="w-full mx-auto">
+                            <div className="mb-7 flex flex-col items-center">
+                                <span className="uppercase tracking-widest text-pink-400 font-bold text-xs mb-2">
+                                  Vulnerability Assessment History
+                                </span>
+                                <h2 className="text-3xl font-bold text-white mb-2 text-center">
+                                    Scan Results Overview
+                                </h2>
+                                <p className="text-gray-400 text-center max-w-xl">
+                                    Below is the history of your vulnerability scans.&nbsp;
+                                    <span className="text-pink-400 font-semibold">Monitor</span> progress,&nbsp;
+                                    <span className="text-pink-400 font-semibold">review</span> findings, and&nbsp;
+                                    <span className="text-pink-400 font-semibold">manage</span> your assets security in
+                                    real-time.
+                                </p>
+                            </div>
+                            {!loading && fetchError ? (
+                                <div className="text-pink-400 p-6">{fetchError}</div>
                             ) : (
-                                showEmptyAlert && (
-                                    <table className="min-w-full bg-gradient-to-br from-[#111215]/90 via-[#1a1b20]/90 to-[#111215]/90 backdrop-blur-lg text-white rounded-xl shadow-2xl font-mono border border-[#2e2e2e] overflow-hidden">
-                                        <thead>
-                                        <tr className="text-left border-b border-gray-700 text-gray-400 bg-gradient-to-r from-[#1e1e24] to-[#2a2a32]">
-                                            <th className="py-4 px-6">Severity</th>
-                                            <th className="py-4 px-6">Title</th>
-                                            <th className="py-4 px-6">Template</th>
-                                            <th className="py-4 px-6">Host</th>
-                                            <th className="py-4 px-6"></th>
-                                        </tr>
-                                        </thead>
-                                        <tbody>
-                                        <tr className="border-b border-gray-800">
-                                            <td colSpan="5" className="py-8 px-6 text-center text-gray-400">
-                                                <div className="flex flex-col items-center justify-center">
-                                                    <svg
-                                                        className="w-12 h-12 mb-4 text-gray-600"
-                                                        fill="none"
-                                                        stroke="currentColor"
-                                                        viewBox="0 0 24 24"
+                                <>
+                                    <div
+                                        className="overflow-x-auto rounded-xl border border-[#232339] shadow-lg bg-[#161622]">
+                                        <table className="min-w-full text-white font-mono">
+                                            <thead>
+                                            <tr className="border-b border-[#232339] bg-[#191924]/90 text-xs text-gray-400 sticky top-0 z-10 backdrop-blur">
+                                                <th className="py-4 px-5 font-semibold text-left cursor-pointer select-none transition-colors hover:text-pink-400">
+                                                    Scan
+                                                    Name {sort.field === "name" && (sort.dir === "asc" ? "↑" : "↓")}
+                                                </th>
+                                                <th className="py-4 px-5 font-semibold text-left">Status</th>
+                                                <th className="py-4 px-5 font-semibold text-left">Severity Breakdown
+                                                </th>
+                                                <th className="py-4 px-5 font-semibold text-left">Templates</th>
+                                                <th className="py-4 px-5 font-semibold text-left">Services</th>
+                                                <th className="py-4 px-5 font-semibold text-left">Progress</th>
+                                                <th className="py-4 px-5 font-semibold text-left">Duration</th>
+                                                <th className="py-4 px-5 font-semibold text-left">Last Updated</th>
+                                            </tr>
+                                            </thead>
+                                            <tbody>
+                                            {loading ? (
+                                                <tr>
+                                                    <td colSpan={8}
+                                                        className="py-10 text-center text-gray-400 text-base">
+                                                        Loading...
+                                                    </td>
+                                                </tr>
+                                            ) : scans.length === 0 ? (
+                                                <tr>
+                                                    <td colSpan={8}
+                                                        className="py-10 text-center text-gray-400 text-base">
+                                                        No scan found.
+                                                    </td>
+                                                </tr>
+                                            ) : (
+                                                scans.map(scan => (
+                                                    <tr
+                                                        key={scan.scan_id || scan.id}
+                                                        onClick={() => router.push(`/vulnerabilities/${scan.scan_id || scan.id}`)}
+                                                        className="border-b cursor-pointer border-[#232339] hover:bg-[#232339]/80 transition-all duration-300 ease-in-out transform hover:scale-[1.01] hover:shadow-lg hover:shadow-pink-700/20 odd:bg-[#18181c] even:bg-[#1c1c28]"
                                                     >
-                                                        <path
-                                                            strokeLinecap="round"
-                                                            strokeLinejoin="round"
-                                                            strokeWidth="1.5"
-                                                            d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                                                        />
-                                                    </svg>
-                                                    <p className="text-lg font-medium">
-                                                        No vulnerability data found
-                                                    </p>
-                                                    <p className="text-sm mt-1">
-                                                        Try scanning another domain
-                                                    </p>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                        </tbody>
-                                    </table>
-                                )
+                                                        <td className="py-4 px-5 font-bold whitespace-nowrap max-w-xs truncate group-hover:underline">
+                                                            <span
+                                                                title={scan.name}>{scan.name?.length > 32 ? scan.name.slice(0, 32) + "..." : scan.name}</span>
+                                                        </td>
+                                                        <td className="py-4 px-5">
+                                                            <div className="animate-fadeIn">
+                                                                <StatusBadge status={scan.status}/>
+                                                            </div>
+                                                        </td>
+                                                        <td className="py-4 px-5">
+                                                            <div className="animate-fadeIn">
+                                                                <SeverityBreakdown severity={scan.severity}/>
+                                                            </div>
+                                                        </td>
+                                                        <td className="py-4 px-5">
+                                                            <span
+                                                                className="bg-black/40 border border-pink-700 px-3 py-1 rounded-full text-xs font-bold shadow-inner">
+                                                              {scan.total_template?.toLocaleString() || "-"}
+                                                            </span>
+                                                        </td>
+                                                        <td className="py-4 px-5">
+                                                            <span
+                                                                className="bg-black/40 border border-blue-700 px-3 py-1 rounded-full text-xs font-bold shadow-inner">
+                                                              {scan.total_target?.toLocaleString() || "-"}
+                                                            </span>
+                                                        </td>
+                                                        <td className="py-4 px-5">
+                                                            <div
+                                                                className="w-28 bg-gray-800 rounded-full h-4 overflow-hidden flex items-center relative">
+                                                                <div
+                                                                    className={`h-full rounded-l-full transition-all duration-700 ease-out ${scan.progress === 100 ? "bg-green-600" : "bg-pink-500 animate-pulse"}`}
+                                                                    style={{width: `${scan.progress}%`}}
+                                                                ></div>
+                                                                <span
+                                                                    className="absolute text-xs font-bold w-full text-center">{scan.progress || 0}%</span>
+                                                            </div>
+                                                        </td>
+                                                        <td className="py-4 px-5">{formatDuration(scan.scan_time_elapsed)}</td>
+                                                        <td className="py-4 px-5">{formatAgo(scan.updated_at)}</td>
+                                                    </tr>
+                                                ))
+                                            )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    {/* Pagination ala stealer */}
+                                    <div
+                                        className="mt-6 flex flex-col md:flex-row md:justify-between md:items-center gap-3">
+                                        <div className="flex items-center gap-2">
+                                            <p className="text-gray-500 text-sm">
+                                                Showing {scans.length} of {total} entries (Page {page} / {maxPage})
+                                            </p>
+                                        </div>
+                                        <div className="flex flex-wrap items-center gap-3">
+                                            <button
+                                                onClick={() => handlePagination("prev")}
+                                                disabled={page === 1}
+                                                className={`px-4 py-2 text-sm ${
+                                                    page === 1
+                                                        ? "bg-gray-800 cursor-not-allowed"
+                                                        : "bg-gray-800 hover:bg-gray-700"
+                                                } rounded-lg transition-colors`}
+                                            >
+                                                Previous
+                                            </button>
+                                            <button
+                                                onClick={() => handlePagination("next")}
+                                                disabled={page >= maxPage}
+                                                className={`px-4 py-2 text-sm ${
+                                                    page >= maxPage
+                                                        ? "bg-pink-700/50 cursor-not-allowed"
+                                                        : "bg-pink-700 hover:bg-pink-600"
+                                                } rounded-lg transition-colors`}
+                                            >
+                                                Next
+                                            </button>
+                                            <label className="ml-2 text-sm text-gray-300">Limit/Per Page:</label>
+                                            <input
+                                                type="number"
+                                                min={1}
+                                                max={100}
+                                                value={sizeInput}
+                                                onChange={handleSizeInputChange}
+                                                onBlur={handleSizeInputBlur}
+                                                className="w-20 px-2 py-2 rounded-md border border-gray-700 bg-black/30 text-white text-center focus:ring-2 focus:ring-[#f03262] focus:border-transparent"
+                                                title="Entries per page (max 100)"
+                                            />
+                                            <label className="ml-2 text-sm text-gray-300">Page:</label>
+                                            <input
+                                                type="number"
+                                                min={1}
+                                                max={maxPage}
+                                                value={pageInput}
+                                                onChange={handlePageInputChange}
+                                                onBlur={handlePageInputBlur}
+                                                className="w-16 px-2 py-2 rounded-md border border-gray-700 bg-black/30 text-white text-center focus:ring-2 focus:ring-[#f03262] focus:border-transparent"
+                                                title="Go to page"
+                                            />
+                                        </div>
+                                    </div>
+                                </>
                             )}
                         </div>
                     </div>
-                    <AssetDetailModal
-                        open={detailOpen}
-                        onClose={() => setDetailOpen(false)}
-                        item={detailItem}
-                    />
-                </section>
+                </>
             )}
         </div>
     );

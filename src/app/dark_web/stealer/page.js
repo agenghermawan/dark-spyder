@@ -1,6 +1,7 @@
 "use client";
 import { Suspense, useState, useEffect, useRef } from "react";
 import { useAuth } from "../../../context/AuthContext";
+import VAScannerLoader from "../../../components/va/va_scanner_loader";
 import LoadingSpinner from "../../../components/ui/loading-spinner";
 import { useRouter } from "next/navigation";
 import ExposedData from "../../../components/stealer/exposed_data";
@@ -98,9 +99,13 @@ function StealerPageContent() {
     const [userDomains, setUserDomains] = useState([]);
     const [domainLoaded, setDomainLoaded] = useState(false);
 
+    const [downloadLoading, setDownloadLoading] = useState(false);
+    const [downloadStep, setDownloadStep] = useState("");
+
     // Data & Fetching
     const [stealerData, setStealerData] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
+    const [scanStep, setScanStep] = useState(""); // NEW: For loading status
     const [hasSubscription, setHasSubscription] = useState(true);
     const [errorModal, setErrorModal] = useState({ show: false, message: "" });
 
@@ -124,6 +129,9 @@ function StealerPageContent() {
 
     // Pencarian (domain/keyword)
     const [searchValue, setSearchValue] = useState("");
+
+    // Untuk empty alert
+    const [showEmptyAlert, setShowEmptyAlert] = useState(false);
 
     // Fetch plan & domain only (auth sudah dari context)
     useEffect(() => {
@@ -154,26 +162,25 @@ function StealerPageContent() {
         return () => {
             ignore = true;
         };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [authState]);
 
     // Handler: Fetch stealer data from API
     const fetchStealerData = async ({ searchValueParam, page = 1, size = 10 }) => {
         setIsLoading(true);
+        setScanStep("Fetching threat data...");
         setShowEmptyAlert(false);
 
         let query = "";
         if (plan?.domain === "unlimited") {
-            // Unlimited: bebas, tidak cek registered_domain
             if (!searchValueParam?.trim()) {
                 setShowEmptyAlert(true);
                 setStealerData([]);
                 setIsLoading(false);
+                setScanStep("");
                 return;
             }
             query = `q=${encodeURIComponent(searchValueParam)}&type=stealer&page=${page}&size=${size}`;
         } else {
-            // Plan domain: cek allowed
             let searchDomain = (searchValueParam && searchValueParam.trim());
             if (!searchDomain) {
                 if (userDomains.length > 0) {
@@ -184,6 +191,7 @@ function StealerPageContent() {
                 setShowEmptyAlert(true);
                 setStealerData([]);
                 setIsLoading(false);
+                setScanStep("");
                 setErrorModal({
                     show: true,
                     message: "Domain not allowed or not registered.",
@@ -195,6 +203,7 @@ function StealerPageContent() {
 
         let errorHappened = false;
         try {
+            setScanStep("Scanning...");
             const res = await fetch(`/api/proxy?${query}`);
             if (res.status === 403) {
                 const data = await res.json();
@@ -205,10 +214,12 @@ function StealerPageContent() {
                 setStealerData([]);
                 setShowEmptyAlert(true);
                 setIsLoading(false);
+                setScanStep("");
                 errorHappened = true;
                 return;
             }
             if (!res.ok) throw new Error("API not OK");
+            setScanStep("Processing result...");
             const data = await res.json();
 
             if (!data.current_page_data || data.current_page_data.length === 0) {
@@ -246,6 +257,7 @@ function StealerPageContent() {
             });
             errorHappened = true;
         } finally {
+            setScanStep("");
             setIsLoading(false);
             if (!errorHappened) {
                 setTimeout(() => {
@@ -266,7 +278,6 @@ function StealerPageContent() {
         }
         if (!searchValue.trim()) return;
 
-
         // Validasi expired (universal)
         const isPlanExpired = plan?.expired && new Date(plan.expired) < new Date();
         if (isPlanExpired) {
@@ -276,7 +287,6 @@ function StealerPageContent() {
             });
             return;
         }
-
         if (!plan) {
             setErrorModal({
                 show: true,
@@ -284,8 +294,6 @@ function StealerPageContent() {
             });
             return;
         }
-
-        // Hanya untuk plan domain
         if (plan.domain !== "unlimited") {
             if (!userDomains.includes(searchValue.trim())) {
                 setErrorModal({
@@ -299,6 +307,7 @@ function StealerPageContent() {
         setPagination((prev) => ({ ...prev, page: 1 }));
         await fetchStealerData({ searchValueParam: searchValue, page: 1, size: pagination.size });
     };
+
     // Handler: Pagination (API)
     const handlePagination = async (direction) => {
         let newPage = pagination.page;
@@ -311,7 +320,6 @@ function StealerPageContent() {
             size: pagination.size,
         });
     };
-
     // Handler: Page input (API)
     const handlePageInputChange = (e) => setPageInput(e.target.value);
     const handlePageInputBlur = async () => {
@@ -327,7 +335,6 @@ function StealerPageContent() {
             size: pagination.size,
         });
     };
-
     // Handler: Size input (API)
     const handleSizeInputChange = (e) => setSizeInput(e.target.value);
     const handleSizeInputBlur = async () => {
@@ -342,7 +349,6 @@ function StealerPageContent() {
             size: value,
         });
     };
-
     // Handler: Mark valid/not valid (API)
     const markAsValid = async (id, isValid = true) => {
         setMarkingId(id);
@@ -370,6 +376,54 @@ function StealerPageContent() {
         )
         : stealerData;
 
+    const handleDownloadCsv = async () => {
+        setDownloadLoading(true);
+        setDownloadStep("Preparing download...");
+        try {
+            let domain = "";
+            let exportUrl = "";
+
+            if (plan?.domain === "unlimited") {
+                domain = searchValue;
+                if (!domain?.trim()) throw new Error("No keyword selected to export");
+                exportUrl = `/api/stealer-export?q=${encodeURIComponent(domain)}&type=stealer`;
+            } else {
+                if (searchValue && userDomains.includes(searchValue)) {
+                    domain = searchValue;
+                } else {
+                    domain = userDomains[0] || "";
+                }
+                if (!domain) throw new Error("No domain selected to export");
+                exportUrl = `/api/stealer-export?domain=${encodeURIComponent(domain)}&type=stealer`;
+            }
+
+            setDownloadStep("Fetching extract logs...");
+            const res = await fetch(exportUrl, {
+                method: "GET",
+                credentials: "include",
+            });
+            if (!res.ok) throw new Error("Failed to download logs.");
+            setDownloadStep("Building CSV...");
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `stealer-logs-${domain}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+            setDownloadStep("Download completed.");
+        } catch (err) {
+            setErrorModal({ show: true, message: err.message || "Failed to download logs." });
+        } finally {
+            setTimeout(() => {
+                setDownloadLoading(false);
+                setDownloadStep("");
+            }, 1200);
+        }
+    };
+
     // Entry untuk modal
     const currentEntry = filteredStealerData.find(e => e.id === detailModal.id);
     const effectiveValid =
@@ -380,18 +434,21 @@ function StealerPageContent() {
         ? { ...currentEntry, valid: effectiveValid }
         : null;
 
-    // Untuk empty alert
-    const [showEmptyAlert, setShowEmptyAlert] = useState(false);
-
+    // Loader and error modal control: Loader > ErrorModal
     return (
         <div>
-            <ErrorModal
-                show={errorModal.show}
-                message={errorModal.message}
-                onClose={() => setErrorModal({ show: false, message: "" })}
-                userDomains={userDomains}
-                plan={plan}
-            />
+            {(downloadLoading || isLoading || scanStep) && (
+                <VAScannerLoader status={downloadStep || scanStep || "Scanning..."} domain={searchValue} />
+            )}
+            {!(downloadLoading || isLoading || scanStep) && (
+                <ErrorModal
+                    show={errorModal.show}
+                    message={errorModal.message}
+                    onClose={() => setErrorModal({ show: false, message: "" })}
+                    userDomains={userDomains}
+                    plan={plan}
+                />
+            )}
             <StealerDetailModal
                 show={detailModal.show}
                 entry={entryForModal}
@@ -485,7 +542,7 @@ function StealerPageContent() {
                                 ? "Compromised Credentials"
                                 : "🔒 Subscription Required"}
                         </h2>
-                        <div className="mb-4 flex items-center gap-3 flex-wrap">
+                        <div className="mb-4 flex items-center justify-between gap-3 flex-wrap">
                             <input
                                 type="text"
                                 value={localSearch}
@@ -494,6 +551,14 @@ function StealerPageContent() {
                                 className="px-4 py-2 rounded-lg bg-black/30 border border-gray-700 text-white placeholder-gray-400 focus:ring-2 focus:ring-[#f03262] focus:border-transparent"
                                 style={{ minWidth: 170 }}
                             />
+                            <button
+                                onClick={handleDownloadCsv}
+                                disabled={downloadLoading || !stealerData.length}
+                                className={`px-6 py-2 rounded-lg font-semibold text-white bg-gradient-to-r from-pink-700 to-pink-500 hover:from-pink-600 hover:to-pink-400 transition disabled:opacity-60 disabled:cursor-not-allowed`}
+                                title={stealerData.length ? "Download all logs as CSV" : "No data to export"}
+                            >
+                                {downloadLoading ? "Downloading..." : "Download Extract Logs (CSV)"}
+                            </button>
                         </div>
                         <div className="overflow-x-auto" ref={tableRef}>
                             {filteredStealerData.length > 0 ? (
