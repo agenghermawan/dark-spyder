@@ -433,7 +433,7 @@ export default function LeaksPage() {
     return (
         <div className="relative">
             {(isLoading || scanStep) && (
-                <VAScannerLoader status={scanStep || "Scanning..."} domain={searchInput} />
+                <VAScannerLoader status={scanStep || "Scanning..."} domain={searchInput} from_leaks={1} />
             )}
             {!(isLoading || scanStep) && (
                 <ErrorModal

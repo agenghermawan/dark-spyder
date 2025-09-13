@@ -1,6 +1,6 @@
 import React from "react";
 
-export default function VAScannerLoader({ status = "Initializing", domain }) {
+export default function VAScannerLoader({ status = "Initializing", domain, message, from_leaks  }) {
     return (
         <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black bg-opacity-80">
             <svg className="mb-6 animate-pulse" width="80" height="80" viewBox="0 0 80 80">
@@ -12,10 +12,12 @@ export default function VAScannerLoader({ status = "Initializing", domain }) {
                 {status}
             </div>
             <div className="text-gray-300 text-sm mb-1">
-                {domain ? `Domain: ${domain}` : ""}
+                {domain && (
+                    from_leaks ? `Keyword: ${domain}` : `Domain: ${domain}`
+                )}
             </div>
             <div className="text-gray-500 text-xs">
-                This may take up to 1-2 minutes. Please keep this window open...
+                { message == null ? 'This may take up to 1-2 minutes. Please keep this window open...' : message}
             </div>
         </div>
     );

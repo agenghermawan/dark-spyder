@@ -13,7 +13,7 @@ export async function GET(req) {
     console.log("ScanId", scan_id);
     console.log("templates", templates);
 
-    const url = `https://api.projectdiscovery.io/v1/scans/result/${scan_id}?limit=20&offset=0&asset_metadata=true&vuln_status=open,triaged,fix_in_progress&severity=critical,high,medium,low,unknown&templates=${templates}`;
+    const url = `https://api.projectdiscovery.io/v1/scans/result/${scan_id}?limit=20&offset=0&asset_metadata=true&vuln_status=open,triaged,fix_in_progress&severity=critical,high,medium,low,unknown,info&templates=${templates}`;
     const pdRes = await fetch(url, {
         headers: {
             "X-API-Key": API_KEY,

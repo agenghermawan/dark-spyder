@@ -8,7 +8,7 @@ export async function GET(req) {
     const offset = urlObj.searchParams.get("offset") || "0";
     const sort_desc = urlObj.searchParams.get("sort_desc") || "severity";
     const vuln_status = urlObj.searchParams.get("vuln_status") || "open,triaged,fix_in_progress";
-    const severity = urlObj.searchParams.get("severity") || "critical,high,medium,low,unknown";
+    const severity = urlObj.searchParams.get("severity") || "critical,high,medium,low,unknown,info";
 
     const metaUrl = `https://api.projectdiscovery.io/v1/scans/${scan_id}`;
     const findingsUrl = `https://api.projectdiscovery.io/v1/scans/results/filters?type=template&limit=${limit}&offset=${offset}&scan_id=${scan_id}&sort_desc=${sort_desc}&vuln_status=${vuln_status}&severity=${severity}`;

@@ -126,7 +126,8 @@ export default function ScanDetailPage({ scanId }) {
         setDetailLoading(false);
     }
 
-    if (loading) return <VAScannerLoader status={"Scanning..."} />;
+    if (loading) return <VAScannerLoader status="Loading..." message="Please wait a moment" />;
+
     if (!scan) return <div className="text-center py-20 text-xl text-red-400">Scan not found</div>;
 
     return (
