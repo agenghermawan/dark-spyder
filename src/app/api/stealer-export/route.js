@@ -1,5 +1,3 @@
-export const dynamic = 'force-dynamic';
-
 import { NextResponse } from "next/server";
 import ExcelJS from "exceljs";
 
@@ -7,35 +5,10 @@ function toBuffer(workbook) {
     return workbook.xlsx.writeBuffer();
 }
 
-async function fetchAllPages({ backendUrl, token }) {
-    let allData = [];
-    let page = 1;
-    let total = 1;
-    let size = 1000;
-    let fetched = 0;
-    while (fetched < total) {
-        const url = backendUrl + `&page=${page}&size=${size}`;
-        const res = await fetch(url, {
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`,
-            },
-        });
-        if (!res.ok) throw new Error("Failed to fetch data from backend");
-        const apiJson = await res.json();
-        const arr = Array.isArray(apiJson.current_page_data) ? apiJson.current_page_data : [];
-        allData.push(...arr);
-        total = apiJson.total || allData.length;
-        fetched = allData.length;
-        if (arr.length === 0) break;
-        page++;
-    }
-    return allData;
-}
-
 function normalize(val) {
     return (val || "")
         .replace(/^https?:\/\//, "")
+        .replace(/^www\./, "")
         .replace(/\/$/, "")
         .toLowerCase()
         .trim();
@@ -44,10 +17,11 @@ function normalize(val) {
 export async function GET(req) {
     const { searchParams } = new URL(req.url);
 
+    // Build backend URL
     let backendUrl = "http://103.245.181.5:5001/search?";
     let paramsArr = [];
     for (const [key, value] of searchParams.entries()) {
-        if (value && value !== "undefined" && value !== "null" && key !== "page" && key !== "size") {
+        if (value && value !== "undefined" && value !== "null" && key !== "page" && key !== "size" && key !== "export") {
             paramsArr.push(`${encodeURIComponent(key)}=${encodeURIComponent(value)}`);
         }
     }
@@ -61,9 +35,30 @@ export async function GET(req) {
         );
     }
 
+    // Fetch ALL data (ignore paginasi!)
     let allData = [];
+    let page = 1;
+    let size = 1000;
+    let fetched = 0;
+    let total = 1;
     try {
-        allData = await fetchAllPages({ backendUrl, token });
+        while (fetched < total) {
+            const url = backendUrl + `&page=${page}&size=${size}`;
+            const res = await fetch(url, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                },
+            });
+            if (!res.ok) throw new Error("Failed to fetch data from backend");
+            const apiJson = await res.json();
+            const arr = Array.isArray(apiJson.current_page_data) ? apiJson.current_page_data : [];
+            allData.push(...arr);
+            total = apiJson.total || allData.length;
+            fetched = allData.length;
+            if (arr.length === 0) break;
+            page++;
+        }
     } catch (e) {
         return new NextResponse(
             JSON.stringify({ message: "Failed to fetch all data", error: e.message }),
@@ -71,7 +66,7 @@ export async function GET(req) {
         );
     }
 
-    // --- FILTER MANUAL DI SINI ---
+    // ==== FILTER MANUAL SAMA PERSIS SEPERTI FE ====
     let filteredData = allData;
     const domainParam = searchParams.get("domain");
     const qParam = searchParams.get("q");
@@ -79,7 +74,8 @@ export async function GET(req) {
     if (domainParam) {
         const domainNorm = normalize(domainParam);
         filteredData = filteredData.filter(item =>
-            normalize(item._source?.domain).includes(domainNorm)
+            normalize(item._source?.domain).includes(domainNorm) ||
+            domainNorm.includes(normalize(item._source?.domain))
         );
     }
     if (qParam) {
@@ -90,7 +86,6 @@ export async function GET(req) {
             )
         );
     }
-    // --- END FILTER MANUAL ---
 
     const outputName = domainParam || qParam || "export";
 

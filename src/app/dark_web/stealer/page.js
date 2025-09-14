@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import ExposedData from "../../../components/stealer/exposed_data";
 import CyberParticles from "../../../components/stealer/stealer_particles";
 import StealerDetailModal from "../../../components/stealer/stealer_detail_modal";
+import { StealerExportButton } from "../../../components/stealer/stealer_button_export";
 
 // ErrorModal Component
 function ErrorModal({ show, message, onClose, userDomains, plan }) {
@@ -105,7 +106,7 @@ function StealerPageContent() {
     // Data & Fetching
     const [stealerData, setStealerData] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
-    const [scanStep, setScanStep] = useState(""); // NEW: For loading status
+    const [scanStep, setScanStep] = useState("");
     const [hasSubscription, setHasSubscription] = useState(true);
     const [errorModal, setErrorModal] = useState({ show: false, message: "" });
 
@@ -121,7 +122,7 @@ function StealerPageContent() {
     const [markingId, setMarkingId] = useState(null);
     const [updatedIds, setUpdatedIds] = useState({});
 
-    // Modal detail: simpan hanya id
+    // Modal detail
     const [detailModal, setDetailModal] = useState({ show: false, id: null });
 
     const resultsRef = useRef(null);
@@ -133,7 +134,37 @@ function StealerPageContent() {
     // Untuk empty alert
     const [showEmptyAlert, setShowEmptyAlert] = useState(false);
 
-    // Fetch plan & domain only (auth sudah dari context)
+    // Query state for consistent export
+    const [lastQuery, setLastQuery] = useState({ domain: "", q: "", type: "stealer" });
+    const [loadingAll, setLoadingAll] = useState(false);
+
+    const fetchAllStealerData = async (lastQueryParam) => {
+        let allData = [];
+        let page = 1;
+        let size = 1000;
+        let total = 1;
+        let fetched = 0;
+
+        let params = new URLSearchParams(lastQueryParam);
+        params.delete("page");
+        params.delete("size");
+
+        while (fetched < total) {
+            let url = `/api/proxy?${params.toString()}&page=${page}&size=${size}`;
+            const res = await fetch(url, { credentials: "include" });
+            if (!res.ok) break;
+            const data = await res.json();
+            const arr = Array.isArray(data.current_page_data) ? data.current_page_data : [];
+            allData.push(...arr);
+            total = data.total || allData.length;
+            fetched = allData.length;
+            if (!arr.length) break;
+            page++;
+        }
+        return allData;
+    };
+
+    // Fetch plan & domain
     useEffect(() => {
         if (authState !== "authenticated") {
             setDomainLoaded(true);
@@ -200,6 +231,9 @@ function StealerPageContent() {
             }
             query = `domain=${encodeURIComponent(searchDomain)}&type=stealer&page=${page}&size=${size}`;
         }
+
+        // Simpan query terakhir untuk export
+        setLastQuery(Object.fromEntries(new URLSearchParams(query)));
 
         let errorHappened = false;
         try {
@@ -278,7 +312,7 @@ function StealerPageContent() {
         }
         if (!searchValue.trim()) return;
 
-        // Validasi expired (universal)
+        // Validasi expired
         const isPlanExpired = plan?.expired && new Date(plan.expired) < new Date();
         if (isPlanExpired) {
             setErrorModal({
@@ -306,6 +340,39 @@ function StealerPageContent() {
 
         setPagination((prev) => ({ ...prev, page: 1 }));
         await fetchStealerData({ searchValueParam: searchValue, page: 1, size: pagination.size });
+    };
+
+    // Handler: Export Excel, PASTI sama hasil filter search
+    const handleDownloadExcel = async () => {
+        setDownloadLoading(true);
+        setDownloadStep("Preparing download...");
+        try {
+            // lastQuery pasti sama dengan search terakhir
+            const params = new URLSearchParams(lastQuery);
+            const res = await fetch(`/api/stealer-export?${params.toString()}`, {
+                method: "GET",
+                credentials: "include",
+            });
+            if (!res.ok) throw new Error("Failed to download logs.");
+            setDownloadStep("Building Excel...");
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `stealer-logs-export.xlsx`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+            setDownloadStep("Download completed.");
+        } catch (err) {
+            setErrorModal({ show: true, message: err.message || "Failed to download logs." });
+        } finally {
+            setTimeout(() => {
+                setDownloadLoading(false);
+                setDownloadStep("");
+            }, 1200);
+        }
     };
 
     // Handler: Pagination (API)
@@ -376,53 +443,7 @@ function StealerPageContent() {
         )
         : stealerData;
 
-    const handleDownloadCsv = async () => {
-        setDownloadLoading(true);
-        setDownloadStep("Preparing download...");
-        try {
-            let domain = "";
-            let exportUrl = "";
-
-            if (plan?.domain === "unlimited") {
-                domain = searchValue;
-                if (!domain?.trim()) throw new Error("No keyword selected to export");
-                exportUrl = `/api/stealer-export?q=${encodeURIComponent(domain)}&type=stealer`;
-            } else {
-                if (searchValue && userDomains.includes(searchValue)) {
-                    domain = searchValue;
-                } else {
-                    domain = userDomains[0] || "";
-                }
-                if (!domain) throw new Error("No domain selected to export");
-                exportUrl = `/api/stealer-export?domain=${encodeURIComponent(domain)}&type=stealer`;
-            }
-
-            setDownloadStep("Fetching extract logs...");
-            const res = await fetch(exportUrl, {
-                method: "GET",
-                credentials: "include",
-            });
-            if (!res.ok) throw new Error("Failed to download logs.");
-            setDownloadStep("Building CSV...");
-            const blob = await res.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = `stealer-logs-${domain}.csv`;
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-            window.URL.revokeObjectURL(url);
-            setDownloadStep("Download completed.");
-        } catch (err) {
-            setErrorModal({ show: true, message: err.message || "Failed to download logs." });
-        } finally {
-            setTimeout(() => {
-                setDownloadLoading(false);
-                setDownloadStep("");
-            }, 1200);
-        }
-    };
+    const handleDownloadCsv = handleDownloadExcel; // optional alias for compatibility
 
     // Entry untuk modal
     const currentEntry = filteredStealerData.find(e => e.id === detailModal.id);
@@ -434,7 +455,6 @@ function StealerPageContent() {
         ? { ...currentEntry, valid: effectiveValid }
         : null;
 
-    // Loader and error modal control: Loader > ErrorModal
     return (
         <div>
             {(downloadLoading || isLoading || scanStep) && (
@@ -551,14 +571,11 @@ function StealerPageContent() {
                                 className="px-4 py-2 rounded-lg bg-black/30 border border-gray-700 text-white placeholder-gray-400 focus:ring-2 focus:ring-[#f03262] focus:border-transparent"
                                 style={{ minWidth: 170 }}
                             />
-                            <button
-                                onClick={handleDownloadCsv}
-                                disabled={downloadLoading || !stealerData.length}
-                                className={`px-6 py-2 rounded-lg font-semibold text-white bg-gradient-to-r from-pink-700 to-pink-500 hover:from-pink-600 hover:to-pink-400 transition disabled:opacity-60 disabled:cursor-not-allowed`}
-                                title={stealerData.length ? "Download all logs as CSV" : "No data to export"}
-                            >
-                                {downloadLoading ? "Downloading..." : "Download Extract Logs (CSV)"}
-                            </button>
+                            <StealerExportButton
+                                lastQuery={lastQuery}
+                                fetchAllStealerData={fetchAllStealerData}
+                                loading={loadingAll}
+                            />
                         </div>
                         <div className="overflow-x-auto" ref={tableRef}>
                             {filteredStealerData.length > 0 ? (
