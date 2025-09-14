@@ -3,12 +3,13 @@ import { useState, useRef, useEffect } from "react";
 import {
   MdAdd,
   MdRefresh,
-  MdArrowDropDown,
   MdLayers,
-  MdViewList,
   MdAccessTime,
   MdCheckCircle,
   MdError,
+  MdReplay,
+  MdStop,
+  MdDelete
 } from "react-icons/md";
 import ScanDomainModal from "../../components/va/va_scan_domain_modal";
 import VAScannerLoader from "../../components/va/va_scanner_loader";
@@ -36,7 +37,6 @@ function formatAgo(date) {
   if (diff < 2592000) return `${Math.floor(diff / 86400)}d ago`;
   return d.toLocaleDateString();
 }
-
 function formatDuration(str) {
   if (!str) return "-";
   const match = str.match(/((\d+)h)?((\d+)m)?((\d+(\.\d+)?)s)?/);
@@ -47,7 +47,6 @@ function formatDuration(str) {
   if (match[6]) res += `${parseFloat(match[6]).toFixed(0)}s`;
   return res.trim() || str;
 }
-
 function StatusBadge({ status }) {
   let color = "bg-gray-700 text-gray-300";
   let icon = <MdAccessTime className="inline mr-1 -mt-1" />;
@@ -58,78 +57,76 @@ function StatusBadge({ status }) {
     color = "bg-red-700 text-red-200";
     icon = <MdError className="inline mr-1 -mt-1" />;
   } else if (
-    status === "running" ||
-    status === "starting" ||
-    status === "queued"
+      status === "running" ||
+      status === "starting" ||
+      status === "queued"
   ) {
     color = "bg-blue-700 text-blue-100 animate-pulse";
   }
   return (
-    <span
-      className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold ${color}`}
-    >
+      <span
+          className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold ${color}`}
+      >
       {icon}
-      {status?.charAt(0).toUpperCase() + status?.slice(1)}
+        {status?.charAt(0).toUpperCase() + status?.slice(1)}
     </span>
   );
 }
-
 function SeverityBreakdown({ severity }) {
   const order = ["critical", "high", "medium", "low", "info", "unknown"];
   const total = Object.keys(severity || {}).length
-    ? Object.values(severity).reduce((a, b) => a + parseInt(b), 0)
-    : 0;
+      ? Object.values(severity).reduce((a, b) => a + parseInt(b), 0)
+      : 0;
   if (!total) {
     return (
-      <span className="bg-gray-800 text-gray-400 px-4 py-1 rounded-full text-xs">
+        <span className="bg-gray-800 text-gray-400 px-4 py-1 rounded-full text-xs">
         NO VULNERABILITIES FOUND
       </span>
     );
   }
   return (
-    <div className="flex flex-nowrap gap-2">
-      {order.map(
-        (key) =>
-          severity?.[key] > 0 && (
-            <span
-              key={key}
-              className={`border ${severityColors[key]} px-2 py-1 rounded-full text-xs font-bold`}
-            >
+      <div className="flex flex-nowrap gap-2">
+        {order.map(
+            (key) =>
+                severity?.[key] > 0 && (
+                    <span
+                        key={key}
+                        className={`border ${severityColors[key]} px-2 py-1 rounded-full text-xs font-bold`}
+                    >
               {key.charAt(0).toUpperCase() + key.slice(1)}: {severity[key]}
             </span>
-          )
-      )}
-    </div>
+                )
+        )}
+      </div>
   );
 }
-
 function Teaser() {
   return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] py-16">
-      <div className="rounded-2xl bg-gradient-to-br from-[#232339] via-[#232339] to-[#18181c] px-8 py-14 flex flex-col items-center border border-pink-700/30 shadow-2xl max-w-lg">
-        <div className="mb-6 flex flex-col items-center">
-          <MdLayers className="text-pink-500 text-5xl mb-2" />
-          <h2 className="text-2xl md:text-3xl font-bold text-white text-center mb-1">
-            Unlock Vulnerability Assessment
-          </h2>
-          <p className="text-gray-300 text-center mb-2">
-            Sign in and activate your subscription plan to access scan history,
-            run new vulnerability scans, and protect your assets.
-          </p>
-          <div className="text-pink-400 font-bold text-base mt-2">
+      <div className="flex flex-col items-center justify-center min-h-[60vh] py-16">
+        <div className="rounded-2xl bg-gradient-to-br from-[#232339] via-[#232339] to-[#18181c] px-8 py-14 flex flex-col items-center border border-pink-700/30 shadow-2xl max-w-lg">
+          <div className="mb-6 flex flex-col items-center">
+            <MdLayers className="text-pink-500 text-5xl mb-2" />
+            <h2 className="text-2xl md:text-3xl font-bold text-white text-center mb-1">
+              Unlock Vulnerability Assessment
+            </h2>
+            <p className="text-gray-300 text-center mb-2">
+              Sign in and activate your subscription plan to access scan history,
+              run new vulnerability scans, and protect your assets.
+            </p>
+            <div className="text-pink-400 font-bold text-base mt-2">
             <span className="bg-pink-900/30 px-3 py-1 rounded-lg">
               Start your security journey now!
             </span>
+            </div>
           </div>
+          <a
+              href="/pricing"
+              className="mt-6 bg-pink-700 hover:bg-pink-800 text-white px-8 py-3 rounded-xl font-semibold text-lg shadow transition-all"
+          >
+            See Plans & Pricing
+          </a>
         </div>
-        <a
-          href="/pricing"
-          className="mt-6 bg-pink-700 hover:bg-pink-800 text-white px-8 py-3 rounded-xl font-semibold text-lg shadow transition-all"
-        >
-          See Plans & Pricing
-        </a>
       </div>
-    </div>
   );
 }
 
@@ -172,10 +169,20 @@ export default function Page() {
   // Refresh
   const [refreshKey, setRefreshKey] = useState(0);
 
-  // Loader (untuk modal/scan)
+  // Loader (untuk modal/scan dan action)
   const [downloadStep, setDownloadStep] = useState("");
   const [scanStep, setScanStep] = useState("");
   const [searchValue, setSearchValue] = useState("");
+
+  // Action modal (result & confirmation)
+  const [actionModal, setActionModal] = useState({
+    open: false,
+    title: "",
+    message: "",
+    type: "success",
+    confirm: false,
+    onConfirm: null,
+  });
 
   const router = useRouter();
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -189,25 +196,25 @@ export default function Page() {
       return;
     }
     fetch("/api/my-plan", { credentials: "include" })
-      .then((res) => res.json())
-      .then((data) => {
-        setPlan(data.data);
-        setPlanLoaded(true);
-        const domains = Array.isArray(data.data?.registered_domain)
-          ? data.data.registered_domain
-          : [];
-        const dLimit = data.data?.domain;
-        setDomainLimit(dLimit);
-        if (dLimit === "unlimited") {
-          setUserDomains(null);
-        } else {
-          setUserDomains(domains);
-        }
-      })
-      .catch(() => {
-        setPlanLoaded(true);
-        setPlan(null);
-      });
+        .then((res) => res.json())
+        .then((data) => {
+          setPlan(data.data);
+          setPlanLoaded(true);
+          const domains = Array.isArray(data.data?.registered_domain)
+              ? data.data.registered_domain
+              : [];
+          const dLimit = data.data?.domain;
+          setDomainLimit(dLimit);
+          if (dLimit === "unlimited") {
+            setUserDomains(null);
+          } else {
+            setUserDomains(domains);
+          }
+        })
+        .catch(() => {
+          setPlanLoaded(true);
+          setPlan(null);
+        });
   }, [authState]);
 
   // Fetch + filter data (only if logged in & active plan & not expired)
@@ -231,37 +238,37 @@ export default function Page() {
       params.append(sort.dir === "asc" ? "sort_asc" : "sort_desc", sort.field);
     }
     fetch(`/api/va-scan-list?${params.toString()}`)
-      .then((r) => r.json())
-      .then((data) => {
-        let scanArr = Array.isArray(data.scans) ? data.scans : [];
-        let newTotal = data.total || scanArr.length;
+        .then((r) => r.json())
+        .then((data) => {
+          let scanArr = Array.isArray(data.scans) ? data.scans : [];
+          let newTotal = data.total || scanArr.length;
 
-        const isUnlimited = domainLimit === "unlimited";
-        if (
-          !isUnlimited &&
-          Array.isArray(userDomains) &&
-          userDomains.length > 0
-        ) {
-          scanArr = scanArr.filter((scan) =>
-            userDomains.some(
-              (domain) =>
-                scan.name &&
-                scan.name.toLowerCase().includes(domain.toLowerCase())
-            )
-          );
-          newTotal = scanArr.length;
-        }
+          const isUnlimited = domainLimit === "unlimited";
+          if (
+              !isUnlimited &&
+              Array.isArray(userDomains) &&
+              userDomains.length > 0
+          ) {
+            scanArr = scanArr.filter((scan) =>
+                userDomains.some(
+                    (domain) =>
+                        scan.name &&
+                        scan.name.toLowerCase().includes(domain.toLowerCase())
+                )
+            );
+            newTotal = scanArr.length;
+          }
 
-        setScans(scanArr);
-        setTotal(newTotal);
-        setPageInput(page);
-        setSizeInput(size);
-        setLoading(false);
-      })
-      .catch(() => {
-        setFetchError("Failed to fetch scan history");
-        setLoading(false);
-      });
+          setScans(scanArr);
+          setTotal(newTotal);
+          setPageInput(page);
+          setSizeInput(size);
+          setLoading(false);
+        })
+        .catch(() => {
+          setFetchError("Failed to fetch scan history");
+          setLoading(false);
+        });
   }, [
     authState,
     plan,
@@ -325,6 +332,133 @@ export default function Page() {
     }
   }
 
+  // === ADD HANDLER FOR ACTIONS ===
+  async function handleRescan(scan) {
+    setScanLoading(true);
+    try {
+      const res = await fetch(`/api/va-scan-rescan?scan_id=${scan.scan_id}`, {
+        method: "POST"
+      });
+      const data = await res.json();
+      setScanLoading(false);
+      if (res.ok && data.id) {
+        setActionModal({
+          open: true,
+          title: "Rescan Success",
+          message: data.message || "Rescan started successfully.",
+          type: "success",
+          confirm: false,
+        });
+        setRefreshKey((k) => k + 1);
+      } else {
+        setActionModal({
+          open: true,
+          title: "Rescan Failed",
+          message: data.message || "Failed to rescan.",
+          type: "error",
+          confirm: false,
+        });
+      }
+    } catch (e) {
+      setScanLoading(false);
+      setActionModal({
+        open: true,
+        title: "Rescan Error",
+        message: "Failed to rescan.",
+        type: "error",
+        confirm: false,
+      });
+    }
+  }
+
+  async function handleStopScan(scan_id) {
+    setScanLoading(true);
+    try {
+      const res = await fetch(`/api/va-scan-stop?scan_id=${scan_id}`, {
+        method: "POST"
+      });
+      const data = await res.json();
+      setScanLoading(false);
+      if (res.ok && data.ok) {
+        setActionModal({
+          open: true,
+          title: "Scan Stopped",
+          message: data.message || "Scan has been stopped.",
+          type: "success",
+          confirm: false,
+        });
+        setRefreshKey((k) => k + 1);
+      } else {
+        setActionModal({
+          open: true,
+          title: "Stop Failed",
+          message: data.message || "Failed to stop scan.",
+          type: "error",
+          confirm: false,
+        });
+      }
+    } catch (e) {
+      setScanLoading(false);
+      setActionModal({
+        open: true,
+        title: "Stop Error",
+        message: "Failed to stop scan.",
+        type: "error",
+        confirm: false,
+      });
+    }
+  }
+
+  function confirmDeleteScan(scan_id) {
+    setActionModal({
+      open: true,
+      title: "Delete Confirmation",
+      message: "Are you sure you want to delete this scan? This action cannot be undone.",
+      type: "error",
+      confirm: true,
+      onConfirm: () => doDeleteScan(scan_id),
+    });
+  }
+
+  async function doDeleteScan(scan_id) {
+    setActionModal((m) => ({ ...m, open: false, confirm: false, onConfirm: null }));
+    setScanLoading(true);
+    try {
+      const res = await fetch(`/api/va-scan-delete?scan_id=${scan_id}`, {
+        method: "DELETE"
+      });
+      const data = await res.json();
+      setScanLoading(false);
+      if (res.ok && data.ok) {
+        setActionModal({
+          open: true,
+          title: "Scan Deleted",
+          message: data.message || "Scan has been deleted.",
+          type: "success",
+          confirm: false,
+        });
+        setRefreshKey((k) => k + 1);
+      } else {
+        setActionModal({
+          open: true,
+          title: "Delete Failed",
+          message: data.message || "Failed to delete scan.",
+          type: "error",
+          confirm: false,
+        });
+      }
+    } catch (e) {
+      setScanLoading(false);
+      setActionModal({
+        open: true,
+        title: "Delete Error",
+        message: "Failed to delete scan.",
+        type: "error",
+        confirm: false,
+      });
+    }
+  }
+
   // Scan polling effect: update status FE list
   useEffect(() => {
     if (!pollScanId || !polling) return;
@@ -339,16 +473,16 @@ export default function Page() {
       setLastScanStatus(status);
 
       setScans((prev) =>
-        prev.map((scan) =>
-          scan.scan_id === pollScanId
-            ? {
-                ...scan,
-                status: status,
-                progress: status === "finished" ? 100 : scan.progress ?? 0,
-                updated_at: new Date().toISOString(),
-              }
-            : scan
-        )
+          prev.map((scan) =>
+              scan.scan_id === pollScanId
+                  ? {
+                    ...scan,
+                    status: status,
+                    progress: status === "finished" ? 100 : scan.progress ?? 0,
+                    updated_at: new Date().toISOString(),
+                  }
+                  : scan
+          )
       );
 
       // === POLLING STOP CONDITION ===
@@ -393,325 +527,427 @@ export default function Page() {
 
   // Determine teaser/show main
   const showTeaser =
-    authState !== "authenticated" ||
-    (planLoaded &&
-      (!plan || (plan.expired && new Date(plan.expired) < new Date())));
+      authState !== "authenticated" ||
+      (planLoaded &&
+          (!plan || (plan.expired && new Date(plan.expired) < new Date())));
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#18181c] via-[#161622] to-[#18181c] text-white flex flex-col font-inter relative">
-      <VAParticles />
-      {showTeaser ? (
-        <Teaser />
-      ) : (
-        <>
-          {/* Loader overlay untuk submit scan (bukan polling) */}
-          {(scanLoading || downloadStep || scanStep) && (
-            <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/70">
-              <VAScannerLoader
-                status={downloadStep || scanStep || "Scanning..."}
-                domain={searchValue}
-              />
-            </div>
-          )}
+      <div className="min-h-screen bg-gradient-to-br from-[#18181c] via-[#161622] to-[#18181c] text-white flex flex-col font-inter relative">
+        <VAParticles />
+        {showTeaser ? (
+            <Teaser />
+        ) : (
+            <>
+              {/* Loader overlay untuk submit scan (bukan polling) */}
+              {(scanLoading || downloadStep || scanStep) && (
+                  <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/70">
+                    <VAScannerLoader
+                        status={downloadStep || scanStep || "Processing..."}
+                        domain={searchValue}
+                    />
+                  </div>
+              )}
 
-          {/* Polling progress bar */}
-          {polling && (
-            <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[1050] bg-pink-700/95 px-6 py-3 rounded-xl shadow-lg flex items-center gap-4 animate-fadeIn font-bold text-white text-base border border-pink-300">
-              <svg
-                className="animate-spin w-6 h-6 text-white mr-1"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  className="opacity-20"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                />
-                <path
-                  className="opacity-80"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                />
-              </svg>
-              <span>
+              {/* Polling progress bar */}
+              {polling && (
+                  <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[1050] bg-pink-700/95 px-6 py-3 rounded-xl shadow-lg flex items-center gap-4 animate-fadeIn font-bold text-white text-base border border-pink-300">
+                    <svg
+                        className="animate-spin w-6 h-6 text-white mr-1"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                    >
+                      <circle
+                          className="opacity-20"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                      />
+                      <path
+                          className="opacity-80"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      />
+                    </svg>
+                    <span>
                 Scanning... (Scan ID:{" "}
-                <span className="font-mono">{pollScanId}</span>)
+                      <span className="font-mono">{pollScanId}</span>)
                 <span className="ml-3">
                   Status: <b>{pollScanStatus}</b>
                 </span>
               </span>
-            </div>
-          )}
+                  </div>
+              )}
 
-          {/* TopBar */}
-          <div className="flex items-center py-6 px-8 justify-between border-b border-[#232339] bg-[#161622]/80 backdrop-blur">
-            <div className="flex gap-3 items-center w-full max-w-2xl">
-              <input
-                value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
-                  setPage(1);
-                }}
-                placeholder="🔎 Search scan by name"
-                className="px-4 py-2 rounded-lg bg-[#161623] border border-[#232339] text-white placeholder-gray-500 flex-1 shadow"
+              {/* TopBar */}
+              <div className="flex items-center py-6 px-8 justify-between border-b border-[#232339] bg-[#161622]/80 backdrop-blur">
+                <div className="flex gap-3 items-center w-full max-w-2xl">
+                  <input
+                      value={search}
+                      onChange={(e) => {
+                        setSearch(e.target.value);
+                        setPage(1);
+                      }}
+                      placeholder="🔎 Search scan by name"
+                      className="px-4 py-2 rounded-lg bg-[#161623] border border-[#232339] text-white placeholder-gray-500 flex-1 shadow"
+                  />
+                  <button
+                      className="ml-2 px-3 py-2 bg-[#232339] hover:bg-[#1e1e24] rounded text-white shadow"
+                      onClick={() => setRefreshKey((k) => k + 1)}
+                      title="Refresh"
+                  >
+                    <MdRefresh size={20} />
+                  </button>
+                </div>
+                <div className="flex items-center gap-2">
+                  {/* Dropdown Button */}
+                  <button
+                      className="bg-white text-black font-bold px-6 py-3 rounded-lg flex items-center gap-2 shadow hover:bg-pink-600 hover:text-white transition"
+                      onClick={() => {
+                        setDropdownOpen(false);
+                        router.push("vulnerabilities/assets");
+                      }}
+                  >
+                    <MdLayers size={22} />
+                    Assets
+                  </button>
+                  {/* Create New Scan */}
+                  <button
+                      className="bg-white text-black font-bold px-6 py-3 rounded-lg flex items-center gap-2 shadow hover:bg-pink-600 hover:text-white transition"
+                      onClick={() => setModalOpen(true)}
+                  >
+                    <MdAdd size={22} />
+                    Create New Scan
+                  </button>
+                </div>
+              </div>
+              {/* Scan Modal */}
+              <ScanDomainModal
+                  open={modalOpen}
+                  onClose={() => {
+                    setModalOpen(false);
+                    setScanError("");
+                  }}
+                  onSubmit={handleScan}
+                  allowedDomains={userDomains}
+                  loading={scanLoading}
+                  error={scanError}
+                  isUnlimited={plan?.domain === "unlimited"}
               />
-              <button
-                className="ml-2 px-3 py-2 bg-[#232339] hover:bg-[#1e1e24] rounded text-white shadow"
-                onClick={() => setRefreshKey((k) => k + 1)}
-                title="Refresh"
-              >
-                <MdRefresh size={20} />
-              </button>
-            </div>
-            <div className="flex items-center gap-2">
-              {/* Dropdown Button */}
-              <button
-                className="bg-white text-black font-bold px-6 py-3 rounded-lg flex items-center gap-2 shadow hover:bg-pink-600 hover:text-white transition"
-                onClick={() => {
-                  setDropdownOpen(false);
-                  router.push("vulnerabilities/assets");
-                }}
-              >
-                <MdLayers size={22} />
-                Assets
-              </button>
-              {/* Create New Scan */}
-              <button
-                className="bg-white text-black font-bold px-6 py-3 rounded-lg flex items-center gap-2 shadow hover:bg-pink-600 hover:text-white transition"
-                onClick={() => setModalOpen(true)}
-              >
-                <MdAdd size={22} />
-                Create New Scan
-              </button>
-            </div>
-          </div>
-          {/* Scan Modal */}
-          <ScanDomainModal
-            open={modalOpen}
-            onClose={() => {
-              setModalOpen(false);
-              setScanError("");
-            }}
-            onSubmit={handleScan}
-            allowedDomains={userDomains}
-            loading={scanLoading}
-            error={scanError}
-            isUnlimited={plan?.domain === "unlimited"}
-          />
-          {/* Table & Pagination */}
-          <div className="flex-1 px-8 py-6 mt-8">
-            <div className="w-full mx-auto">
-              <div className="mb-7 flex flex-col items-center">
+              {/* Table & Pagination */}
+              <div className="flex-1 px-8 py-6 mt-8">
+                <div className="w-full mx-auto">
+                  <div className="mb-7 flex flex-col items-center">
                 <span className="uppercase tracking-widest text-pink-400 font-bold text-xs mb-2">
                   Vulnerability Assessment History
                 </span>
-                <h2 className="text-3xl font-bold text-white mb-2 text-center">
-                  Scan Results Overview
-                </h2>
-                <p className="text-gray-400 text-center max-w-xl">
-                  Below is the history of your vulnerability scans.&nbsp;
-                  <span className="text-pink-400 font-semibold">
+                    <h2 className="text-3xl font-bold text-white mb-2 text-center">
+                      Scan Results Overview
+                    </h2>
+                    <p className="text-gray-400 text-center max-w-xl">
+                      Below is the history of your vulnerability scans.&nbsp;
+                      <span className="text-pink-400 font-semibold">
                     Monitor
                   </span>{" "}
-                  progress,&nbsp;
-                  <span className="text-pink-400 font-semibold">
+                      progress,&nbsp;
+                      <span className="text-pink-400 font-semibold">
                     review
                   </span>{" "}
-                  findings, and&nbsp;
-                  <span className="text-pink-400 font-semibold">
+                      findings, and&nbsp;
+                      <span className="text-pink-400 font-semibold">
                     manage
                   </span>{" "}
-                  your assets security in real-time.
-                </p>
-              </div>
-              {!loading && fetchError ? (
-                <div className="text-pink-400 p-6">{fetchError}</div>
-              ) : (
-                <>
-                  <div className="overflow-x-auto rounded-xl border border-[#232339] shadow-lg bg-[#161622]">
-                    <table className="min-w-full text-white font-mono">
-                      <thead>
-                        <tr className="border-b border-[#232339] bg-[#191924]/90 text-xs text-gray-400 sticky top-0 z-10 backdrop-blur">
-                          <th className="py-4 px-5 font-semibold text-left cursor-pointer select-none transition-colors hover:text-pink-400">
-                            Scan Name{" "}
-                            {sort.field === "name" &&
-                              (sort.dir === "asc" ? "↑" : "↓")}
-                          </th>
-                          <th className="py-4 px-5 font-semibold text-left">
-                            Status
-                          </th>
-                          <th className="py-4 px-5 font-semibold text-left">
-                            Severity Breakdown
-                          </th>
-                          <th className="py-4 px-5 font-semibold text-left">
-                            Templates
-                          </th>
-                          <th className="py-4 px-5 font-semibold text-left">
-                            Services
-                          </th>
-                          <th className="py-4 px-5 font-semibold text-left">
-                            Progress
-                          </th>
-                          <th className="py-4 px-5 font-semibold text-left">
-                            Duration
-                          </th>
-                          <th className="py-4 px-5 font-semibold text-left">
-                            Last Updated
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {loading ? (
-                          <tr>
-                            <td
-                              colSpan={8}
-                              className="py-10 text-center text-gray-400 text-base"
-                            >
-                              Loading...
-                            </td>
-                          </tr>
-                        ) : scans.length === 0 ? (
-                          <tr>
-                            <td
-                              colSpan={8}
-                              className="py-10 text-center text-gray-400 text-base"
-                            >
-                              No scan found.
-                            </td>
-                          </tr>
-                        ) : (
-                          scans.map((scan) => (
-                            <tr
-                              key={scan.scan_id || scan.id}
-                              onClick={() =>
-                                router.push(
-                                  `/vulnerabilities/${scan.scan_id || scan.id}`
-                                )
-                              }
-                              className="border-b cursor-pointer border-[#232339] hover:bg-[#232339]/80 transition-all duration-300 ease-in-out transform hover:scale-[1.01] hover:shadow-lg hover:shadow-pink-700/20 odd:bg-[#18181c] even:bg-[#1c1c28]"
-                            >
-                              <td className="py-4 px-5 font-bold whitespace-nowrap max-w-xs truncate group-hover:underline">
+                      your assets security in real-time.
+                    </p>
+                  </div>
+                  {!loading && fetchError ? (
+                      <div className="text-pink-400 p-6">{fetchError}</div>
+                  ) : (
+                      <>
+                        <div className="overflow-x-auto rounded-xl border border-[#232339] shadow-lg bg-[#161622]">
+                          <table className="min-w-full text-white font-mono">
+                            <thead>
+                            <tr className="border-b border-[#232339] bg-[#191924]/90 text-xs text-gray-400 sticky top-0 z-10 backdrop-blur">
+                              <th className="py-4 px-5 font-semibold text-left cursor-pointer select-none transition-colors hover:text-pink-400">
+                                Scan Name{" "}
+                                {sort.field === "name" &&
+                                    (sort.dir === "asc" ? "↑" : "↓")}
+                              </th>
+                              <th className="py-4 px-5 font-semibold text-left">
+                                Status
+                              </th>
+                              <th className="py-4 px-5 font-semibold text-left">
+                                Severity Breakdown
+                              </th>
+                              <th className="py-4 px-5 font-semibold text-left">
+                                Templates
+                              </th>
+                              <th className="py-4 px-5 font-semibold text-left">
+                                Services
+                              </th>
+                              <th className="py-4 px-5 font-semibold text-left">
+                                Progress
+                              </th>
+                              <th className="py-4 px-5 font-semibold text-left">
+                                Duration
+                              </th>
+                              <th className="py-4 px-5 font-semibold text-left">
+                                Last Updated
+                              </th>
+                              <th className="py-4 px-5 font-semibold text-left">
+                                Action
+                              </th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            {loading ? (
+                                <tr>
+                                  <td
+                                      colSpan={9}
+                                      className="py-10 text-center text-gray-400 text-base"
+                                  >
+                                    Loading...
+                                  </td>
+                                </tr>
+                            ) : scans.length === 0 ? (
+                                <tr>
+                                  <td
+                                      colSpan={9}
+                                      className="py-10 text-center text-gray-400 text-base"
+                                  >
+                                    No scan found.
+                                  </td>
+                                </tr>
+                            ) : (
+                                scans.map((scan) => (
+                                    <tr
+                                        key={scan.scan_id || scan.id}
+                                        onClick={() =>
+                                            router.push(
+                                                `/vulnerabilities/${scan.scan_id || scan.id}`
+                                            )
+                                        }
+                                        className="border-b cursor-pointer border-[#232339] hover:bg-[#232339]/80 transition-all duration-300 ease-in-out transform hover:scale-[1.01] hover:shadow-lg hover:shadow-pink-700/20 odd:bg-[#18181c] even:bg-[#1c1c28]"
+                                    >
+                                      <td className="py-4 px-5 font-bold whitespace-nowrap max-w-xs truncate group-hover:underline">
                                 <span title={scan.name}>
                                   {scan.name?.length > 32
-                                    ? scan.name.slice(0, 32) + "..."
-                                    : scan.name}
+                                      ? scan.name.slice(0, 32) + "..."
+                                      : scan.name}
                                 </span>
-                              </td>
-                              <td className="py-4 px-5">
-                                <div className="animate-fadeIn">
-                                  <StatusBadge status={scan.status} />
-                                </div>
-                              </td>
-                              <td className="py-4 px-5">
-                                <div className="animate-fadeIn">
-                                  <SeverityBreakdown severity={scan.severity} />
-                                </div>
-                              </td>
-                              <td className="py-4 px-5">
+                                      </td>
+                                      <td className="py-4 px-5">
+                                        <div className="animate-fadeIn">
+                                          <StatusBadge status={scan.status} />
+                                        </div>
+                                      </td>
+                                      <td className="py-4 px-5">
+                                        <div className="animate-fadeIn">
+                                          <SeverityBreakdown severity={scan.severity} />
+                                        </div>
+                                      </td>
+                                      <td className="py-4 px-5">
                                 <span className="bg-black/40 border border-pink-700 px-3 py-1 rounded-full text-xs font-bold shadow-inner">
                                   {scan.total_template?.toLocaleString() || "-"}
                                 </span>
-                              </td>
-                              <td className="py-4 px-5">
+                                      </td>
+                                      <td className="py-4 px-5">
                                 <span className="bg-black/40 border border-blue-700 px-3 py-1 rounded-full text-xs font-bold shadow-inner">
                                   {scan.total_target?.toLocaleString() || "-"}
                                 </span>
-                              </td>
-                              <td className="py-4 px-5">
-                                <div className="w-28 bg-gray-800 rounded-full h-4 overflow-hidden flex items-center relative">
-                                  <div
-                                    className={`h-full rounded-l-full transition-all duration-700 ease-out ${
-                                      scan.progress === 100
-                                        ? "bg-green-600"
-                                        : "bg-pink-500 animate-pulse"
-                                    }`}
-                                    style={{ width: `${scan.progress}%` }}
-                                  ></div>
-                                  <span className="absolute text-xs font-bold w-full text-center">
+                                      </td>
+                                      <td className="py-4 px-5">
+                                        <div className="w-28 bg-gray-800 rounded-full h-4 overflow-hidden flex items-center relative">
+                                          <div
+                                              className={`h-full rounded-l-full transition-all duration-700 ease-out ${
+                                                  scan.progress === 100
+                                                      ? "bg-green-600"
+                                                      : "bg-pink-500 animate-pulse"
+                                              }`}
+                                              style={{ width: `${scan.progress}%` }}
+                                          ></div>
+                                          <span className="absolute text-xs font-bold w-full text-center">
                                     {scan.progress || 0}%
                                   </span>
-                                </div>
-                              </td>
-                              <td className="py-4 px-5">
-                                {formatDuration(scan.scan_time_elapsed)}
-                              </td>
-                              <td className="py-4 px-5">
-                                {formatAgo(scan.updated_at)}
-                              </td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                  {/* Pagination ala stealer */}
-                  <div className="mt-6 flex flex-col md:flex-row md:justify-between md:items-center gap-3">
-                    <div className="flex items-center gap-2">
-                      <p className="text-gray-500 text-sm">
-                        Showing {scans.length} of {total} entries (Page {page} /{" "}
-                        {maxPage})
-                      </p>
+                                        </div>
+                                      </td>
+                                      <td className="py-4 px-5">
+                                        {formatDuration(scan.scan_time_elapsed)}
+                                      </td>
+                                      <td className="py-4 px-5">
+                                        {formatAgo(scan.updated_at)}
+                                      </td>
+                                      <td className="py-4 px-5">
+                                        <div className="flex gap-1">
+                                          {/* Rescan */}
+                                          <button
+                                              className="flex items-center gap-1 px-3 py-2 text-sm rounded-lg hover:bg-[#232339] text-blue-400 font-bold"
+                                              title="Rescan"
+                                              onClick={e => {
+                                                e.stopPropagation();
+                                                handleRescan(scan);
+                                              }}
+                                          >
+                                            <MdReplay size={18} className="text-blue-400" />
+                                            <span className="hidden md:inline">Rescan</span>
+                                          </button>
+                                          {/* Stop */}
+                                          <button
+                                              className={`flex items-center gap-1 px-3 py-2 text-sm rounded-lg font-bold ${
+                                                  ["running", "starting", "queued"].includes(scan.status)
+                                                      ? "hover:bg-[#232339] text-yellow-400"
+                                                      : "text-gray-500 cursor-not-allowed"
+                                              }`}
+                                              title="Stop"
+                                              onClick={e => {
+                                                e.stopPropagation();
+                                                if (["running", "starting", "queued"].includes(scan.status)) {
+                                                  handleStopScan(scan.scan_id);
+                                                }
+                                              }}
+                                              disabled={!["running", "starting", "queued"].includes(scan.status)}
+                                          >
+                                            <MdStop size={18} />
+                                            <span className="hidden md:inline">Stop</span>
+                                          </button>
+                                          {/* Delete */}
+                                          <button
+                                              className="flex items-center gap-1 px-3 py-2 text-sm rounded-lg hover:bg-[#232339] text-red-400 font-bold"
+                                              title="Delete"
+                                              onClick={e => {
+                                                e.stopPropagation();
+                                                confirmDeleteScan(scan.scan_id);
+                                              }}
+                                          >
+                                            <MdDelete size={18} className="text-red-400" />
+                                            <span className="hidden md:inline">Delete</span>
+                                          </button>
+                                        </div>
+                                      </td>
+                                    </tr>
+                                ))
+                            )}
+                            </tbody>
+                          </table>
+                        </div>
+                        {/* Pagination ala stealer */}
+                        <div className="mt-6 flex flex-col md:flex-row md:justify-between md:items-center gap-3">
+                          <div className="flex items-center gap-2">
+                            <p className="text-gray-500 text-sm">
+                              Showing {scans.length} of {total} entries (Page {page} /{" "}
+                              {maxPage})
+                            </p>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-3">
+                            <button
+                                onClick={() => handlePagination("prev")}
+                                disabled={page === 1}
+                                className={`px-4 py-2 text-sm ${
+                                    page === 1
+                                        ? "bg-gray-800 cursor-not-allowed"
+                                        : "bg-gray-800 hover:bg-gray-700"
+                                } rounded-lg transition-colors`}
+                            >
+                              Previous
+                            </button>
+                            <button
+                                onClick={() => handlePagination("next")}
+                                disabled={page >= maxPage}
+                                className={`px-4 py-2 text-sm ${
+                                    page >= maxPage
+                                        ? "bg-pink-700/50 cursor-not-allowed"
+                                        : "bg-pink-700 hover:bg-pink-600"
+                                } rounded-lg transition-colors`}
+                            >
+                              Next
+                            </button>
+                            <label className="ml-2 text-sm text-gray-300">
+                              Limit/Per Page:
+                            </label>
+                            <input
+                                type="number"
+                                min={1}
+                                max={100}
+                                value={sizeInput}
+                                onChange={handleSizeInputChange}
+                                onBlur={handleSizeInputBlur}
+                                className="w-20 px-2 py-2 rounded-md border border-gray-700 bg-black/30 text-white text-center focus:ring-2 focus:ring-[#f03262] focus:border-transparent"
+                                title="Entries per page (max 100)"
+                            />
+                            <label className="ml-2 text-sm text-gray-300">
+                              Page:
+                            </label>
+                            <input
+                                type="number"
+                                min={1}
+                                max={maxPage}
+                                value={pageInput}
+                                onChange={handlePageInputChange}
+                                onBlur={handlePageInputBlur}
+                                className="w-16 px-2 py-2 rounded-md border border-gray-700 bg-black/30 text-white text-center focus:ring-2 focus:ring-[#f03262] focus:border-transparent"
+                                title="Go to page"
+                            />
+                          </div>
+                        </div>
+                      </>
+                  )}
+                </div>
+              </div>
+              {/* Action Modal (result & confirmation) */}
+              {actionModal.open && (
+                  <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60">
+                    <div className="bg-[#1a1a22] rounded-2xl shadow-xl p-8 min-w-[320px] max-w-[90vw] border border-pink-700 flex flex-col items-center">
+                      <div className={`mb-4 text-2xl font-bold ${
+                          actionModal.type === "success"
+                              ? "text-green-400"
+                              : "text-pink-400"
+                      }`}>
+                        {actionModal.title}
+                      </div>
+                      <div className="mb-6 text-base text-gray-200 text-center">
+                        {actionModal.message}
+                      </div>
+                      {actionModal.confirm ? (
+                          <div className="flex gap-4 mt-4">
+                            <button
+                                className="px-6 py-2 bg-red-700 text-white font-semibold rounded-lg hover:bg-red-900 transition"
+                                onClick={() => {
+                                  actionModal.onConfirm && actionModal.onConfirm();
+                                }}
+                                autoFocus
+                            >Yes, Delete</button>
+                            <button
+                                className="px-6 py-2 bg-gray-700 text-white font-semibold rounded-lg hover:bg-gray-800 transition"
+                                onClick={() =>
+                                    setActionModal((m) => ({
+                                      ...m,
+                                      open: false,
+                                      confirm: false,
+                                      onConfirm: null,
+                                    }))
+                                }
+                            >Cancel</button>
+                          </div>
+                      ) : (
+                          <button
+                              className="mt-2 px-6 py-2 bg-pink-700 text-white font-semibold rounded-lg hover:bg-pink-800 transition"
+                              onClick={() =>
+                                  setActionModal((m) => ({
+                                    ...m,
+                                    open: false,
+                                    confirm: false,
+                                    onConfirm: null,
+                                  }))
+                              }
+                              autoFocus
+                          >OK</button>
+                      )}
                     </div>
-                    <div className="flex flex-wrap items-center gap-3">
-                      <button
-                        onClick={() => handlePagination("prev")}
-                        disabled={page === 1}
-                        className={`px-4 py-2 text-sm ${
-                          page === 1
-                            ? "bg-gray-800 cursor-not-allowed"
-                            : "bg-gray-800 hover:bg-gray-700"
-                        } rounded-lg transition-colors`}
-                      >
-                        Previous
-                      </button>
-                      <button
-                        onClick={() => handlePagination("next")}
-                        disabled={page >= maxPage}
-                        className={`px-4 py-2 text-sm ${
-                          page >= maxPage
-                            ? "bg-pink-700/50 cursor-not-allowed"
-                            : "bg-pink-700 hover:bg-pink-600"
-                        } rounded-lg transition-colors`}
-                      >
-                        Next
-                      </button>
-                      <label className="ml-2 text-sm text-gray-300">
-                        Limit/Per Page:
-                      </label>
-                      <input
-                        type="number"
-                        min={1}
-                        max={100}
-                        value={sizeInput}
-                        onChange={handleSizeInputChange}
-                        onBlur={handleSizeInputBlur}
-                        className="w-20 px-2 py-2 rounded-md border border-gray-700 bg-black/30 text-white text-center focus:ring-2 focus:ring-[#f03262] focus:border-transparent"
-                        title="Entries per page (max 100)"
-                      />
-                      <label className="ml-2 text-sm text-gray-300">
-                        Page:
-                      </label>
-                      <input
-                        type="number"
-                        min={1}
-                        max={maxPage}
-                        value={pageInput}
-                        onChange={handlePageInputChange}
-                        onBlur={handlePageInputBlur}
-                        className="w-16 px-2 py-2 rounded-md border border-gray-700 bg-black/30 text-white text-center focus:ring-2 focus:ring-[#f03262] focus:border-transparent"
-                        title="Go to page"
-                      />
-                    </div>
                   </div>
-                </>
               )}
-            </div>
-          </div>
-        </>
-      )}
-    </div>
+            </>
+        )}
+      </div>
   );
 }

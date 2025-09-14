@@ -246,7 +246,7 @@ export default function ScanDetailPage({ scanId }) {
                                                                             title="Click to view asset detail"
                                                                         >
                                                                             <td className="py-4 px-4 font-medium text-white whitespace-nowrap">
-                                                                                {row.asset_metadata?.host}
+                                                                                {row.asset_metadata?.host ?? row.target}
                                                                             </td>
                                                                             <td className="py-4 px-4 max-w-[540px]">
                                                                                 <div className="flex items-center gap-2 overflow-x-auto">
@@ -282,8 +282,8 @@ export default function ScanDetailPage({ scanId }) {
                                                                                     </div>
                                                                                 </div>
                                                                             </td>
-                                                                            <td className="py-4 px-4 text-gray-300 whitespace-nowrap">{formatRelativeTime(row.asset_metadata?.created_at)}</td>
-                                                                            <td className="py-4 px-4 text-gray-300 whitespace-nowrap">{formatRelativeTime(row.asset_metadata?.updated_at)}</td>
+                                                                            <td className="py-4 px-4 text-gray-300 whitespace-nowrap">{formatRelativeTime(row.created_at)}</td>
+                                                                            <td className="py-4 px-4 text-gray-300 whitespace-nowrap">{formatRelativeTime(row.updated_at)}</td>
                                                                         </tr>
                                                                     );
                                                                 })
