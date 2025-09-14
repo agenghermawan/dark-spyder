@@ -1,9 +1,9 @@
 'use client';
 
-import React, {useEffect, useState} from "react";
-import {FaServer, FaSearch, FaSyncAlt} from "react-icons/fa";
-import {useRouter} from "next/navigation";
-import {useAuth} from "../../../context/AuthContext";
+import React, { useEffect, useState } from "react";
+import { FaServer, FaSearch, FaSyncAlt } from "react-icons/fa";
+import { useRouter } from "next/navigation";
+import { useAuth } from "../../../context/AuthContext";
 import AssetGroupModal from "../../../components/vurnerability/AssetGroupModal";
 
 const API_KEY = "cf9452c4-7a79-4352-a1d3-9de3ba517347";
@@ -24,11 +24,12 @@ function formatAgo(dateString) {
     return `${diffMo}mo ago`;
 }
 
-const tableHeadClasses = "py-3 px-4 text-xs font-semibold uppercase tracking-wide border-b border-gray-700 bg-[#19191c] text-gray-400";
+const tableHeadClasses =
+    "py-3 px-4 text-xs font-semibold uppercase tracking-wide border-b border-gray-700 bg-[#19191c] text-gray-400";
 
 const AssetGroups = () => {
     const router = useRouter();
-    const {authState} = useAuth();
+    const { authState } = useAuth();
 
     // Modal
     const [modalOpen, setModalOpen] = useState(false);
@@ -71,7 +72,7 @@ const AssetGroups = () => {
             const url = `https://api.projectdiscovery.io/v1/asset/enumerate?${params.toString()}`;
             const options = {
                 method: "GET",
-                headers: {"X-API-Key": API_KEY},
+                headers: { "X-API-Key": API_KEY },
             };
             const res = await fetch(url, options);
             if (!res.ok) throw new Error("Failed to fetch asset groups");
@@ -95,15 +96,13 @@ const AssetGroups = () => {
     // Fetch registered domains after login
     useEffect(() => {
         if (authState !== "authenticated") return;
-        fetch("/api/my-plan", {credentials: "include"})
+        fetch("/api/my-plan", { credentials: "include" })
             .then(res => res.json())
             .then(data => {
                 const domains = Array.isArray(data?.data?.registered_domain) ? data.data.registered_domain : [];
                 const isUnlimited = data?.data?.domain === "unlimited";
-
                 setIsDomainUnlimited(isUnlimited);
                 setRegisteredDomains(domains.map(d => d.toLowerCase()));
-
                 setPlanReady(true);
             })
             .catch(() => {
@@ -138,7 +137,6 @@ const AssetGroups = () => {
     };
 
     // --- ASSET ACTIONS ---
-
     async function handleExport(enumId, format = "raw") {
         setActionModal({
             open: true,
@@ -151,32 +149,20 @@ const AssetGroups = () => {
             const url = `https://api.projectdiscovery.io/v1/asset/enumerate/${enumId}/export?format=${format}&async=false`;
             const res = await fetch(url, {
                 method: "GET",
-                headers: {"X-API-Key": API_KEY}
+                headers: { "X-API-Key": API_KEY }
             });
             if (!res.ok) throw new Error("Export failed");
-            // For raw/csv, try to download directly; for json, try to parse json and download
-            if (format === "json") {
-                const data = await res.json();
-                const jsonStr = JSON.stringify(data, null, 2);
-                const blob = new Blob([jsonStr], {type: "application/json"});
-                const link = document.createElement("a");
-                link.href = URL.createObjectURL(blob);
-                link.download = `${enumId}.json`;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-            } else {
-                const blob = await res.blob();
-                let ext = "txt";
-                if (format === "csv") ext = "csv";
-                if (format === "raw") ext = "txt";
-                const link = document.createElement("a");
-                link.href = URL.createObjectURL(blob);
-                link.download = `${enumId}.${ext}`;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-            }
+            // Universal for all formats: download as blob
+            const blob = await res.blob();
+            let ext = format;
+            if (format === "raw") ext = "txt";
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = `${enumId}.${ext}`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
             setActionModal({
                 open: true,
                 title: "Export Success",
@@ -207,13 +193,13 @@ const AssetGroups = () => {
     }
 
     async function doDeleteAsset(enumId) {
-        setActionModal((m) => ({...m, open: false, confirm: false, onConfirm: null}));
+        setActionModal((m) => ({ ...m, open: false, confirm: false, onConfirm: null }));
         setIsLoading(true);
         try {
             const url = `https://api.projectdiscovery.io/v1/asset/enumerate/${enumId}`;
             const res = await fetch(url, {
                 method: "DELETE",
-                headers: {"X-API-Key": API_KEY}
+                headers: { "X-API-Key": API_KEY }
             });
             const data = await res.json();
             setIsLoading(false);
@@ -225,7 +211,6 @@ const AssetGroups = () => {
                     type: "success",
                     confirm: false,
                 });
-                // refresh
                 fetchAssetGroups();
             } else {
                 setActionModal({
@@ -271,7 +256,7 @@ const AssetGroups = () => {
                     <h2 className="text-2xl font-bold mb-4">No Registered Domains</h2>
                     <p className="text-gray-300 mb-4">
                         You have not registered any domains in your plan.
-                        <br/>
+                        <br />
                         Please register your domain first to view your asset groups.
                     </p>
                     <a href="/my-plan"
@@ -302,7 +287,7 @@ const AssetGroups = () => {
                                 title="Refresh"
                                 onClick={() => fetchAssetGroups()}
                             >
-                                <FaSyncAlt/>
+                                <FaSyncAlt />
                             </button>
                         </div>
                     </div>
@@ -315,6 +300,7 @@ const AssetGroups = () => {
                             setExpandedRow={setExpandedRow}
                             onExport={handleExport}
                             onDelete={confirmDeleteAsset}
+                            onRowDetail={handleRowDetail}
                         />
                     </div>
                     {/* Pagination */}
@@ -352,7 +338,7 @@ const AssetGroups = () => {
                     </div>
                 </div>
             </section>
-            <AssetGroupModal open={modalOpen} onClose={() => setModalOpen(false)} groupId={modalGroupId}/>
+            <AssetGroupModal open={modalOpen} onClose={() => setModalOpen(false)} groupId={modalGroupId} />
             {actionModal.open && (
                 <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60">
                     <div
@@ -413,14 +399,18 @@ const AssetGroups = () => {
     );
 };
 
-function AssetGroupTable({data, isLoading, formatAgo, expandedRow, setExpandedRow, onExport, onDelete}) {
+function AssetGroupTable({
+                             data, isLoading, formatAgo,
+                             expandedRow, setExpandedRow,
+                             onExport, onDelete, onRowDetail
+                         }) {
     return (
         <div className="relative overflow-x-auto rounded-2xl border border-[#22222b] shadow-xl bg-[#19191d]">
             <table className="min-w-full font-mono text-[15px] leading-5 bg-[#19191d] rounded-xl">
                 <thead className="sticky top-0 z-10">
                 <tr className="bg-gradient-to-r from-[#17171b] to-[#22222a] text-gray-400 border-b border-gray-700">
                     <th className={tableHeadClasses + " text-left w-2"}>
-                        <input type="checkbox" className="form-checkbox h-4 w-4" disabled/>
+                        <input type="checkbox" className="form-checkbox h-4 w-4" disabled />
                     </th>
                     <th className={tableHeadClasses + " text-left"}>Assets</th>
                     <th className={tableHeadClasses + " text-left w-44"}>Source</th>
@@ -443,43 +433,43 @@ function AssetGroupTable({data, isLoading, formatAgo, expandedRow, setExpandedRo
                         <td colSpan={7} className="py-12 px-6 text-center text-gray-400">
                             <div className="flex flex-col items-center justify-center">
                                 <svg className="w-12 h-12 mb-4 text-gray-600" fill="none"
-                                     stroke="currentColor"
-                                     viewBox="0 0 24 24">
+                                     stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5"
-                                          d="M9.172 16.172a4 4 0 0 1 5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/>
+                                          d="M9.172 16.172a4 4 0 0 1 5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" />
                                 </svg>
                                 <p className="text-xl font-bold">No asset group data found</p>
                             </div>
                         </td>
                     </tr>
                 )}
-                {!isLoading && data.flatMap((item, idx) => [
-                    <tr key={item.id}
-                        className="border-b border-gray-800 cursor-pointer group hover:bg-gradient-to-r from-[#19191d] to-[#23232b] hover:shadow-lg transition duration-150"
-                        onClick={() => setExpandedRow(expandedRow === item.id ? null : item.id)}
+                {!isLoading && data.flatMap(item => [
+                    <tr
+                        key={item.id}
+                        className="border-b border-gray-800 group hover:bg-gradient-to-r from-[#19191d] to-[#23232b] hover:shadow-lg transition duration-150"
+                        onClick={e => {
+                            if (!e.target.closest('.action-btn')) onRowDetail?.(item);
+                        }}
+                        style={{ cursor: "pointer" }}
                     >
                         <td className="py-4 px-4">
-                            <input type="checkbox" disabled className="form-checkbox h-4 w-4"/>
+                            <input type="checkbox" disabled className="form-checkbox h-4 w-4" />
                         </td>
                         <td className="py-4 px-4 font-mono text-base text-white flex items-center gap-3">
-                                <span
-                                    className="inline-block w-6 h-6 rounded-full bg-gradient-to-tr from-green-800 to-green-500 shadow flex items-center justify-center">
-                                    <FaServer className="text-green-100 text-base"/>
+                                <span className="inline-block w-6 h-6 rounded-full bg-gradient-to-tr from-green-800 to-green-500 shadow flex items-center justify-center">
+                                    <FaServer className="text-green-100 text-base" />
                                 </span>
                             <span className="hover:underline font-bold tracking-tight">{item.name}</span>
                         </td>
                         <td className="py-4 px-4 text-xs">
-                                <span
-                                    className="bg-[#21222b] px-3 py-1 rounded text-xs font-semibold text-gray-200 border border-gray-700 flex items-center gap-2 shadow">
-                                    <FaSearch className="mr-1 text-gray-400"/>
+                                <span className="bg-[#21222b] px-3 py-1 rounded text-xs font-semibold text-gray-200 border border-gray-700 flex items-center gap-2 shadow">
+                                    <FaSearch className="mr-1 text-gray-400" />
                                     Auto Discovery
                                 </span>
                         </td>
                         <td className="py-4 px-4 font-bold text-white flex gap-3 items-center">
                             <span>{item.total_assets || 1} services</span>
                             {item.new_assets > 0 && (
-                                <span
-                                    className="ml-2 px-3 py-1 rounded-full bg-green-900 text-green-400 text-xs font-bold animate-pulse">
+                                <span className="ml-2 px-3 py-1 rounded-full bg-green-900 text-green-400 text-xs font-bold animate-pulse">
                                         {item.new_assets} new
                                     </span>
                             )}
@@ -494,12 +484,13 @@ function AssetGroupTable({data, isLoading, formatAgo, expandedRow, setExpandedRo
                         </td>
                         <td className="py-4 px-4 text-gray-500">
                             <button
-                                className="p-2 rounded-full hover:bg-[#23232b] transition"
+                                className="p-2 rounded-full hover:bg-[#23232b] transition action-btn"
                                 onClick={e => {
                                     e.stopPropagation();
                                     setExpandedRow(expandedRow === item.id ? null : item.id);
                                 }}
                                 title="Show actions"
+                                tabIndex={0}
                             >
                                 <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2"
                                      viewBox="0 0 24 24">
@@ -523,7 +514,6 @@ function AssetGroupTable({data, isLoading, formatAgo, expandedRow, setExpandedRo
                                             setExpandedRow(null);
                                         }}
                                     >
-                                        <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 3v12m0 0l3-3m-3 3l-3-3M6 21h12" strokeLinecap="round" strokeLinejoin="round"/></svg>
                                         Export Raw
                                     </button>
                                     <button
@@ -535,7 +525,6 @@ function AssetGroupTable({data, isLoading, formatAgo, expandedRow, setExpandedRo
                                             setExpandedRow(null);
                                         }}
                                     >
-                                        <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 3v12m0 0l3-3m-3 3l-3-3M6 21h12" strokeLinecap="round" strokeLinejoin="round"/></svg>
                                         Export CSV
                                     </button>
                                     <button
@@ -547,7 +536,6 @@ function AssetGroupTable({data, isLoading, formatAgo, expandedRow, setExpandedRo
                                             setExpandedRow(null);
                                         }}
                                     >
-                                        <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 3v12m0 0l3-3m-3 3l-3-3M6 21h12" strokeLinecap="round" strokeLinejoin="round"/></svg>
                                         Export JSON
                                     </button>
                                     <button
@@ -559,7 +547,6 @@ function AssetGroupTable({data, isLoading, formatAgo, expandedRow, setExpandedRo
                                             setExpandedRow(null);
                                         }}
                                     >
-                                        <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M10 3h4a2 2 0 012 2v2H8V5a2 2 0 012-2z" strokeLinecap="round" strokeLinejoin="round"/></svg>
                                         Delete
                                     </button>
                                     <button

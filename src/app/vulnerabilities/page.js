@@ -421,10 +421,10 @@ export default function Page() {
             if (!res.ok) throw new Error("Export failed");
             const blob = await res.blob();
             let ext = type;
-            let mime = "application/octet-stream";
-            if (type === "csv") mime = "text/csv";
-            if (type === "json") mime = "application/json";
-            if (type === "pdf") mime = "application/pdf";
+            if (type === "csv") ext = "csv";
+            if (type === "json") ext = "json";
+            if (type === "pdf") ext = "pdf";
+            if (type === "raw") ext = "txt";
             const link = document.createElement("a");
             link.href = URL.createObjectURL(blob);
             link.download = `${scan_name || scan_id}.${ext}`;
