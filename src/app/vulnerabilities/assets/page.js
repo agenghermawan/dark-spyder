@@ -48,6 +48,19 @@ const AssetGroups = () => {
 
     const [isDomainUnlimited, setIsDomainUnlimited] = useState(false);
 
+    // Expanded row for actions
+    const [expandedRow, setExpandedRow] = useState(null);
+
+    // Action modal (result & confirmation)
+    const [actionModal, setActionModal] = useState({
+        open: false,
+        title: "",
+        message: "",
+        type: "success",
+        confirm: false,
+        onConfirm: null,
+    });
+
     // Fetch all asset groups (no domain filter)
     const fetchAssetGroups = async () => {
         setIsLoading(true);
@@ -124,6 +137,117 @@ const AssetGroups = () => {
         setModalOpen(true);
     };
 
+    // --- ASSET ACTIONS ---
+
+    async function handleExport(enumId, format = "raw") {
+        setActionModal({
+            open: true,
+            title: "Exporting...",
+            message: "Exporting asset, please wait...",
+            type: "info",
+            confirm: false,
+        });
+        try {
+            const url = `https://api.projectdiscovery.io/v1/asset/enumerate/${enumId}/export?format=${format}&async=false`;
+            const res = await fetch(url, {
+                method: "GET",
+                headers: {"X-API-Key": API_KEY}
+            });
+            if (!res.ok) throw new Error("Export failed");
+            // For raw/csv, try to download directly; for json, try to parse json and download
+            if (format === "json") {
+                const data = await res.json();
+                const jsonStr = JSON.stringify(data, null, 2);
+                const blob = new Blob([jsonStr], {type: "application/json"});
+                const link = document.createElement("a");
+                link.href = URL.createObjectURL(blob);
+                link.download = `${enumId}.json`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            } else {
+                const blob = await res.blob();
+                let ext = "txt";
+                if (format === "csv") ext = "csv";
+                if (format === "raw") ext = "txt";
+                const link = document.createElement("a");
+                link.href = URL.createObjectURL(blob);
+                link.download = `${enumId}.${ext}`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+            setActionModal({
+                open: true,
+                title: "Export Success",
+                message: "Asset exported and downloaded successfully.",
+                type: "success",
+                confirm: false,
+            });
+        } catch (e) {
+            setActionModal({
+                open: true,
+                title: "Export Failed",
+                message: "Failed to export asset.",
+                type: "error",
+                confirm: false,
+            });
+        }
+    }
+
+    function confirmDeleteAsset(enumId) {
+        setActionModal({
+            open: true,
+            title: "Delete Confirmation",
+            message: "Are you sure you want to delete this asset group? This action cannot be undone.",
+            type: "error",
+            confirm: true,
+            onConfirm: () => doDeleteAsset(enumId),
+        });
+    }
+
+    async function doDeleteAsset(enumId) {
+        setActionModal((m) => ({...m, open: false, confirm: false, onConfirm: null}));
+        setIsLoading(true);
+        try {
+            const url = `https://api.projectdiscovery.io/v1/asset/enumerate/${enumId}`;
+            const res = await fetch(url, {
+                method: "DELETE",
+                headers: {"X-API-Key": API_KEY}
+            });
+            const data = await res.json();
+            setIsLoading(false);
+            if (res.ok) {
+                setActionModal({
+                    open: true,
+                    title: "Asset Deleted",
+                    message: data.message || "Asset group deleted successfully.",
+                    type: "success",
+                    confirm: false,
+                });
+                // refresh
+                fetchAssetGroups();
+            } else {
+                setActionModal({
+                    open: true,
+                    title: "Delete Failed",
+                    message: data.message || "Failed to delete asset group.",
+                    type: "error",
+                    confirm: false,
+                });
+            }
+        } catch (e) {
+            setIsLoading(false);
+            setActionModal({
+                open: true,
+                title: "Delete Error",
+                message: "Failed to delete asset group.",
+                type: "error",
+                confirm: false,
+            });
+        }
+    }
+
     // Loading spinner
     if (authState === "loading" || (authState === "authenticated" && !planReady)) {
         return (
@@ -187,7 +311,10 @@ const AssetGroups = () => {
                             data={data}
                             isLoading={isLoading}
                             formatAgo={formatAgo}
-                            onRowDetail={handleRowDetail}
+                            expandedRow={expandedRow}
+                            setExpandedRow={setExpandedRow}
+                            onExport={handleExport}
+                            onDelete={confirmDeleteAsset}
                         />
                     </div>
                     {/* Pagination */}
@@ -226,11 +353,67 @@ const AssetGroups = () => {
                 </div>
             </section>
             <AssetGroupModal open={modalOpen} onClose={() => setModalOpen(false)} groupId={modalGroupId}/>
+            {actionModal.open && (
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60">
+                    <div
+                        className="bg-[#1a1a22] rounded-2xl shadow-xl p-8 min-w-[320px] max-w-[90vw] border border-pink-700 flex flex-col items-center">
+                        <div className={`mb-4 text-2xl font-bold ${
+                            actionModal.type === "success"
+                                ? "text-green-400"
+                                : actionModal.type === "error"
+                                    ? "text-pink-400"
+                                    : "text-blue-400"
+                        }`}>
+                            {actionModal.title}
+                        </div>
+                        <div className="mb-6 text-base text-gray-200 text-center">
+                            {actionModal.message}
+                        </div>
+                        {actionModal.confirm ? (
+                            <div className="flex gap-4 mt-4">
+                                <button
+                                    className="px-6 py-2 bg-red-700 text-white font-semibold rounded-lg hover:bg-red-900 transition"
+                                    onClick={() => {
+                                        actionModal.onConfirm && actionModal.onConfirm();
+                                    }}
+                                    autoFocus
+                                >Yes, Delete
+                                </button>
+                                <button
+                                    className="px-6 py-2 bg-gray-700 text-white font-semibold rounded-lg hover:bg-gray-800 transition"
+                                    onClick={() =>
+                                        setActionModal((m) => ({
+                                            ...m,
+                                            open: false,
+                                            confirm: false,
+                                            onConfirm: null,
+                                        }))
+                                    }
+                                >Cancel
+                                </button>
+                            </div>
+                        ) : (
+                            <button
+                                className="mt-2 px-6 py-2 bg-pink-700 text-white font-semibold rounded-lg hover:bg-pink-800 transition"
+                                onClick={() =>
+                                    setActionModal((m) => ({
+                                        ...m,
+                                        open: false,
+                                        confirm: false,
+                                        onConfirm: null,
+                                    }))
+                                }
+                                autoFocus
+                            >OK</button>
+                        )}
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
 
-function AssetGroupTable({data, isLoading, formatAgo, onRowDetail}) {
+function AssetGroupTable({data, isLoading, formatAgo, expandedRow, setExpandedRow, onExport, onDelete}) {
     return (
         <div className="relative overflow-x-auto rounded-2xl border border-[#22222b] shadow-xl bg-[#19191d]">
             <table className="min-w-full font-mono text-[15px] leading-5 bg-[#19191d] rounded-xl">
@@ -270,10 +453,10 @@ function AssetGroupTable({data, isLoading, formatAgo, onRowDetail}) {
                         </td>
                     </tr>
                 )}
-                {!isLoading && data.map((item, idx) => (
+                {!isLoading && data.flatMap((item, idx) => [
                     <tr key={item.id}
                         className="border-b border-gray-800 cursor-pointer group hover:bg-gradient-to-r from-[#19191d] to-[#23232b] hover:shadow-lg transition duration-150"
-                        onClick={() => onRowDetail?.(item)}
+                        onClick={() => setExpandedRow(expandedRow === item.id ? null : item.id)}
                     >
                         <td className="py-4 px-4">
                             <input type="checkbox" disabled className="form-checkbox h-4 w-4"/>
@@ -314,9 +497,9 @@ function AssetGroupTable({data, isLoading, formatAgo, onRowDetail}) {
                                 className="p-2 rounded-full hover:bg-[#23232b] transition"
                                 onClick={e => {
                                     e.stopPropagation();
-                                    onRowDetail?.(item);
+                                    setExpandedRow(expandedRow === item.id ? null : item.id);
                                 }}
-                                title="Details"
+                                title="Show actions"
                             >
                                 <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2"
                                      viewBox="0 0 24 24">
@@ -326,8 +509,74 @@ function AssetGroupTable({data, isLoading, formatAgo, onRowDetail}) {
                                 </svg>
                             </button>
                         </td>
-                    </tr>
-                ))}
+                    </tr>,
+                    expandedRow === item.id && (
+                        <tr key={item.id + "-expanded"}>
+                            <td colSpan={7} className="p-0 bg-[#18181c] border-t border-pink-800">
+                                <div className="px-6 py-4 flex flex-wrap gap-2 items-center">
+                                    <button
+                                        className="flex items-center gap-2 px-4 py-2 text-sm rounded-lg hover:bg-pink-900/30 border border-pink-700 text-pink-400 font-bold"
+                                        title="Export Raw"
+                                        onClick={e => {
+                                            e.stopPropagation();
+                                            onExport(item.id, "raw");
+                                            setExpandedRow(null);
+                                        }}
+                                    >
+                                        <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 3v12m0 0l3-3m-3 3l-3-3M6 21h12" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                        Export Raw
+                                    </button>
+                                    <button
+                                        className="flex items-center gap-2 px-4 py-2 text-sm rounded-lg hover:bg-green-900/30 border border-green-700 text-green-400 font-bold"
+                                        title="Export CSV"
+                                        onClick={e => {
+                                            e.stopPropagation();
+                                            onExport(item.id, "csv");
+                                            setExpandedRow(null);
+                                        }}
+                                    >
+                                        <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 3v12m0 0l3-3m-3 3l-3-3M6 21h12" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                        Export CSV
+                                    </button>
+                                    <button
+                                        className="flex items-center gap-2 px-4 py-2 text-sm rounded-lg hover:bg-blue-900/30 border border-blue-700 text-blue-400 font-bold"
+                                        title="Export JSON"
+                                        onClick={e => {
+                                            e.stopPropagation();
+                                            onExport(item.id, "json");
+                                            setExpandedRow(null);
+                                        }}
+                                    >
+                                        <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 3v12m0 0l3-3m-3 3l-3-3M6 21h12" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                        Export JSON
+                                    </button>
+                                    <button
+                                        className="flex items-center gap-2 px-4 py-2 text-sm rounded-lg hover:bg-red-900/30 border border-red-700 text-red-400 font-bold"
+                                        title="Delete"
+                                        onClick={e => {
+                                            e.stopPropagation();
+                                            onDelete(item.id);
+                                            setExpandedRow(null);
+                                        }}
+                                    >
+                                        <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M10 3h4a2 2 0 012 2v2H8V5a2 2 0 012-2z" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                        Delete
+                                    </button>
+                                    <button
+                                        className="ml-auto px-3 py-2 rounded-lg text-pink-400 text-xs"
+                                        title="Close"
+                                        onClick={e => {
+                                            e.stopPropagation();
+                                            setExpandedRow(null);
+                                        }}
+                                    >
+                                        Close
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    ),
+                ])}
                 </tbody>
             </table>
         </div>
