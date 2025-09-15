@@ -1,16 +1,18 @@
 import ExcelJS from "exceljs";
 
-export function StealerExportButton({ lastQuery, fetchAllStealerData, loading }) {
+export function StealerExportButton({ lastQuery, fetchAllStealerData, loading, onStart, onFinish }) {
     const handleExportExcel = async () => {
         if (!fetchAllStealerData) {
             alert("Export function not available");
             return;
         }
         try {
+            if (onStart) onStart();
             const allRawData = await fetchAllStealerData(lastQuery);
 
             if (!allRawData.length) {
                 alert("No data to export!");
+                if (onFinish) onFinish();
                 return;
             }
 
@@ -52,6 +54,8 @@ export function StealerExportButton({ lastQuery, fetchAllStealerData, loading })
             window.URL.revokeObjectURL(url);
         } catch (err) {
             alert("Export failed: " + err.message);
+        } finally {
+            if (onFinish) onFinish();
         }
     };
 

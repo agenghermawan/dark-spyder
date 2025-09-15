@@ -1,5 +1,5 @@
 "use client";
-import { Suspense, useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useAuth } from "../../../context/AuthContext";
 import VAScannerLoader from "../../../components/va/va_scanner_loader";
 import LoadingSpinner from "../../../components/ui/loading-spinner";
@@ -8,6 +8,7 @@ import ExposedData from "../../../components/stealer/exposed_data";
 import CyberParticles from "../../../components/stealer/stealer_particles";
 import StealerDetailModal from "../../../components/stealer/stealer_detail_modal";
 import { StealerExportButton } from "../../../components/stealer/stealer_button_export";
+import StealerStatisticsWithChart from "../../../components/stealer/stealer_statistic_chart";
 
 // ErrorModal Component
 function ErrorModal({ show, message, onClose, userDomains, plan }) {
@@ -82,16 +83,7 @@ function ErrorModal({ show, message, onClose, userDomains, plan }) {
         </div>
     );
 }
-
-export default function Page() {
-    return (
-        <Suspense fallback={<LoadingSpinner />}>
-            <StealerPageContent />
-        </Suspense>
-    );
-}
-
-function StealerPageContent() {
+export default function StealerPageContent() {
     const router = useRouter();
     const { authState } = useAuth();
 
@@ -443,7 +435,29 @@ function StealerPageContent() {
         )
         : stealerData;
 
-    const handleDownloadCsv = handleDownloadExcel; // optional alias for compatibility
+    // Statistik modern + trend chart
+    const totalEntries = pagination.total;
+    const filteredCount = filteredStealerData.length;
+    const validCount = filteredStealerData.filter(d =>
+        updatedIds[d.id] !== undefined ? updatedIds[d.id] === true : d.valid === true
+    ).length;
+    const notValidCount = filteredStealerData.filter(d =>
+        updatedIds[d.id] !== undefined ? updatedIds[d.id] === false : d.valid === false
+    ).length;
+
+    // --- Area Chart per Source (atau ganti ke "origin" atau tanggal kalau mau) ---
+    const groupByField = "source";
+    const trendCategories = Array.from(
+        new Set(filteredStealerData.map(d => d[groupByField] || "Unknown"))
+    );
+    const trendData = {
+        valid: trendCategories.map(cat =>
+            filteredStealerData.filter(d => (d[groupByField] || "Unknown") === cat && d.valid === true).length
+        ),
+        notValid: trendCategories.map(cat =>
+            filteredStealerData.filter(d => (d[groupByField] || "Unknown") === cat && d.valid === false).length
+        ),
+    };
 
     // Entry untuk modal
     const currentEntry = filteredStealerData.find(e => e.id === detailModal.id);
@@ -457,8 +471,12 @@ function StealerPageContent() {
 
     return (
         <div>
-            {(downloadLoading || isLoading || scanStep) && (
-                <VAScannerLoader status={downloadStep || scanStep || "Scanning..."} domain={searchValue} />
+            {(loadingAll || downloadLoading || isLoading || scanStep) && (
+                <VAScannerLoader status={
+                    loadingAll
+                        ? "Exporting all logs..."
+                        : (downloadStep || scanStep || "Scanning...")
+                } domain={searchValue} />
             )}
             {!(downloadLoading || isLoading || scanStep) && (
                 <ErrorModal
@@ -557,11 +575,22 @@ function StealerPageContent() {
                         <p className="text-sm uppercase text-green-500 mb-2 tracking-widest text-center">
                             🧠 Threat Intel Extract
                         </p>
-                        <h2 className="text-4xl font-light text-white mb-8 text-center">
+                        <h2 className="text-4xl font-light text-white mb-4 text-center">
                             {hasSubscription
                                 ? "Compromised Credentials"
                                 : "🔒 Subscription Required"}
                         </h2>
+
+                        {/* ==== Statistik dan Area Chart Modern ==== */}
+                        <StealerStatisticsWithChart
+                            total={totalEntries}
+                            filtered={filteredCount}
+                            valid={validCount}
+                            notValid={notValidCount}
+                            trendData={trendData}
+                            trendCategories={trendCategories}
+                        />
+
                         <div className="mb-4 flex items-center justify-between gap-3 flex-wrap">
                             <input
                                 type="text"
@@ -575,6 +604,8 @@ function StealerPageContent() {
                                 lastQuery={lastQuery}
                                 fetchAllStealerData={fetchAllStealerData}
                                 loading={loadingAll}
+                                onStart={() => setLoadingAll(true)}
+                                onFinish={() => setLoadingAll(false)}
                             />
                         </div>
                         <div className="overflow-x-auto" ref={tableRef}>

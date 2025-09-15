@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 
-export async function PUT(req, { params }) {
+export async function PUT(req, context) {
+    const params = await context.params;
     const { id } = params;
     const token = req.cookies.get("token")?.value;
 
@@ -23,7 +24,7 @@ export async function PUT(req, { params }) {
         method: "PUT",
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`, // <-- pakai token asli!
+            'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({ valid: reqBody.valid }),
     });
