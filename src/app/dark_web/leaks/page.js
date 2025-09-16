@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import LeakCardDynamic from "../../../components/leaks/leaks_card";
 import LeaksParticles from "../../../components/leaks/leaks_particles";
 import VAScannerLoader from "../../../components/va/va_scanner_loader";
+import LeaksStatisticsWithChart from "../../../components/leaks/leaks_statistic_chart";
 
 gsap.registerPlugin(ScrollToPlugin);
 
@@ -430,6 +431,14 @@ export default function LeaksPage() {
         }
     }, [searchQuery, pagination.page, pagination.size, hasSearched, authState]);
 
+    // ==== Statistik Modern ala Stealer ====
+    const totalEntries = pagination.total;
+    const filteredCount = breachData.length;
+    const exposedCount = breachData.filter(d =>
+        d.passwordExposed && d.passwordExposed !== "Not exposed" && d.passwordExposed !== "No password exposed"
+    ).length;
+    const notExposedCount = filteredCount - exposedCount;
+
     return (
         <div className="relative">
             {(isLoading || scanStep) && (
@@ -540,6 +549,15 @@ export default function LeaksPage() {
                                 ? "Upgrade to View Results"
                                 : "Scraped Professional Profiles"}
                         </h2>
+
+                        {/* ==== Statistik + Chart Modern ala Stealer ==== */}
+                        <LeaksStatisticsWithChart
+                            total={totalEntries}
+                            filtered={filteredCount}
+                            exposed={exposedCount}
+                            notExposed={notExposedCount}
+                        />
+
                         <div className="overflow-x-auto" ref={tableRef}>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 min-h-[200px]">
                                 {isLoading ? (
