@@ -47,8 +47,6 @@ const AssetGroups = () => {
     const [registeredDomains, setRegisteredDomains] = useState([]);
     const [planReady, setPlanReady] = useState(false);
 
-    const [isDomainUnlimited, setIsDomainUnlimited] = useState(false);
-
     // Expanded row for actions
     const [expandedRow, setExpandedRow] = useState(null);
 
@@ -93,16 +91,28 @@ const AssetGroups = () => {
         }
     }, [authState]);
 
-    // Fetch registered domains after login
+    // Fetch plan + domain list sesuai tipe plan
     useEffect(() => {
         if (authState !== "authenticated") return;
         fetch("/api/my-plan", { credentials: "include" })
             .then(res => res.json())
             .then(data => {
-                const domains = Array.isArray(data?.data?.registered_domain) ? data.data.registered_domain : [];
                 const isUnlimited = data?.data?.domain === "unlimited";
-                setIsDomainUnlimited(isUnlimited);
-                setRegisteredDomains(domains.map(d => d.toLowerCase()));
+                // Pilih domain list sesuai tipe plan
+                let domains = [];
+                if (isUnlimited) {
+                    domains = Array.isArray(data?.data?.registered_breach_domain)
+                        ? data.data.registered_breach_domain
+                        : [];
+                } else {
+                    domains = Array.isArray(data?.data?.registered_domain)
+                        ? data.data.registered_domain
+                        : [];
+                }
+                // Normalisasi domain: lowercase, tanpa protocol, tanpa slash akhir
+                setRegisteredDomains(domains.map(d =>
+                    d.toLowerCase().replace(/https?:\/\//, '').replace(/\/$/, '')
+                ));
                 setPlanReady(true);
             })
             .catch(() => {
@@ -111,25 +121,38 @@ const AssetGroups = () => {
             });
     }, [authState]);
 
+    // FILTER asset group sesuai domain plan (langsung saat load/paging)
     useEffect(() => {
-        if (isDomainUnlimited) {
-            setTotal(allData.length);
-            setData(allData.slice((page - 1) * size, page * size));
-            return;
-        }
+        if (!planReady) return;
+
         if (!registeredDomains.length) {
             setData([]);
             setTotal(0);
             return;
         }
-        const filtered = allData.filter(item =>
-            registeredDomains.some(domain =>
-                (item.name || "").toLowerCase().includes(domain)
-            )
-        );
+
+        function normalizeDomain(d) {
+            return d.toLowerCase().replace(/https?:\/\//, '').replace(/\/$/, '');
+        }
+
+        const filtered = allData.filter(item => {
+            const candidates = [
+                (item.name || "").toLowerCase()
+            ];
+            if (Array.isArray(item.root_domains)) {
+                candidates.push(...item.root_domains.map(normalizeDomain));
+            }
+            if (Array.isArray(item.domain_names)) {
+                candidates.push(...item.domain_names.map(normalizeDomain));
+            }
+            return registeredDomains.some(domain =>
+                candidates.some(c => c.includes(domain))
+            );
+        });
+
         setTotal(filtered.length);
         setData(filtered.slice((page - 1) * size, page * size));
-    }, [allData, isDomainUnlimited, JSON.stringify(registeredDomains), page, size]);
+    }, [allData, planReady, JSON.stringify(registeredDomains), page, size]);
 
     const handleRowDetail = (item) => {
         setModalGroupId(item.id);

@@ -330,8 +330,27 @@ export default function StealerPageContent() {
             }
         }
 
+        await callUpdateEndpoint();
+
         setPagination((prev) => ({ ...prev, page: 1 }));
         await fetchStealerData({ searchValueParam: searchValue, page: 1, size: pagination.size });
+    };
+
+    const callUpdateEndpoint = async () => {
+        try {
+            const response = await fetch(
+                `/api/update?q=${encodeURIComponent(searchValue)}&type=all`,
+                {
+                    method: "GET",
+                    credentials: "include",
+                }
+            );
+            if (!response.ok) {
+                console.error("Failed to trigger update endpoint.");
+            }
+        } catch (error) {
+            console.error("Error calling update endpoint:", error);
+        }
     };
 
     // Handler: Export Excel, PASTI sama hasil filter search

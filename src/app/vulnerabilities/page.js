@@ -18,6 +18,7 @@ import VAScannerLoader from "../../components/va/va_scanner_loader";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../../context/AuthContext";
 import VAParticles from "../../components/va/va_particles";
+import VAScanPollingBar from "../../components/va/va_scan_polling_bar"
 
 const severityColors = {
     critical: "bg-red-700 text-red-100 border-red-400",
@@ -182,8 +183,7 @@ export default function Page() {
 
     // Expandable row state
     const [expandedRow, setExpandedRow] = useState(null);
-
-    // Action modal (result & confirmation)
+    const [isStopping, setIsStopping] = useState(false);
     const [actionModal, setActionModal] = useState({
         open: false,
         title: "",
@@ -223,7 +223,6 @@ export default function Page() {
             });
     }, [authState]);
 
-    // Fetch + filter data (only if logged in & active plan & not expired)
     useEffect(() => {
         if (authState !== "authenticated" || !planLoaded) return;
         if (!plan || (plan.expired && new Date(plan.expired) < new Date())) {
@@ -243,30 +242,50 @@ export default function Page() {
         if (sort.field) {
             params.append(sort.dir === "asc" ? "sort_asc" : "sort_desc", sort.field);
         }
+
+        // Helper: Extract domain from scan.name ("Scan for https://domain.com/ ~ ...")
+        function extractDomainFromScanName(scanName) {
+            const match = scanName.match(/Scan for\s+([^\s~]+)/i);
+            if (match && match[1]) {
+                return match[1].replace(/https?:\/\//, '').replace(/\/$/, '').toLowerCase();
+            }
+            return scanName.replace(/https?:\/\//, '').replace(/\/$/, '').toLowerCase();
+        }
+
         fetch(`/api/va-scan-list?${params.toString()}`)
             .then((r) => r.json())
             .then((data) => {
                 let scanArr = Array.isArray(data.scans) ? data.scans : [];
-                let newTotal = data.total || scanArr.length;
 
+                // --- 1. Filter by domain langsung saat load ---
                 const isUnlimited = domainLimit === "unlimited";
-                if (
-                    !isUnlimited &&
-                    Array.isArray(userDomains) &&
-                    userDomains.length > 0
-                ) {
-                    scanArr = scanArr.filter((scan) =>
-                        userDomains.some(
-                            (domain) =>
-                                scan.name &&
-                                scan.name.toLowerCase().includes(domain.toLowerCase())
+                let domainList = [];
+                if (isUnlimited) {
+                    domainList = Array.isArray(plan.registered_breach_domain)
+                        ? plan.registered_breach_domain.map(d =>
+                            d.replace(/https?:\/\//, '').replace(/\/$/, '').toLowerCase()
                         )
+                        : [];
+                } else if (Array.isArray(userDomains) && userDomains.length > 0) {
+                    domainList = userDomains.map(d => d.toLowerCase());
+                }
+
+                if (domainList.length > 0) {
+                    scanArr = scanArr.filter(scan => {
+                        const scanDomain = extractDomainFromScanName(scan.name || "");
+                        return domainList.some(domain => scanDomain === domain);
+                    });
+                }
+
+                if (search) {
+                    const searchLower = search.toLowerCase();
+                    scanArr = scanArr.filter(scan =>
+                        scan.name && scan.name.toLowerCase().includes(searchLower)
                     );
-                    newTotal = scanArr.length;
                 }
 
                 setScans(scanArr);
-                setTotal(newTotal);
+                setTotal(scanArr.length);
                 setPageInput(page);
                 setSizeInput(size);
                 setLoading(false);
@@ -281,7 +300,7 @@ export default function Page() {
         planLoaded,
         page,
         size,
-        search,
+        search,      // gunakan ini untuk scan name filter (opsional)
         status,
         sort,
         refreshKey,
@@ -289,7 +308,6 @@ export default function Page() {
         userDomains,
     ]);
 
-    // Scan handler (modern, polling, tidak timeout)
     async function handleScan(domain) {
         setScanLoading(true);
         setScanError("");
@@ -299,18 +317,50 @@ export default function Page() {
             await new Promise((r) => setTimeout(r, 800));
             setDownloadStep("");
             setScanStep("Submitting scan...");
+
+            if (plan?.domain === "unlimited") {
+                // Ambil semua domain lama dari plan (format sesuai backend, misal https://domain.com/)
+                const breachDomainsRaw = Array.isArray(plan.registered_breach_domain)
+                    ? plan.registered_breach_domain
+                    : [];
+
+                const normalizedScanDomain = domain.trim().replace(/https?:\/\//, '').replace(/\/$/, '').toLowerCase();
+                const breachDomainsNormalized = breachDomainsRaw.map(d =>
+                    d.replace(/https?:\/\//, '').replace(/\/$/, '').toLowerCase()
+                );
+
+                const alreadyStored = breachDomainsNormalized.includes(normalizedScanDomain);
+
+                let selectedDomains = breachDomainsRaw;
+                if (!alreadyStored) {
+                    selectedDomains = [...breachDomainsRaw, `https://${normalizedScanDomain}/`];
+                }
+                selectedDomains = Array.from(new Set(selectedDomains));
+
+                await fetch("/api/register-breach-domain", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        selected_domains: selectedDomains
+                    }),
+                });
+            }
+
             const res = await fetch("/api/va-scan", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ domain: domain.trim() }),
             });
+
             setScanStep("");
             const data = await res.json();
+
             if (!res.ok || data.error) {
                 setScanError(data.error || "Failed to start scan");
                 setScanLoading(false);
                 return;
             }
+
             setModalOpen(false);
             setScanLoading(false);
             setPollScanId(data.scan_id);
@@ -318,7 +368,6 @@ export default function Page() {
             setLastScanStatus(data.status || "starting");
             setPolling(true);
 
-            // Tambahkan scan baru ke list FE
             setScans((prev) => [
                 {
                     scan_id: data.scan_id,
@@ -378,12 +427,15 @@ export default function Page() {
 
     async function handleStopScan(scan_id) {
         setScanLoading(true);
+        setIsStopping(true); // <-- set state
         try {
             const res = await fetch(`/api/va-scan-stop?scan_id=${scan_id}`, {
-                method: "POST"
+                method: "POST",
             });
             const data = await res.json();
             setScanLoading(false);
+            setIsStopping(false); // <-- reset state
+            setPolling(false); // <-- hide polling bar!
             if (res.ok && data.ok) {
                 setActionModal({
                     open: true,
@@ -404,6 +456,8 @@ export default function Page() {
             }
         } catch (e) {
             setScanLoading(false);
+            setIsStopping(false); // <-- reset state
+            setPolling(false); // <-- hide polling bar!
             setActionModal({
                 open: true,
                 title: "Stop Error",
@@ -584,36 +638,21 @@ export default function Page() {
                             />
                         </div>
                     )}
-                    {polling && (
-                        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[1050] bg-pink-700/95 px-6 py-3 rounded-xl shadow-lg flex items-center gap-4 animate-fadeIn font-bold text-white text-base border border-pink-300">
-                            <svg
-                                className="animate-spin w-6 h-6 text-white mr-1"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                            >
-                                <circle
-                                    className="opacity-20"
-                                    cx="12"
-                                    cy="12"
-                                    r="10"
-                                    stroke="currentColor"
-                                    strokeWidth="4"
-                                />
-                                <path
-                                    className="opacity-80"
-                                    fill="currentColor"
-                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                                />
-                            </svg>
-                            <span>
-                Scanning... (Scan ID:{" "}
-                                <span className="font-mono">{pollScanId}</span>)
-                <span className="ml-3">
-                  Status: <b>{pollScanStatus}</b>
-                </span>
-              </span>
-                        </div>
-                    )}
+                    {polling &&
+                        !["finished", "failed", "completed", "stopping"].includes(pollScanStatus) &&
+                        !isStopping && (
+                            <VAScanPollingBar
+                                scanId={pollScanId}
+                                scanName={searchValue}
+                                status={pollScanStatus}
+                                progress={scans.find(s => s.scan_id === pollScanId)?.progress ?? 0}
+                                startedAt={scans.find(s => s.scan_id === pollScanId)?.created_at}
+                                estimatedDuration="~2-5 min"
+                                onStop={() => handleStopScan(pollScanId)}
+                                isStopping={isStopping}
+                            />
+                        )
+                    }
 
                     <div className="flex items-center py-6 px-8 justify-between border-b border-[#232339] bg-[#161622]/80 backdrop-blur">
                         <div className="flex gap-3 items-center w-full max-w-2xl">

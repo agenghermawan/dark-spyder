@@ -240,6 +240,9 @@ export default function LeaksPage() {
         try {
             setIsLoading(true);
             setScanStep("Querying breach data...");
+
+            await callUpdateEndpoint();
+
             const { page, size } = pagination;
             const response = await fetch(
                 `/api/leaks?q=${encodeURIComponent(searchQuery)}&type=breach&page=${page}&size=${size}`
@@ -271,7 +274,7 @@ export default function LeaksPage() {
             if (!data.current_page_data || data.current_page_data.length === 0) {
                 setBreachData([]);
                 setShowEmptyAlert(true);
-                await callUpdateEndpoint();
+
                 setPagination((prev) => ({
                     ...prev,
                     total: 0,

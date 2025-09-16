@@ -19,6 +19,7 @@ export async function POST(req) {
     const payload = {
       targets: [domain.trim()],
       recommended: true,
+      scan_type: "nuclei",
       name: `Scan for ${domain.trim()} ~ Clandestine (recommended)`,
     };
 
